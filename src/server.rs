@@ -6,7 +6,12 @@ use md5;
 
 use crate::app::AppResult;
 use crate::parser::Parser;
+use crate::model::album::Album;
 
+enum SubsonicOperation {
+    Ping,
+    GetAlbumListRecent
+}
 #[derive(Debug)]
 pub struct Server{
     pub server_address: String,
@@ -66,8 +71,34 @@ impl Server{
     }
 
     pub async fn test_connection(&mut self) -> AppResult<()> {
-        let url = format!("{}/navidrome/rest/ping.view?u={}&t={}&s={}&v=0.1&c=naviterm",
-                          self.server_address, self.user, self.token, self.salt);
+
+        let url = self.build_url(SubsonicOperation::Ping);
+        let response_text = self.make_request(url).await.unwrap();
+
+        let connection_status = Parser::parse_connection_status(response_text).unwrap();
+        self.connection_status = connection_status.status().to_string();
+        self.server_version = connection_status.server_version().to_string();
+        self.connection_code = connection_status.error_code().to_string();
+        self.connection_message = connection_status.error_message().to_string();
+        self.last_connection_timestamp = chrono::offset::Local::now().to_string();
+
+        Ok(())
+    }
+    
+    pub async fn get_recent_albums(&mut self) -> AppResult<Vec<Album>> {
+        
+        let url = self.build_url(SubsonicOperation::GetAlbumListRecent);
+        let response_text = self.make_request(url).await.unwrap();
+        
+        let album_list = Parser::parse_album_list(response_text).unwrap();
+        
+        Ok(album_list)
+    }
+
+    async fn make_request (&mut self, url: String) -> AppResult<String> {
+
+        let mut response_text = "".to_string();
+
         let response = self.client.get(url)
             .header(CONTENT_TYPE, "application/json")
             .header(ACCEPT, "application/json")
@@ -76,29 +107,43 @@ impl Server{
         match response {
             Ok(success_response) => match success_response.status() {
                 reqwest::StatusCode::OK => {
-                    let response_text = success_response.text().await.unwrap();
-                    let connection_status = Parser::parse_connection_status(response_text).unwrap();
-                    self.connection_status = connection_status.status().to_string();
-                    self.server_version = connection_status.server_version().to_string();
-                    self.connection_code = connection_status.error_code().to_string();
-                    self.connection_message = connection_status.error_message().to_string();
-                    self.last_connection_timestamp = chrono::offset::Local::now().to_string();
+                     response_text = success_response.text().await.unwrap();
                 },
                 reqwest::StatusCode::UNAUTHORIZED => {
                     println!("Need to grab a new token");
+                    //TODO
                 },
                 _ => {
                     panic!("Uh oh! Something unexpected happened.");
+                    //TODO
                 },
             },
             Err(error) => panic!("Error while doing request: {:?}", error)
+            //TODO
+        };
+        Ok(response_text)
+    }
+
+    fn build_url(&mut self, subsonic_operation: SubsonicOperation) -> String {
+        let url: String = match subsonic_operation {
+            SubsonicOperation::Ping => 
+                format!("{}/navidrome/rest/ping.view?\
+                    u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address, self.user, self.token, self.salt)
+            ,
+            SubsonicOperation::GetAlbumListRecent => {
+                format!("{}/navidrome/rest/getAlbumList.view?type=recent?\
+                    u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address, self.user, self.token, self.salt)
+            }
         };
 
-        Ok(())
+        url
     }
 
     pub fn set_password(&mut self, password: String) {
         self.password = password;
     }
 }
+
 

@@ -19,4 +19,5 @@ pub mod server;
 /// Parser handler
 pub mod parser;
 
+pub mod model;
 

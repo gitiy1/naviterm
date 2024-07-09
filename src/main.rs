@@ -25,6 +25,7 @@ async fn main() -> AppResult<()> {
     let mut app = App::new();
     app.set_config(settings)?;
     app.renew_credentials()?;
+    app.test_connection().await?;
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stderr());
     let terminal = Terminal::new(backend)?;
