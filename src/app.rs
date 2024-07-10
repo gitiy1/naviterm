@@ -1,5 +1,6 @@
 use std::error;
 use config::Config;
+use crate::music_database::MusicDatabase;
 use crate::server::Server;
 
 /// Enum with applications screens
@@ -22,6 +23,7 @@ pub struct App {
     pub running: bool,
     pub current_screen: CurrentScreen,
     pub server: Server,
+    pub database: MusicDatabase,
 }
 
 impl Default for App {
@@ -30,6 +32,7 @@ impl Default for App {
             running: true,
             current_screen: CurrentScreen::Home,
             server: Server::new(),
+            database: MusicDatabase::new(),
         }
     }
 }
