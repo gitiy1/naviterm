@@ -67,4 +67,9 @@ impl App {
         self.server.test_connection().await?;
         Ok(())
     }
+    
+    pub async fn populate_db(&mut self) -> AppResult<()> {
+        self.database.set_recent_albums(self.server.get_recent_albums().await?);
+        Ok(())
+    }
 }
