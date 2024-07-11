@@ -132,7 +132,7 @@ impl Server{
                     self.server_address, self.user, self.token, self.salt)
             ,
             SubsonicOperation::GetAlbumListRecent => {
-                format!("{}/navidrome/rest/getAlbumList.view?type=recent?\
+                format!("{}/navidrome/rest/getAlbumList.view?type=recent&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, self.user, self.token, self.salt)
             }

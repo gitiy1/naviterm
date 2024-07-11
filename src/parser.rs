@@ -46,6 +46,7 @@ impl Parser {
             let mut new_album = Album::default();
             for attribute in album.attrs() {
                 match attribute.0 {
+                    "id" => {new_album.set_id(attribute.1.to_string())}
                     "album" => {new_album.set_name(attribute.1.to_string())}
                     "artist" => {new_album.set_artist(attribute.1.to_string())}
                     "coverArt" => {new_album.set_cover_art(attribute.1.to_string())}
