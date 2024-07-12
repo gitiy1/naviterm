@@ -1,3 +1,5 @@
+use encoding::all::ISO_8859_1;
+use encoding::{EncoderTrap, Encoding};
 use crate::app::AppResult;
 use crate::model::album::Album;
 use crate::model::connection_status::ConnectionStatus;
@@ -47,8 +49,14 @@ impl Parser {
             for attribute in album.attrs() {
                 match attribute.0 {
                     "id" => {new_album.set_id(attribute.1.to_string())}
-                    "album" => {new_album.set_name(attribute.1.to_string())}
-                    "artist" => {new_album.set_artist(attribute.1.to_string())}
+                    "album" => {
+                        let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                        new_album.set_name(String::from_utf8(chars).unwrap());
+                    }
+                    "artist" => {
+                        let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                        new_album.set_artist(String::from_utf8(chars).unwrap())
+                    }
                     "coverArt" => {new_album.set_cover_art(attribute.1.to_string())}
                     "duration" => {new_album.set_duration(attribute.1.to_string())}
                     "songCount" => {new_album.set_song_count(attribute.1.to_string())}
