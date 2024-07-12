@@ -3,16 +3,17 @@ use ratatui::layout::Rect;
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
+use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
+use ratatui::widgets::BorderType::Rounded;
 use crate::app::{App, AppResult};
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     
     let recent_albums = app.database.recent_albums();
 
-    let block = Block::new()
-        .title(Line::raw("Recent albums").centered())
-        .borders(Borders::TOP);
+    let block = Block::bordered()
+        .title(Line::raw("Recent albums").left_aligned())
+        .border_type(Rounded);
 
     if recent_albums.is_empty() {
         frame.render_widget(Paragraph::new(
@@ -36,8 +37,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 ]);
                 ListItem::from(album_item)
             });
-        let list = List::new(items).block(block);
-        frame.render_widget(list,area);
+        let list = List::new(items).block(block).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);
+        frame.render_stateful_widget(list, area, &mut app.home_recent_state);
     }
 
     Ok(())

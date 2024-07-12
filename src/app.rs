@@ -1,5 +1,6 @@
 use std::error;
 use config::Config;
+use ratatui::widgets::ListState;
 use crate::music_database::MusicDatabase;
 use crate::server::Server;
 
@@ -24,6 +25,7 @@ pub struct App {
     pub current_screen: CurrentScreen,
     pub server: Server,
     pub database: MusicDatabase,
+    pub home_recent_state: ListState,
 }
 
 impl Default for App {
@@ -33,6 +35,7 @@ impl Default for App {
             current_screen: CurrentScreen::Home,
             server: Server::new(),
             database: MusicDatabase::new(),
+            home_recent_state: ListState::default(),
         }
     }
 }
@@ -70,6 +73,16 @@ impl App {
     
     pub async fn populate_db(&mut self) -> AppResult<()> {
         self.database.set_recent_albums(self.server.get_recent_albums().await?);
+        Ok(())
+    }
+
+    pub fn select_next_list(&mut self) -> AppResult<()> {
+        self.home_recent_state.select_next();
+        Ok(())
+    }
+    
+    pub fn select_previous_list(&mut self) -> AppResult<()> {
+        self.home_recent_state.select_previous();
         Ok(())
     }
 }

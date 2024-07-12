@@ -18,6 +18,8 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             KeyCode::F(1) => {
                 app.current_screen = CurrentScreen::ConnectionTest;
             }
+            KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
+            KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
             // Other handlers you could add here.
             _ => {}
         }
