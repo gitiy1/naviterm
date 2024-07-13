@@ -11,7 +11,13 @@ pub enum CurrentScreen {
     Albums,
     Playlists,
     Artists,
+}
+
+/// Enum with applications screens
+#[derive(Debug, PartialEq)]
+pub enum CurrentPopup {
     ConnectionTest,
+    None,
 }
 
 /// Application result type.
@@ -23,6 +29,7 @@ pub struct App {
     /// Is the application running?
     pub running: bool,
     pub current_screen: CurrentScreen,
+    pub current_popup: CurrentPopup,
     pub server: Server,
     pub database: MusicDatabase,
     pub home_recent_state: ListState,
@@ -33,6 +40,7 @@ impl Default for App {
         Self {
             running: true,
             current_screen: CurrentScreen::Home,
+            current_popup: CurrentPopup::None,
             server: Server::new(),
             database: MusicDatabase::new(),
             home_recent_state: ListState::default(),

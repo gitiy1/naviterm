@@ -1,13 +1,16 @@
-use crate::app::{App, AppResult, CurrentScreen};
+use crate::app::{App, AppResult, CurrentPopup, CurrentScreen};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 /// Handles the key events and updates the state of [`App`].
 pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
+    
     match app.current_screen {
         CurrentScreen::Home => match key_event.code {
             // Exit application on `ESC` or `q`
             KeyCode::Esc | KeyCode::Char('q') => {
-                app.quit();
+                if app.current_popup == CurrentPopup::None {
+                    app.quit();
+                }
             }
             // Exit application on `Ctrl-C`
             KeyCode::Char('c') | KeyCode::Char('C') => {
@@ -16,16 +19,20 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
                 }
             }
             KeyCode::F(1) => {
-                app.current_screen = CurrentScreen::ConnectionTest;
+                app.current_popup = CurrentPopup::ConnectionTest;
             }
             KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
             KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
             // Other handlers you could add here.
             _ => {}
         }
-        CurrentScreen::ConnectionTest => match key_event.code {
+        _ => {}
+    }
+    
+    match app.current_popup {
+        CurrentPopup::ConnectionTest => match key_event.code {
             KeyCode::Esc | KeyCode::Char('q') => {
-                app.current_screen = CurrentScreen::Home;
+                app.current_popup = CurrentPopup::None;
             }
             KeyCode::Char('r') => {
                 app.renew_credentials()?;
@@ -35,7 +42,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             }
             _ => {}
         }
-        _ => {}
+        CurrentPopup::None => {}
     }
     Ok(())
 }
