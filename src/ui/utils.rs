@@ -21,3 +21,36 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         ])
         .split(popup_layout[1])[1] // Return the middle chunk
 }
+
+pub fn duration_to_hhmmss(duration: &str) -> String {
+    let u_duration = duration.parse::<usize>().unwrap();
+    let mut hhmmss = String::new();
+    
+    if u_duration > 3600 { 
+        let hours = u_duration / 3600;
+        let minutes = u_duration % 60;
+        let seconds = minutes % 60;
+        if minutes < 10 && seconds < 10 {
+            hhmmss = format!("{}:0{}:0{}", hours, minutes, seconds);
+        }
+        else if minutes < 10 {
+            hhmmss = format!("{}:0{}:{}", hours, minutes, seconds);
+        }
+        else if seconds < 10 {
+            hhmmss = format!("{}:{}:0{}", hours, minutes, seconds);
+        }
+        hhmmss = format!("{}:{}:{}", hours, minutes, seconds);
+    }
+    else {
+        let minutes = u_duration / 60;
+        let seconds = u_duration % 60;
+        if seconds < 10 {
+            hhmmss = format!("{}:0{}", minutes, seconds);
+        }
+        else {
+            hhmmss = format!("{}:{}", minutes, seconds);
+        }
+    }
+    
+    hhmmss
+}

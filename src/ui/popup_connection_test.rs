@@ -2,7 +2,7 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
 use ratatui::style::{Color, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, BorderType, Paragraph, Wrap};
+use ratatui::widgets::{Block, BorderType, Clear, Paragraph, Wrap};
 use crate::app::{App, AppResult};
 use crate::ui::utils;
 
@@ -39,11 +39,12 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                 .title_alignment(Alignment::Center)
                 .border_type(BorderType::Rounded),
         )
-        .style(Style::default().fg(Color::default()));
+        .style(Style::default().fg(Color::default()).bg(Color::default()));
 
     let popup_footer = Paragraph::new(Line::from("(r) to generate new salt and token (t) to test connection"))
         .block(Block::default());
 
+    frame.render_widget(Clear, area);
     frame.render_widget(popup_block, chunks[0]);
     frame.render_widget(popup_footer, chunks[1]);
     Ok(())

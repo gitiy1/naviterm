@@ -1,4 +1,6 @@
-use reqwest::header::{CONTENT_TYPE,ACCEPT};
+use std::fmt::{Display, Formatter};
+use std::string;
+use reqwest::header::{CONTENT_TYPE, ACCEPT};
 use chrono;
 use rand::distributions::{Alphanumeric, DistString};
 use reqwest::Client;
@@ -10,8 +12,28 @@ use crate::model::album::Album;
 
 enum SubsonicOperation {
     Ping,
-    GetAlbumListRecent
+    GetAlbumListRecent,
+    GetAlbum
 }
+
+#[derive(Debug)]
+enum SubsonicParameter {
+    None,
+    AlbumId(String),
+    SongId(String)
+}
+
+impl Display for SubsonicParameter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            SubsonicParameter::AlbumId(val) => val.to_string(),
+            SubsonicParameter::SongId(val) => val.to_string(),
+            SubsonicParameter::None => { "None".to_string() },
+        };
+        write!(f, "{}", str)
+    }
+}
+
 #[derive(Debug)]
 pub struct Server{
     pub server_address: String,
@@ -72,7 +94,7 @@ impl Server{
 
     pub async fn test_connection(&mut self) -> AppResult<()> {
 
-        let url = self.build_url(SubsonicOperation::Ping);
+        let url = self.build_url(SubsonicOperation::Ping, SubsonicParameter::None);
         let response_text = self.make_request(url).await.unwrap();
 
         let connection_status = Parser::parse_connection_status(response_text).unwrap();
@@ -87,12 +109,22 @@ impl Server{
     
     pub async fn get_recent_albums(&mut self) -> AppResult<Vec<Album>> {
         
-        let url = self.build_url(SubsonicOperation::GetAlbumListRecent);
+        let url = self.build_url(SubsonicOperation::GetAlbumListRecent, SubsonicParameter::None);
         let response_text = self.make_request(url).await.unwrap();
         
         let album_list = Parser::parse_album_list(response_text).unwrap();
         
         Ok(album_list)
+    }
+
+    pub async fn get_album(&mut self, album_id: &str) -> AppResult<Album> {
+
+        let url = self.build_url(SubsonicOperation::GetAlbum, SubsonicParameter::AlbumId(String::from(album_id)));
+        let response_text = self.make_request(url).await.unwrap();
+
+        let album= Parser::parse_album(response_text).unwrap();
+
+        Ok(album)
     }
 
     async fn make_request (&mut self, url: String) -> AppResult<String> {
@@ -124,7 +156,7 @@ impl Server{
         Ok(response_text)
     }
 
-    fn build_url(&mut self, subsonic_operation: SubsonicOperation) -> String {
+    fn build_url(&mut self, subsonic_operation: SubsonicOperation, subsonic_parameter: SubsonicParameter) -> String {
         let url: String = match subsonic_operation {
             SubsonicOperation::Ping => 
                 format!("{}/navidrome/rest/ping.view?\
@@ -135,6 +167,12 @@ impl Server{
                 format!("{}/navidrome/rest/getAlbumList.view?type=recent&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, self.user, self.token, self.salt)
+            }
+            ,
+            SubsonicOperation::GetAlbum => {
+                format!("{}/navidrome/rest/getAlbum.view?id={}&\
+                    u={}&t={}&s={}&v=0.1&c=naviterm",
+                        self.server_address, subsonic_parameter, self.user, self.token, self.salt)
             }
         };
 

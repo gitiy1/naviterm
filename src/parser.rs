@@ -2,6 +2,7 @@ use encoding::all::ISO_8859_1;
 use encoding::{EncoderTrap, Encoding};
 use crate::app::AppResult;
 use crate::model::album::Album;
+use crate::model::song::Song;
 use crate::model::connection_status::ConnectionStatus;
 
 pub struct Parser {}
@@ -46,6 +47,7 @@ impl Parser {
         let list = root.get_child("albumList", Self::NAMESPACE).unwrap();
         for album in list.children() {
             let mut new_album = Album::default();
+            let mut album_genres = Vec::new();
             for attribute in album.attrs() {
                 match attribute.0 {
                     "id" => {new_album.set_id(attribute.1.to_string())}
@@ -60,14 +62,114 @@ impl Parser {
                     "coverArt" => {new_album.set_cover_art(attribute.1.to_string())}
                     "duration" => {new_album.set_duration(attribute.1.to_string())}
                     "songCount" => {new_album.set_song_count(attribute.1.to_string())}
-                    "genre" => {new_album.set_genre(attribute.1.to_string())}
+                    "genre" => {album_genres.push(attribute.1.to_string())}
                     &_ => {}
                 }
             }
+            new_album.set_genres(album_genres);
             album_list.push(new_album);
         }
         
         Ok(album_list)
+    }
+
+    pub fn parse_album(response: String) -> AppResult<Album> {
+        let root: minidom::Element = response.parse().unwrap();
+        let mut song_list = Vec::new();
+
+        let album = root.get_child("album", Self::NAMESPACE).unwrap();
+        let mut new_album = Album::default();
+        let mut album_genres = Vec::new();
+        
+        for attribute in album.attrs() {
+            match attribute.0 {
+                "id" => {new_album.set_id(attribute.1.to_string())}
+                "name" => {
+                    let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                    new_album.set_name(String::from_utf8(chars).unwrap());
+                }
+                "artist" => {
+                    let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                    new_album.set_artist(String::from_utf8(chars).unwrap())
+                }
+                "coverArt" => {new_album.set_cover_art(attribute.1.to_string())}
+                "duration" => {new_album.set_duration(attribute.1.to_string())}
+                "songCount" => {new_album.set_song_count(attribute.1.to_string())}
+                &_ => {}
+            }
+        }
+        for child in album.children() {
+            if child.name() == "genres" {
+                for attribute in child.attrs() {
+                    match attribute.0 {
+                        "name" => {
+                            let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                            album_genres.push(String::from_utf8(chars).unwrap());
+                        }
+                        &_ => {}
+                    }
+                }
+            }
+            else if child.name() == "song" {
+                let mut new_song = Song::default();
+                let mut song_genres = Vec::new();
+                for attribute in child.attrs() {
+                    match attribute.0 {
+                        "id" => {new_song.set_id(attribute.1.to_string())}
+                        "title" => {
+                            let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                            new_song.set_title(String::from_utf8(chars).unwrap());
+                        }
+                        "album" => {
+                            let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                            new_song.set_album(String::from_utf8(chars).unwrap());
+                        }
+                        "albumId" => { new_song.set_album_id(attribute.1.to_string());}
+                        "artist" => {
+                            let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                            new_song.set_artist(String::from_utf8(chars).unwrap())
+                        }
+                        "artistId" => { new_song.set_artist_id(attribute.1.to_string())}
+                        "coverArt" => {new_song.set_cover_art(attribute.1.to_string())}
+                        "track" => {new_song.set_track(attribute.1.to_string())}
+                        "duration" => {new_song.set_duration(attribute.1.to_string())}
+                        "playCount" => {new_song.set_play_count(attribute.1.to_string())}
+                        "bitRate" => {new_song.set_bit_rate(attribute.1.to_string())}
+                        &_ => {}
+                    }
+                }
+                for child in child.children() {
+                    if child.name() == "replayGain" {
+                        for attribute in child.attrs() {
+                            match attribute.0 {
+                                "albumGain" => {new_song.set_album_gain(attribute.1.to_string())}
+                                "albumPeak" => {new_song.set_album_peak(attribute.1.to_string())}
+                                "trackGain" => {new_song.set_track_gain(attribute.1.to_string())}
+                                "trackPeak" => {new_song.set_track_peak(attribute.1.to_string())}
+                                &_ => {}
+                            }
+                        }
+                    }
+                    else if child.name() == "genres" {
+                        for attribute in child.attrs() {
+                            match attribute.0 {
+                                "name" => {
+                                    let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                                    song_genres.push(String::from_utf8(chars).unwrap());
+                                }
+                                &_ => {}
+                            }
+                        }
+                    }
+                }
+                new_song.set_genres(song_genres);
+                song_list.push(new_song);
+            }
+        }
+        new_album.set_songs(song_list);
+        new_album.set_genres(album_genres);
+
+        Ok(new_album)
     }
 
 }

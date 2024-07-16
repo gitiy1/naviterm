@@ -1,6 +1,7 @@
 use std::error;
 use config::Config;
 use ratatui::widgets::ListState;
+use crate::model::album::Album;
 use crate::music_database::MusicDatabase;
 use crate::server::Server;
 
@@ -17,6 +18,7 @@ pub enum CurrentScreen {
 #[derive(Debug, PartialEq)]
 pub enum CurrentPopup {
     ConnectionTest,
+    AlbumInformation,
     None,
 }
 
@@ -83,6 +85,23 @@ impl App {
         self.database.set_recent_albums(self.server.get_recent_albums().await?);
         Ok(())
     }
+    
+    pub fn get_current_album(&mut self) -> AppResult<&Album> {
+        let selected_album_index = self.home_recent_state.selected().unwrap();
+        let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
+        Ok(self.database.get_album(selected_album_id))
+    }
+    
+    pub async fn set_current_album(&mut self) -> AppResult<()> {
+        let selected_album_index = self.home_recent_state.selected().unwrap();
+        let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
+        if !self.database.contains_album(selected_album_id) {
+            let album = self.server.get_album(selected_album_id).await.unwrap();
+            self.database.insert_album(String::from(selected_album_id), album);
+        }
+        Ok(())
+    }
+    
 
     pub fn select_next_list(&mut self) -> AppResult<()> {
         self.home_recent_state.select_next();

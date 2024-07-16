@@ -29,7 +29,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                         Span { content: album.artist().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                     ]),
                     Line::from(vec![
-                        Span { content: album.genre().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                        Span { content: album.genres().join(", ").into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                         Span { content: ", ".into(), style: Style::default() },
                         Span { content: album.song_count().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                         Span { content: " songs".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
