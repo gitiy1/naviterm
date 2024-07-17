@@ -5,7 +5,7 @@ use ratatui::style::{Style, Stylize};
 use ratatui::{Frame, symbols};
 use ratatui::prelude::Line;
 use ratatui::widgets::{Block, Paragraph, Tabs};
-use crate::app::{App, CurrentPopup, CurrentScreen};
+use crate::app::{App, Popup, CurrentScreen};
 use crate::ui::{popup_album_info, popup_connection_test, tab_home};
 
 /// Renders the user interface widgets.
@@ -28,9 +28,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     
     match app.current_popup {
-        CurrentPopup::ConnectionTest => {popup_connection_test::draw_popup(app,frame).unwrap()}
-        CurrentPopup::AlbumInformation => {popup_album_info::draw_popup(app,frame).unwrap()}
-        CurrentPopup::None => {}
+        Popup::ConnectionTest => {popup_connection_test::draw_popup(app, frame).unwrap()}
+        Popup::AlbumInformation => {popup_album_info::draw_popup(app, frame).unwrap()}
+        Popup::None => {}
     }
 
     draw_title(title_area, frame);

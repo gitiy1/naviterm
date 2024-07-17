@@ -3,7 +3,7 @@ use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, Clear, List, ListItem, Padding, Paragraph};
+use ratatui::widgets::{Block, Clear, HighlightSpacing, List, ListItem, Padding, Paragraph};
 use ratatui::widgets::BorderType::Rounded;
 use crate::app::{App, AppResult};
 use crate::ui::utils;
@@ -19,7 +19,8 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     ]).split(area);
 
 
-    let album = app.get_current_album().unwrap();
+    //let album = app.get_current_album().unwrap();
+    let album = app.database.get_album(app.database.recent_albums().get(app.home_recent_state.selected().unwrap()).unwrap().id());
 
     let album_info = Text::from(vec![
         Line::from(vec![
@@ -65,7 +66,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             ListItem::from(song_item)
         });
 
-    let popup_list = List::new(items).style(Style::default().fg(Color::default()));
+    let popup_list = List::new(items).style(Style::default().fg(Color::default())).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);
     let popup_footer = Paragraph::new(Line::from("(a) add selected item (A) add whole album")).block(Block::default());
 
     let block = Block::bordered()
@@ -83,7 +84,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     frame.render_widget(Clear, area);
     frame.render_widget(block, chunks[0]);
     frame.render_widget(album_info, chunks_album[0]);
-    frame.render_widget(popup_list, chunks_album[1]);
+    frame.render_stateful_widget(popup_list, chunks_album[1], &mut app.popup_list_state);
     frame.render_widget(popup_footer, chunks[1]);
     Ok(())
 }

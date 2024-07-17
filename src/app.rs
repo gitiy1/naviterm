@@ -16,7 +16,7 @@ pub enum CurrentScreen {
 
 /// Enum with applications screens
 #[derive(Debug, PartialEq)]
-pub enum CurrentPopup {
+pub enum Popup {
     ConnectionTest,
     AlbumInformation,
     None,
@@ -31,10 +31,12 @@ pub struct App {
     /// Is the application running?
     pub running: bool,
     pub current_screen: CurrentScreen,
-    pub current_popup: CurrentPopup,
+    pub current_popup: Popup,
+    pub previous_popup: Popup,
     pub server: Server,
     pub database: MusicDatabase,
     pub home_recent_state: ListState,
+    pub popup_list_state: ListState,
 }
 
 impl Default for App {
@@ -42,10 +44,12 @@ impl Default for App {
         Self {
             running: true,
             current_screen: CurrentScreen::Home,
-            current_popup: CurrentPopup::None,
+            current_popup: Popup::None,
+            previous_popup: Popup::None,
             server: Server::new(),
             database: MusicDatabase::new(),
             home_recent_state: ListState::default(),
+            popup_list_state: ListState::default(),
         }
     }
 }
@@ -86,7 +90,7 @@ impl App {
         Ok(())
     }
     
-    pub fn get_current_album(&mut self) -> AppResult<&Album> {
+    pub fn get_current_album(&self) -> AppResult<&Album> {
         let selected_album_index = self.home_recent_state.selected().unwrap();
         let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
         Ok(self.database.get_album(selected_album_id))
@@ -110,6 +114,16 @@ impl App {
     
     pub fn select_previous_list(&mut self) -> AppResult<()> {
         self.home_recent_state.select_previous();
+        Ok(())
+    }
+    
+    pub fn select_next_list_popup(&mut self) -> AppResult<()> {
+        self.popup_list_state.select_next();
+        Ok(())
+    }
+
+    pub fn select_previous_list_popup(&mut self) -> AppResult<()> {
+        self.popup_list_state.select_previous();
         Ok(())
     }
 }
