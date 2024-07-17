@@ -39,7 +39,6 @@ pub fn duration_to_hhmmss(duration: &str) -> String {
         else if seconds < 10 {
             hhmmss = format!("{}:{}:0{}", hours, minutes, seconds);
         }
-        hhmmss = format!("{}:{}:{}", hours, minutes, seconds);
     }
     else {
         let minutes = u_duration / 60;

@@ -1,5 +1,4 @@
-use std::fmt::{Display, Formatter};
-use std::string;
+use std::fmt::Display;
 use reqwest::header::{CONTENT_TYPE, ACCEPT};
 use chrono;
 use rand::distributions::{Alphanumeric, DistString};

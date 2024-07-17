@@ -1,10 +1,9 @@
-use std::borrow::Cow;
 use ratatui::Frame;
-use ratatui::layout::{Alignment, Constraint, Direction, Layout};
+use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, BorderType, Clear, HighlightSpacing, List, ListItem, Padding, Paragraph, Wrap};
+use ratatui::widgets::{Block, Clear, List, ListItem, Padding, Paragraph};
 use ratatui::widgets::BorderType::Rounded;
 use crate::app::{App, AppResult};
 use crate::ui::utils;
@@ -41,16 +40,28 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
 
     let items = album.songs().iter().enumerate()
         .map(|(_i, song)| {
-            let song_item = Text::from(
-                Line::from(vec![
-                    Span { content: format!("{:>3}",song.track()).into(), style: Style::default().fg(Gray) },
-                    Span { content: ". ".into(), style: Style::default().fg(Gray) },
-                    Span { content: song.title().into(), style: Style::default().fg(Yellow) },
-                    Span { content: " (".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                    Span { content: duration_to_hhmmss(song.duration()).into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                    Span { content: ")".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                ])
-            );
+            let song_item = if song.track().is_empty() {
+                Text::from(
+                    Line::from(vec![
+                        Span { content: song.title().into(), style: Style::default().fg(Yellow) },
+                        Span { content: " (".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                        Span { content: duration_to_hhmmss(song.duration()).into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                        Span { content: ")".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                    ])
+                )
+            }
+            else {
+                Text::from(
+                    Line::from(vec![
+                        Span { content: format!("{:>3}",song.track()).into(), style: Style::default().fg(Gray) },
+                        Span { content: ". ".into(), style: Style::default().fg(Gray) },
+                        Span { content: song.title().into(), style: Style::default().fg(Yellow) },
+                        Span { content: " (".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                        Span { content: duration_to_hhmmss(song.duration()).into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                        Span { content: ")".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                    ])
+                )
+            };
             ListItem::from(song_item)
         });
 

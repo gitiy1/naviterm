@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use crate::app::AppResult;
 use crate::model::album::Album;
 
 #[derive(Debug)]
