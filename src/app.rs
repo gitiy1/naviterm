@@ -1,7 +1,6 @@
 use std::error;
 use config::Config;
 use ratatui::widgets::ListState;
-use crate::model::album::Album;
 use crate::music_database::MusicDatabase;
 use crate::server::Server;
 
@@ -19,6 +18,7 @@ pub enum CurrentScreen {
 pub enum Popup {
     ConnectionTest,
     AlbumInformation,
+    AddTo,
     None,
 }
 
@@ -37,6 +37,13 @@ pub struct App {
     pub database: MusicDatabase,
     pub home_recent_state: ListState,
     pub popup_list_state: ListState,
+    pub item_to_be_added: ItemToBeAdded
+}
+
+#[derive(Default,Debug)]
+pub struct ItemToBeAdded {
+    pub name: String,
+    pub id: String
 }
 
 impl Default for App {
@@ -50,6 +57,7 @@ impl Default for App {
             database: MusicDatabase::new(),
             home_recent_state: ListState::default(),
             popup_list_state: ListState::default(),
+            item_to_be_added: ItemToBeAdded::default(),
         }
     }
 }
@@ -90,13 +98,7 @@ impl App {
         Ok(())
     }
     
-    pub fn get_current_album(&self) -> AppResult<&Album> {
-        let selected_album_index = self.home_recent_state.selected().unwrap();
-        let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
-        Ok(self.database.get_album(selected_album_id))
-    }
-    
-    pub async fn set_current_album(&mut self) -> AppResult<()> {
+    pub async fn get_current_album_information(&mut self) -> AppResult<()> {
         let selected_album_index = self.home_recent_state.selected().unwrap();
         let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
         if !self.database.contains_album(selected_album_id) {
@@ -124,6 +126,27 @@ impl App {
 
     pub fn select_previous_list_popup(&mut self) -> AppResult<()> {
         self.popup_list_state.select_previous();
+        Ok(())
+    }
+    
+    pub fn add_queue_immediately(&mut self) -> AppResult<()> {
+        Ok(())
+    }
+    
+    pub fn add_queue_next(&mut self) -> AppResult<()> {
+        Ok(())
+    }
+    
+    pub fn add_queue_later(&mut self) -> AppResult<()> {
+        Ok(())
+    }
+    
+    pub fn set_item_to_be_added(&mut self) -> AppResult<()> {
+        let selected_album_index = self.home_recent_state.selected().unwrap();
+        let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
+        let songs = self.database.get_album(selected_album_id).songs();
+        self.item_to_be_added.name = songs.get(self.popup_list_state.selected().unwrap()).unwrap().title().to_string();
+        self.item_to_be_added.id = songs.get(self.popup_list_state.selected().unwrap()).unwrap().id().to_string();
         Ok(())
     }
 }

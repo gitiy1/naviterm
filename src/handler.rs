@@ -23,7 +23,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
                 KeyCode::Enter => {
-                    app.set_current_album().await?;
+                    app.get_current_album_information().await?;
                     app.current_popup = Popup::AlbumInformation;
                 },
                 // Other handlers you could add here.
@@ -32,29 +32,45 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             _ => {}
         }
     }
-    
-    match app.current_popup {
-        Popup::ConnectionTest => match key_event.code {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                app.current_popup = Popup::None;
+    else {
+        match app.current_popup {
+            Popup::ConnectionTest => match key_event.code {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    app.current_popup = Popup::None;
+                }
+                KeyCode::Char('r') => {
+                    app.renew_credentials()?;
+                }
+                KeyCode::Char('t') => {
+                    app.test_connection().await?;
+                }
+                _ => {}
             }
-            KeyCode::Char('r') => {
-                app.renew_credentials()?;
+            Popup::AlbumInformation => match key_event.code {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    app.current_popup = Popup::None;
+                }
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
+                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
+                KeyCode::Enter => {
+                    app.add_queue_immediately()?;
+                    app.current_popup = Popup::None;
+                },
+                KeyCode::Char('a') => {
+                    app.current_popup = Popup::AddTo;
+                    app.set_item_to_be_added()?;
+                }
+                _ => {}
             }
-            KeyCode::Char('t') => {
-                app.test_connection().await?;
+            Popup::AddTo => match key_event.code {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    app.current_popup = Popup::None;
+                }
+                _ => {}
             }
-            _ => {}
+            Popup::None => {}
         }
-        Popup::AlbumInformation => match key_event.code {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                app.current_popup = Popup::None;
-            }
-            KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
-            KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
-            _ => {}
-        }
-        Popup::None => {}
     }
+    
     Ok(())
 }
