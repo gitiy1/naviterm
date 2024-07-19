@@ -1,6 +1,7 @@
 use std::error;
 use config::Config;
 use ratatui::widgets::ListState;
+use crate::model::song::Song;
 use crate::music_database::MusicDatabase;
 use crate::server::Server;
 
@@ -11,6 +12,12 @@ pub enum CurrentScreen {
     Albums,
     Playlists,
     Artists,
+}
+
+pub enum MediaType {
+    Song,
+    Album,
+    Playlist
 }
 
 /// Enum with applications screens
@@ -37,13 +44,15 @@ pub struct App {
     pub database: MusicDatabase,
     pub home_recent_state: ListState,
     pub popup_list_state: ListState,
-    pub item_to_be_added: ItemToBeAdded
+    pub item_to_be_added: ItemToBeAdded,
+    pub queue: Vec<Song>
 }
 
 #[derive(Default,Debug)]
 pub struct ItemToBeAdded {
     pub name: String,
-    pub id: String
+    pub id: String,
+    pub parent_id: String
 }
 
 impl Default for App {
@@ -58,6 +67,7 @@ impl Default for App {
             home_recent_state: ListState::default(),
             popup_list_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
+            queue: vec![],
         }
     }
 }
@@ -71,7 +81,7 @@ impl App {
     /// Handles the tick event of the terminal.
     pub fn tick(&self) {}
 
-    /// Set running to false to quit the application.
+    /// Set running to false in order to quit the application.
     pub fn quit(&mut self) {
         self.running = false;
     }
@@ -129,7 +139,12 @@ impl App {
         Ok(())
     }
     
-    pub fn add_queue_immediately(&mut self) -> AppResult<()> {
+    pub fn add_queue_immediately(&mut self, media: MediaType) -> AppResult<()> {
+        match media {
+            MediaType::Song => {}
+            MediaType::Album => {}
+            MediaType::Playlist => {}
+        }
         Ok(())
     }
     
@@ -141,12 +156,22 @@ impl App {
         Ok(())
     }
     
-    pub fn set_item_to_be_added(&mut self) -> AppResult<()> {
-        let selected_album_index = self.home_recent_state.selected().unwrap();
-        let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
-        let songs = self.database.get_album(selected_album_id).songs();
-        self.item_to_be_added.name = songs.get(self.popup_list_state.selected().unwrap()).unwrap().title().to_string();
-        self.item_to_be_added.id = songs.get(self.popup_list_state.selected().unwrap()).unwrap().id().to_string();
+    pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
+        match media {
+            MediaType::Song => {
+                let selected_album_index = self.home_recent_state.selected().unwrap();
+                let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
+                let songs = self.database.get_album(selected_album_id).songs();
+                self.item_to_be_added.name = songs.get(self.popup_list_state.selected().unwrap()).unwrap().title().to_string();
+                self.item_to_be_added.id = songs.get(self.popup_list_state.selected().unwrap()).unwrap().id().to_string();
+                self.item_to_be_added.parent_id = selected_album_id.to_string();
+            }
+            MediaType::Album => {
+                let selected_album_index = self.home_recent_state.selected().unwrap();
+                self.item_to_be_added.id = self.database.recent_albums().get(selected_album_index).unwrap().id().to_string();
+            }
+            MediaType::Playlist => {}
+        }
         Ok(())
     }
 }

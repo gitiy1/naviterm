@@ -1,4 +1,4 @@
-use crate::app::{App, AppResult, Popup, CurrentScreen};
+use crate::app::{App, AppResult, Popup, CurrentScreen, MediaType};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 /// Handles the key events and updates the state of [`App`].
@@ -53,12 +53,13 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
                 KeyCode::Enter => {
-                    app.add_queue_immediately()?;
+                    app.set_item_to_be_added(MediaType::Song)?;
+                    app.add_queue_immediately(MediaType::Song)?;
                     app.current_popup = Popup::None;
                 },
                 KeyCode::Char('a') => {
                     app.current_popup = Popup::AddTo;
-                    app.set_item_to_be_added()?;
+                    app.set_item_to_be_added(MediaType::Song)?;
                 }
                 _ => {}
             }
