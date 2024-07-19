@@ -1,4 +1,3 @@
-use crate::model::song::Song;
 
 #[derive(Debug,Default)]
 pub struct Album {
@@ -9,7 +8,7 @@ pub struct Album {
     artist: String,
     genres: Vec<String>,
     song_count: String,
-    songs: Vec<Song>
+    songs: Vec<String>
 }
 
 impl Album {
@@ -68,11 +67,11 @@ impl Album {
     pub fn set_genres(&mut self, genres: Vec<String>) {
         self.genres = genres;
     }
-    pub fn songs(&self) -> &Vec<Song> {
+    pub fn songs(&self) -> &Vec<String> {
         &self.songs
     }
 
-    pub fn set_songs(&mut self, songs: Vec<Song>) {
+    pub fn set_songs(&mut self, songs: Vec<String>) {
         self.songs = songs;
     }
 }

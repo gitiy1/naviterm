@@ -1,17 +1,20 @@
 use std::collections::HashMap;
 use crate::model::album::Album;
+use crate::model::song::Song;
 
 #[derive(Debug)]
 pub struct MusicDatabase {
     recent_albums: Vec<Album>,
     albums: HashMap<String,Album>,
+    songs: HashMap<String,Song>,
 }
 
 impl Default for MusicDatabase {
     fn default() -> Self {
         Self {
             recent_albums: vec![],
-            albums: HashMap::new()
+            albums: HashMap::new(),
+            songs: HashMap::new()
         }
     }
 }
@@ -40,4 +43,17 @@ impl MusicDatabase {
     pub fn contains_album(&self, id: &str) -> bool {
         self.albums.contains_key(id)
     }
+
+    pub fn insert_song(&mut self, id: String, song: Song) {
+        self.songs.insert(id, song);
+    }
+
+    pub fn get_song(&self, id: &str) -> &Song {
+        self.songs.get(id).unwrap()
+    }
+
+    pub fn contains_song(&self, id: &str) -> bool {
+        self.songs.contains_key(id)
+    }
+
 }

@@ -112,8 +112,11 @@ impl App {
         let selected_album_index = self.home_recent_state.selected().unwrap();
         let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
         if !self.database.contains_album(selected_album_id) {
-            let album = self.server.get_album(selected_album_id).await.unwrap();
-            self.database.insert_album(String::from(selected_album_id), album);
+            let parsed_media = self.server.get_album(selected_album_id).await.unwrap();
+            self.database.insert_album(String::from(selected_album_id), parsed_media.0);
+            for song in parsed_media.1  {
+                self.database.insert_song(song.id().to_string(),song);
+            }
         }
         Ok(())
     }
@@ -161,9 +164,10 @@ impl App {
             MediaType::Song => {
                 let selected_album_index = self.home_recent_state.selected().unwrap();
                 let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
-                let songs = self.database.get_album(selected_album_id).songs();
-                self.item_to_be_added.name = songs.get(self.popup_list_state.selected().unwrap()).unwrap().title().to_string();
-                self.item_to_be_added.id = songs.get(self.popup_list_state.selected().unwrap()).unwrap().id().to_string();
+                let songs_ids = self.database.get_album(selected_album_id).songs();
+                let song = self.database.get_song(songs_ids.get(self.popup_list_state.selected().unwrap()).unwrap());
+                self.item_to_be_added.name = song.title().to_string();
+                self.item_to_be_added.id = song.id().to_string();
                 self.item_to_be_added.parent_id = selected_album_id.to_string();
             }
             MediaType::Album => {

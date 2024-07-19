@@ -40,7 +40,8 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     ]);
 
     let items = album.songs().iter().enumerate()
-        .map(|(_i, song)| {
+        .map(|(_i, song_id)| {
+            let song = app.database.get_song(song_id);
             let song_item = if song.track().is_empty() {
                 Text::from(
                     Line::from(vec![

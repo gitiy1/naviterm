@@ -8,6 +8,7 @@ use md5;
 use crate::app::AppResult;
 use crate::parser::Parser;
 use crate::model::album::Album;
+use crate::model::song::Song;
 
 enum SubsonicOperation {
     Ping,
@@ -116,14 +117,14 @@ impl Server{
         Ok(album_list)
     }
 
-    pub async fn get_album(&mut self, album_id: &str) -> AppResult<Album> {
+    pub async fn get_album(&mut self, album_id: &str) -> AppResult<(Album, Vec<Song>)> {
 
         let url = self.build_url(SubsonicOperation::GetAlbum, SubsonicParameter::AlbumId(String::from(album_id)));
         let response_text = self.make_request(url).await.unwrap();
 
-        let album= Parser::parse_album(response_text).unwrap();
+        let parsed_media= Parser::parse_album(response_text);
 
-        Ok(album)
+        Ok(parsed_media)
     }
 
     async fn make_request (&mut self, url: String) -> AppResult<String> {

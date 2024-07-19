@@ -73,9 +73,10 @@ impl Parser {
         Ok(album_list)
     }
 
-    pub fn parse_album(response: String) -> AppResult<Album> {
+    pub fn parse_album(response: String) -> (Album, Vec<Song>) {
         let root: minidom::Element = response.parse().unwrap();
         let mut song_list = Vec::new();
+        let mut song_ids_list = Vec::new();
 
         let album = root.get_child("album", Self::NAMESPACE).unwrap();
         let mut new_album = Album::default();
@@ -163,13 +164,14 @@ impl Parser {
                     }
                 }
                 new_song.set_genres(song_genres);
+                song_ids_list.push(new_song.id().to_string());
                 song_list.push(new_song);
             }
         }
-        new_album.set_songs(song_list);
+        new_album.set_songs(song_ids_list);
         new_album.set_genres(album_genres);
 
-        Ok(new_album)
+        (new_album,song_list)
     }
 
 }
