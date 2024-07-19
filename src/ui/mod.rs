@@ -4,3 +4,4 @@ mod popup_connection_test;
 mod utils;
 mod popup_album_info;
 mod popup_add_to;
+mod tab_queue;

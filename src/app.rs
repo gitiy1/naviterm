@@ -1,7 +1,7 @@
 use std::error;
+use std::ops::Index;
 use config::Config;
 use ratatui::widgets::ListState;
-use crate::model::song::Song;
 use crate::music_database::MusicDatabase;
 use crate::server::Server;
 
@@ -12,9 +12,12 @@ pub enum CurrentScreen {
     Albums,
     Playlists,
     Artists,
+    Queue
 }
 
+#[derive(Debug, Default)]
 pub enum MediaType {
+    #[default]
     Song,
     Album,
     Playlist
@@ -45,14 +48,16 @@ pub struct App {
     pub home_recent_state: ListState,
     pub popup_list_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
-    pub queue: Vec<Song>
+    pub queue: Vec<String>,
+    pub now_playing: String
 }
 
 #[derive(Default,Debug)]
 pub struct ItemToBeAdded {
     pub name: String,
     pub id: String,
-    pub parent_id: String
+    pub parent_id: String,
+    pub media_type: MediaType
 }
 
 impl Default for App {
@@ -68,6 +73,7 @@ impl Default for App {
             popup_list_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
             queue: vec![],
+            now_playing: String::new()
         }
     }
 }
@@ -142,9 +148,13 @@ impl App {
         Ok(())
     }
     
-    pub fn add_queue_immediately(&mut self, media: MediaType) -> AppResult<()> {
-        match media {
-            MediaType::Song => {}
+    pub fn add_queue_immediately(&mut self) -> AppResult<()> {
+        match self.item_to_be_added.media_type {
+            MediaType::Song => {
+                self.queue.clear();
+                self.queue.push(self.item_to_be_added.id.clone());
+                self.now_playing.clone_from(&self.item_to_be_added.id);
+            }
             MediaType::Album => {}
             MediaType::Playlist => {}
         }
@@ -152,10 +162,25 @@ impl App {
     }
     
     pub fn add_queue_next(&mut self) -> AppResult<()> {
+        match self.item_to_be_added.media_type {
+            MediaType::Song => {
+                let index = self.queue.iter().position(|x| x == &self.now_playing).unwrap();
+                self.queue.insert(index+1,self.item_to_be_added.id.clone())
+            }
+            MediaType::Album => {}
+            MediaType::Playlist => {}
+        }
         Ok(())
     }
     
     pub fn add_queue_later(&mut self) -> AppResult<()> {
+        match self.item_to_be_added.media_type {
+            MediaType::Song => {
+                self.queue.push(self.item_to_be_added.id.clone());
+            }
+            MediaType::Album => {}
+            MediaType::Playlist => {}
+        }
         Ok(())
     }
     
@@ -169,10 +194,12 @@ impl App {
                 self.item_to_be_added.name = song.title().to_string();
                 self.item_to_be_added.id = song.id().to_string();
                 self.item_to_be_added.parent_id = selected_album_id.to_string();
+                self.item_to_be_added.media_type = MediaType::Song;
             }
             MediaType::Album => {
                 let selected_album_index = self.home_recent_state.selected().unwrap();
                 self.item_to_be_added.id = self.database.recent_albums().get(selected_album_index).unwrap().id().to_string();
+                self.item_to_be_added.media_type = MediaType::Album;
             }
             MediaType::Playlist => {}
         }
