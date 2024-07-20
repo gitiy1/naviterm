@@ -1,13 +1,11 @@
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::style::Color::{Gray, Yellow};
-use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, BorderType, Clear, List, ListItem, Padding, Paragraph, Wrap};
-use ratatui::widgets::BorderType::Rounded;
+use ratatui::style::{Color, Style};
+use ratatui::text::Line;
+use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
+
 use crate::app::{App, AppResult};
 use crate::ui::utils;
-use crate::ui::utils::duration_to_hhmmss;
 
 pub fn draw_popup(app: &mut App,  frame: &mut Frame) -> AppResult<()> {
 

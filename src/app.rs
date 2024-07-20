@@ -1,7 +1,8 @@
 use std::error;
-use std::ops::Index;
+
 use config::Config;
 use ratatui::widgets::ListState;
+
 use crate::music_database::MusicDatabase;
 use crate::server::Server;
 
@@ -116,13 +117,10 @@ impl App {
     
     pub async fn get_current_album_information(&mut self) -> AppResult<()> {
         let selected_album_index = self.home_recent_state.selected().unwrap();
-        let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
-        if !self.database.contains_album(selected_album_id) {
-            let parsed_media = self.server.get_album(selected_album_id).await.unwrap();
-            self.database.insert_album(String::from(selected_album_id), parsed_media.0);
-            for song in parsed_media.1  {
-                self.database.insert_song(song.id().to_string(),song);
-            }
+        let selected_album_id: String = self.database.recent_albums().get(selected_album_index).unwrap().id().to_string();
+        
+        if !self.database.contains_album(selected_album_id.as_str()) {
+            populate_album_in_db(&mut self.server, &mut self.database,selected_album_id.as_str()).await?;
         }
         Ok(())
     }
@@ -148,14 +146,24 @@ impl App {
         Ok(())
     }
     
-    pub fn add_queue_immediately(&mut self) -> AppResult<()> {
+    pub async fn add_queue_immediately(&mut self) -> AppResult<()> {
         match self.item_to_be_added.media_type {
             MediaType::Song => {
                 self.queue.clear();
                 self.queue.push(self.item_to_be_added.id.clone());
                 self.now_playing.clone_from(&self.item_to_be_added.id);
             }
-            MediaType::Album => {}
+            MediaType::Album => {
+                self.queue.clear();
+                if !self.database.contains_album(self.item_to_be_added.id.as_str()) {
+                    populate_album_in_db(&mut self.server, &mut self.database,self.item_to_be_added.id.as_str()).await?;
+                }
+                let album = self.database.get_album(self.item_to_be_added.id.as_str());
+                for song in album.songs() {
+                    self.queue.push(song.clone());
+                }
+                self.now_playing.clone_from(self.queue.first().unwrap());
+            }
             MediaType::Playlist => {}
         }
         Ok(())
@@ -205,4 +213,13 @@ impl App {
         }
         Ok(())
     }
+}
+
+async fn populate_album_in_db(server: &mut Server, music_database: &mut MusicDatabase, id: &str) -> AppResult<()> {
+    let parsed_media = server.get_album(id).await.unwrap();
+    music_database.insert_album(String::from(id), parsed_media.0);
+    for song in parsed_media.1  {
+        music_database.insert_song(song.id().to_string(),song);
+    }
+    Ok(())
 }
