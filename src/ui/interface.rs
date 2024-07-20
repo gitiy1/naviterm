@@ -7,6 +7,7 @@ use ratatui::prelude::Line;
 use ratatui::widgets::{Block, Paragraph, Tabs};
 use crate::app::{App, Popup, CurrentScreen};
 use crate::ui::{popup_add_to, popup_album_info, popup_connection_test, tab_home, tab_queue};
+use crate::ui::footer_now_playing::draw_footer;
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -39,8 +40,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
 
     draw_title(title_area, frame);
+    draw_footer(app, footer_area, frame);
 
 }
+
 
 fn draw_title(title_area: Rect, frame: &mut Frame) {
     frame.render_widget(Paragraph::new(
