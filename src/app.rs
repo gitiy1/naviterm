@@ -4,6 +4,7 @@ use config::Config;
 use ratatui::widgets::ListState;
 
 use crate::music_database::MusicDatabase;
+use crate::player::mpv::{Mpv, play_song};
 use crate::server::Server;
 
 /// Enum with applications screens
@@ -50,7 +51,8 @@ pub struct App {
     pub popup_list_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
-    pub now_playing: String
+    pub now_playing: String,
+    player: Mpv,
 }
 
 #[derive(Default,Debug)]
@@ -74,7 +76,8 @@ impl Default for App {
             popup_list_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
             queue: vec![],
-            now_playing: String::new()
+            now_playing: String::new(),
+            player: Mpv::default()
         }
     }
 }
@@ -90,6 +93,7 @@ impl App {
 
     /// Set running to false in order to quit the application.
     pub fn quit(&mut self) {
+        self.player.quit_player();
         self.running = false;
     }
 
@@ -152,6 +156,7 @@ impl App {
                 self.queue.clear();
                 self.queue.push(self.item_to_be_added.id.clone());
                 self.now_playing.clone_from(&self.item_to_be_added.id);
+                play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
             }
             MediaType::Album => {
                 self.queue.clear();
@@ -163,6 +168,7 @@ impl App {
                     self.queue.push(song.clone());
                 }
                 self.now_playing.clone_from(self.queue.first().unwrap());
+                play_song(self.server.get_song_url(String::from(self.queue.first().unwrap())).as_str());
             }
             MediaType::Playlist => {}
         }

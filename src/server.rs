@@ -13,7 +13,8 @@ use crate::model::song::Song;
 enum SubsonicOperation {
     Ping,
     GetAlbumListRecent,
-    GetAlbum
+    GetAlbum,
+    DownloadSong
 }
 
 #[derive(Debug)]
@@ -126,6 +127,10 @@ impl Server{
 
         Ok(parsed_media)
     }
+    
+    pub fn get_song_url(&mut self, id: String) -> String {
+        self.build_url(SubsonicOperation::DownloadSong, SubsonicParameter::SongId(id))
+    }
 
     async fn make_request (&mut self, url: String) -> AppResult<String> {
 
@@ -171,6 +176,11 @@ impl Server{
             ,
             SubsonicOperation::GetAlbum => {
                 format!("{}/navidrome/rest/getAlbum.view?id={}&\
+                    u={}&t={}&s={}&v=0.1&c=naviterm",
+                        self.server_address, subsonic_parameter, self.user, self.token, self.salt)
+            }
+            SubsonicOperation::DownloadSong => {
+                format!("{}/navidrome/rest/download?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                         self.server_address, subsonic_parameter, self.user, self.token, self.salt)
             }
