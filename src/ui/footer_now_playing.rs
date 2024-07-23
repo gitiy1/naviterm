@@ -7,12 +7,19 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Padding, Paragraph};
 use ratatui::widgets::BorderType::Rounded;
 use crate::app::App;
+use crate::player::mpv::PlayerStatus;
 
 pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
+    
 
+    let player_status = match app.player.player_status() {
+        PlayerStatus::Playing => {"Now playing"}
+        PlayerStatus::Paused => {"Paused"}
+        PlayerStatus::Stopped => {"Stopped"}
+    };
 
     let block = Block::bordered()
-        .title(Line::raw("Now playing").left_aligned())
+        .title(Line::raw(player_status).left_aligned())
         .border_type(Rounded)
         ;
 

@@ -90,5 +90,8 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
         }
     }
     
+    // Keycodes that should be considered not matter if in popup or not
+    if key_event.code == KeyCode::Char('p') {app.toggle_playing_status()?};
+    
     Ok(())
 }

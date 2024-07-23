@@ -4,7 +4,7 @@ use config::Config;
 use ratatui::widgets::ListState;
 
 use crate::music_database::MusicDatabase;
-use crate::player::mpv::{Mpv, play_song};
+use crate::player::mpv::Mpv;
 use crate::server::Server;
 
 /// Enum with applications screens
@@ -52,7 +52,7 @@ pub struct App {
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
     pub now_playing: String,
-    player: Mpv,
+    pub player: Mpv,
 }
 
 #[derive(Default,Debug)]
@@ -156,7 +156,7 @@ impl App {
                 self.queue.clear();
                 self.queue.push(self.item_to_be_added.id.clone());
                 self.now_playing.clone_from(&self.item_to_be_added.id);
-                play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
+                self.player.play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
             }
             MediaType::Album => {
                 self.queue.clear();
@@ -168,7 +168,7 @@ impl App {
                     self.queue.push(song.clone());
                 }
                 self.now_playing.clone_from(self.queue.first().unwrap());
-                play_song(self.server.get_song_url(String::from(self.queue.first().unwrap())).as_str());
+                self.player.play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
             }
             MediaType::Playlist => {}
         }
@@ -217,6 +217,11 @@ impl App {
             }
             MediaType::Playlist => {}
         }
+        Ok(())
+    }
+    
+    pub fn toggle_playing_status(&mut self) -> AppResult<()> {
+        self.player.toggle_play_pause();
         Ok(())
     }
 }

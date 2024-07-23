@@ -11,3 +11,8 @@ pub fn load_file(file_url: &str) {
     let msg = r#"{"command":["loadfile", ""#.to_owned() + file_url + r#""]}"# + "\n";
     stream.write_all(msg.as_bytes()).expect("ipc: Error while loading file");
 }
+
+pub fn toggle_play_pause() {
+    let mut stream = UnixStream::connect("/tmp/naviterm_mpv").expect("Cannot create ipc stream");
+    stream.write_all(b"{\"command\":[\"cycle\",\"pause\"]}\n").expect("ipc: Error while cycling pause");
+}
