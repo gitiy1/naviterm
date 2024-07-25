@@ -230,6 +230,16 @@ impl App {
         self.player.toggle_play_pause();
         Ok(())
     }
+    
+    pub fn player_seek_forward(&mut self) -> AppResult<()> {
+        self.player.seek_forward();
+        Ok(())
+    }
+    
+    pub fn player_seek_backwards(&mut self) -> AppResult<()> {
+        self.player.seek_backwards();
+        Ok(())
+    }
 }
 
 async fn populate_album_in_db(server: &mut Server, music_database: &mut MusicDatabase, id: &str) -> AppResult<()> {

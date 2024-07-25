@@ -1,5 +1,4 @@
 use std::process::{Child, Command, Stdio};
-use crate::player::ipc;
 use crate::player::ipc::Ipc;
 
 pub const MPV_SOCKET: &str = "/tmp/naviterm_mpv";
@@ -62,6 +61,14 @@ impl Mpv {
             PlayerStatus::Stopped => {}
         }
 
+    }
+    
+    pub fn seek_forward(&mut self) {
+        self.ipc.seek("10")
+    }
+    
+    pub fn seek_backwards(&mut self) {
+        self.ipc.seek("-10")
     }
 
     pub fn player_status(&self) -> &PlayerStatus {

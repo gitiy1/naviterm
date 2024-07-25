@@ -29,4 +29,11 @@ impl Ipc {
             .write_all(b"{\"command\":[\"cycle\",\"pause\"]}\n")
             .expect("ipc: Error while cycling pause");
     }
+    
+    pub fn seek(&self, amount: &str) {
+        let msg = "{\"command\":[\"seek\",\"".to_owned() + amount + "\"]}\n";
+        self.stream.as_ref().unwrap()
+            .write_all(msg.as_bytes())
+            .expect("ipc: Error while seeking");
+    }
 }
