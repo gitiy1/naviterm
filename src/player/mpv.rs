@@ -10,7 +10,6 @@ pub enum PlayerStatus {
     Stopped
 }
 
-#[derive(Debug)]
 pub struct Mpv {
     mpv_process: Child,
     player_status: PlayerStatus,
@@ -73,5 +72,9 @@ impl Mpv {
 
     pub fn player_status(&self) -> &PlayerStatus {
         &self.player_status
+    }
+    
+    pub async fn poll_ipc_events(&mut self) {
+        self.ipc.poll_events().await;
     }
 }

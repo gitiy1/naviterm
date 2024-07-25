@@ -1,9 +1,20 @@
-use std::io::Write;
+use std::io::{Write};
 use std::os::unix::net::UnixStream;
+use std::sync::{Arc, Mutex};
+use tokio::io;
+use tokio::net::{UnixStream as OtherUnixStream};
+use crate::player::parser::parse_json_event;
 
-#[derive(Debug, Default)]
+pub enum IpcEvent {
+    FileLoaded,
+    Eof(String),
+    Idle
+}
+
+#[derive(Default)]
 pub struct Ipc {
-    stream: Option<UnixStream>
+    stream: Option<UnixStream>,
+    events: Arc<Mutex<Vec<IpcEvent>>>
 }
 
 impl Ipc {
@@ -36,4 +47,39 @@ impl Ipc {
             .write_all(msg.as_bytes())
             .expect("ipc: Error while seeking");
     }
+
+    pub async fn poll_events(&mut self) {
+
+        let events = self.events.clone();
+
+        tokio::spawn(async move {
+            let tokio_stream = OtherUnixStream::connect("/tmp/naviterm_mpv").await.unwrap();
+            loop {
+                // Wait for the socket to be readable
+                tokio_stream.readable().await.unwrap();
+
+                // Creating the buffer **after** the `await` prevents it from
+                // being stored in the async task.
+                let mut buf = [0; 4096];
+
+                // Try to read data, this may still fail with `WouldBlock`
+                // if the readiness event is a false positive.
+                match tokio_stream.try_read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        let message = String::from_utf8(buf[0..n].to_vec()).unwrap();
+                        //println!("read {} bytes: {}", n, message);
+                        let event = parse_json_event(message);
+                        let mut events = events.lock().unwrap();
+                        events.push(event);
+                    }
+                    Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                        continue;
+                    }
+                    _ => {}
+                }
+            }
+        });
+    }
 }
+
