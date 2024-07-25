@@ -1,5 +1,6 @@
 use std::process::{Child, Command, Stdio};
 use crate::player::ipc;
+use crate::player::ipc::Ipc;
 
 pub const MPV_SOCKET: &str = "/tmp/naviterm_mpv";
 
@@ -13,7 +14,8 @@ pub enum PlayerStatus {
 #[derive(Debug)]
 pub struct Mpv {
     mpv_process: Child,
-    player_status: PlayerStatus
+    player_status: PlayerStatus,
+    ipc: Ipc
 }
 
 impl Default for Mpv {
@@ -25,19 +27,25 @@ impl Default for Mpv {
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn().unwrap(),
-            player_status: PlayerStatus::Stopped
+            player_status: PlayerStatus::Stopped,
+            ipc: Ipc::default()
         }
     }
 }
 
 impl Mpv {
+    
+    pub fn initialize(&mut self) {
+        self.ipc.initialize_stream();
+    }
+    
     pub fn quit_player(&mut self) {
-        ipc::quit();
+        self.ipc.quit();
         self.mpv_process.wait().expect("Could not wait mpv to finish");
     }
 
     pub fn play_song(&mut self, song_url: &str) {
-        ipc::load_file(song_url);
+        self.ipc.load_file(song_url);
         self.player_status = PlayerStatus::Playing;
     }
 
@@ -45,11 +53,11 @@ impl Mpv {
         match self.player_status {
             PlayerStatus::Playing => {
                 self.player_status = PlayerStatus::Paused;
-                ipc::toggle_play_pause();
+                self.ipc.toggle_play_pause();
             }
             PlayerStatus::Paused => {
                 self.player_status = PlayerStatus::Playing;
-                ipc::toggle_play_pause();
+                self.ipc.toggle_play_pause();
             }
             PlayerStatus::Stopped => {}
         }

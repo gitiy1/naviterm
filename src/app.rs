@@ -119,6 +119,12 @@ impl App {
         Ok(())
     }
     
+    pub fn initialize_player_stream(&mut self) -> AppResult<()> {
+        // TODO Try to capture connection error and retry, to give mpv time to initialize
+        self.player.initialize();
+        Ok(())
+    }
+    
     pub async fn get_current_album_information(&mut self) -> AppResult<()> {
         let selected_album_index = self.home_recent_state.selected().unwrap();
         let selected_album_id: String = self.database.recent_albums().get(selected_album_index).unwrap().id().to_string();

@@ -27,6 +27,7 @@ async fn main() -> AppResult<()> {
     app.renew_credentials()?;
     app.test_connection().await?;
     app.populate_db().await?;
+    app.initialize_player_stream()?;
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stderr());
     let terminal = Terminal::new(backend)?;
