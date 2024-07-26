@@ -1,10 +1,10 @@
 use std::error;
-
 use config::Config;
 use ratatui::widgets::ListState;
 
 use crate::music_database::MusicDatabase;
-use crate::player::mpv::Mpv;
+use crate::player::mpv::{Mpv, PlayerStatus};
+use crate::player::ipc::IpcEvent;
 use crate::server::Server;
 
 /// Enum with applications screens
@@ -47,11 +47,13 @@ pub struct App {
     pub server: Server,
     pub database: MusicDatabase,
     pub home_recent_state: ListState,
+    pub queue_list_state: ListState,
     pub popup_list_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
     pub now_playing: String,
     pub player: Mpv,
+    pub index_in_queue: usize
 }
 
 #[derive(Default,Debug)]
@@ -72,11 +74,13 @@ impl Default for App {
             server: Server::new(),
             database: MusicDatabase::new(),
             home_recent_state: ListState::default(),
+            queue_list_state: ListState::default(),
             popup_list_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
             queue: vec![],
             now_playing: String::new(),
-            player: Mpv::default()
+            player: Mpv::default(),
+            index_in_queue: 0
         }
     }
 }
@@ -88,7 +92,9 @@ impl App {
     }
 
     /// Handles the tick event of the terminal.
-    pub fn tick(&self) {}
+    pub fn tick(&mut self) {
+        self.process_player_events();
+    }
 
     /// Set running to false in order to quit the application.
     pub fn quit(&mut self) {
@@ -159,14 +165,24 @@ impl App {
         self.popup_list_state.select_previous();
         Ok(())
     }
-    
+
+    pub fn select_next_queue(&mut self) -> AppResult<()> {
+        self.queue_list_state.select_next();
+        Ok(())
+    }
+
+    pub fn select_previous_queue(&mut self) -> AppResult<()> {
+        self.queue_list_state.select_previous();
+        Ok(())
+    }
+
     pub async fn add_queue_immediately(&mut self) -> AppResult<()> {
         match self.item_to_be_added.media_type {
             MediaType::Song => {
                 self.queue.clear();
                 self.queue.push(self.item_to_be_added.id.clone());
                 self.now_playing.clone_from(&self.item_to_be_added.id);
-                self.player.play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
+                self.play_current();
             }
             MediaType::Album => {
                 self.queue.clear();
@@ -178,7 +194,7 @@ impl App {
                     self.queue.push(song.clone());
                 }
                 self.now_playing.clone_from(self.queue.first().unwrap());
-                self.player.play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
+                self.play_current();
             }
             MediaType::Playlist => {}
         }
@@ -243,6 +259,78 @@ impl App {
     pub fn player_seek_backwards(&mut self) -> AppResult<()> {
         self.player.seek_backwards();
         Ok(())
+    }
+    
+    pub fn play_next(&mut self) -> AppResult<()> {
+        if self.queue_has_next() {
+            self.go_next_queue();
+            self.play_current();
+        }
+        Ok(())
+    }
+    
+    pub fn play_previous(&mut self) -> AppResult<()> {
+        Ok(())
+    }
+
+
+    fn process_player_events(&mut self) {
+        let events = self.player.ipc.events().clone();
+        let mut events = events.lock().unwrap();
+        while !events.is_empty() {
+            match events.pop().unwrap() {
+                IpcEvent::FileLoaded => {
+                    if self.player.player_status == PlayerStatus::Stopped {
+                        self.player.player_status = PlayerStatus::Playing;
+                    }
+                }
+                IpcEvent::Eof(reason) => {
+                    if reason == "eof" && self.queue_has_next() { 
+                        self.go_next_queue();
+                        self.play_current();
+                    }
+                }
+                IpcEvent::Seek => {}
+                IpcEvent::Idle => {
+                    if self.player.player_status == PlayerStatus::Playing && !self.queue_has_next() {
+                        self.player.player_status = PlayerStatus::Stopped;
+                    }
+                }
+                IpcEvent::Error(_) => {}
+                IpcEvent::Unrecognized(_) => {}
+            }
+        }
+    }
+    
+    fn queue_has_next(&self) -> bool {
+        if self.queue.len() <= 1 {return false;}
+        else {
+            self.index_in_queue < self.queue.len()-1
+        }
+    }
+
+    fn go_next_queue(&mut self) {
+        self.index_in_queue += 1;
+        self.now_playing.clone_from(self.queue.get(self.index_in_queue).unwrap());
+    }
+    
+    pub fn play_queue_song(&mut self) -> AppResult<()> {
+        self.now_playing.clone_from(self.queue.get(self.queue_list_state.selected().unwrap()).unwrap());
+        self.index_in_queue = self.queue_list_state.selected().unwrap();
+        self.play_current();
+        Ok(())
+    }
+
+    pub fn clear_queue(&mut self) -> AppResult<()> {
+        self.queue.clear();
+        self.index_in_queue = 0;
+        self.player.stop();
+        self.now_playing = String::new();
+        Ok(())
+    }
+
+    fn play_current(&mut self) {
+        self.player.play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
     }
 }
 

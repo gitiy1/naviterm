@@ -51,6 +51,12 @@ impl Ipc {
             .expect("ipc: Error while seeking");
     }
 
+    pub fn stop(&self) {
+        self.stream.as_ref().unwrap()
+            .write_all(b"{\"command\":[\"stop\"]}\n")
+            .expect("ipc: Error while stopping");
+    }
+
     pub async fn poll_events(&mut self) {
 
         let events = self.events.clone();
@@ -84,6 +90,10 @@ impl Ipc {
                 }
             }
         });
+    }
+
+    pub fn events(&self) -> &Arc<Mutex<Vec<IpcEvent>>> {
+        &self.events
     }
 }
 

@@ -1,7 +1,7 @@
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::Color::{Gray, Yellow};
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
 use ratatui::widgets::BorderType::Rounded;
@@ -12,7 +12,6 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     
 
     let block = Block::bordered()
-        .title(Line::raw("Recent albums").left_aligned())
         .border_type(Rounded);
     
 
@@ -22,7 +21,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     }
     else {
         let items = app.queue.iter().enumerate()
-            .map(|(_i, song_id)| {
+            .map(|(i, song_id)| {
                 let song = app.database.get_song(song_id);
                 let song_item = Text::from(vec![
                     Line::from(vec![
@@ -32,10 +31,15 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                         Span { content: ")".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                     ])
                 ]);
-                ListItem::from(song_item)
+                if i == app.index_in_queue {
+                    ListItem::from(song_item).underlined()
+                }
+                else {
+                    ListItem::from(song_item)
+                }
             });
         let list = List::new(items).block(block).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);
-        frame.render_stateful_widget(list, area, &mut app.home_recent_state);
+        frame.render_stateful_widget(list, area, &mut app.queue_list_state);
     }
 
     Ok(())

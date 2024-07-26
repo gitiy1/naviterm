@@ -3,7 +3,7 @@ use crate::player::ipc::Ipc;
 
 pub const MPV_SOCKET: &str = "/tmp/naviterm_mpv";
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum PlayerStatus {
     Playing,
     Paused,
@@ -12,8 +12,11 @@ pub enum PlayerStatus {
 
 pub struct Mpv {
     mpv_process: Child,
-    player_status: PlayerStatus,
-    ipc: Ipc
+    pub(crate) player_status: PlayerStatus,
+    pub(crate) ipc: Ipc
+}
+
+impl Mpv {
 }
 
 impl Default for Mpv {
@@ -44,7 +47,6 @@ impl Mpv {
 
     pub fn play_song(&mut self, song_url: &str) {
         self.ipc.load_file(song_url);
-        self.player_status = PlayerStatus::Playing;
     }
 
     pub fn toggle_play_pause(&mut self) {
@@ -60,6 +62,10 @@ impl Mpv {
             PlayerStatus::Stopped => {}
         }
 
+    }
+
+    pub fn stop(&self) {
+        self.ipc.stop();
     }
     
     pub fn seek_forward(&mut self) {

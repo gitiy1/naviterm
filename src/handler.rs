@@ -33,8 +33,16 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
                 KeyCode::Char('1') => {
                     app.current_screen = CurrentScreen::Home;
                 }
+                KeyCode::Char('l') => { app.play_next()? }
+                KeyCode::Char('h') => { app.play_previous()? }
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_queue()?,
+                KeyCode::Char('k') | KeyCode::Up => app.select_previous_queue()?,
+                KeyCode::Char('c') => app.clear_queue()?,
+                KeyCode::Enter => {
+                    app.play_queue_song()?;
+                },
                 // Exit application on `ESC` or `q`
-                KeyCode::Esc | KeyCode::Char('q') => { app.quit(); }
+                KeyCode::Esc | KeyCode::Char('q') => { app.quit() }
                 // Exit application on `Ctrl-C`
                 KeyCode::Char('c') | KeyCode::Char('C') => if key_event.modifiers == KeyModifiers::CONTROL { app.quit(); }
                 _ => {}
@@ -94,6 +102,5 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
     if key_event.code == KeyCode::Char('p') {app.toggle_playing_status()?};
     if key_event.code == KeyCode::Right {app.player_seek_forward()?};
     if key_event.code == KeyCode::Left {app.player_seek_backwards()?};
-    
     Ok(())
 }
