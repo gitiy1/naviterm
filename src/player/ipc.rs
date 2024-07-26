@@ -8,7 +8,10 @@ use crate::player::parser::parse_json_event;
 pub enum IpcEvent {
     FileLoaded,
     Eof(String),
-    Idle
+    Seek,
+    Idle,
+    Error(String),
+    Unrecognized(String)
 }
 
 #[derive(Default)]
@@ -67,11 +70,12 @@ impl Ipc {
                 match tokio_stream.try_read(&mut buf) {
                     Ok(0) => break,
                     Ok(n) => {
-                        let message = String::from_utf8(buf[0..n].to_vec()).unwrap();
-                        //println!("read {} bytes: {}", n, message);
-                        let event = parse_json_event(message);
+                        let buf_string = String::from_utf8(buf[0..n].to_vec()).unwrap();
+                        let parsed_events = parse_json_event(buf_string);
                         let mut events = events.lock().unwrap();
-                        events.push(event);
+                        for event in parsed_events {
+                            events.push(event);
+                        }
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                         continue;

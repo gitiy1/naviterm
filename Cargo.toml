@@ -18,3 +18,4 @@ reqwest = "0.12.4"
 tokio = { version = "1.35.1", features = ["full"] }
 dirs = "5.0.1"
 encoding = "0.2.33"
+json = "0.12.4"
