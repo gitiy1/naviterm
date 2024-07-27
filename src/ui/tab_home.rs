@@ -38,6 +38,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 ListItem::from(album_item)
             });
         let list = List::new(items).block(block).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);
+        if app.home_recent_state.selected().is_none() { app.home_recent_state.select_first() }
         frame.render_stateful_widget(list, area, &mut app.home_recent_state);
     }
 

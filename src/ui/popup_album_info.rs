@@ -67,6 +67,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             ListItem::from(song_item)
         });
 
+    if app.popup_list_state.selected().is_none() { app.popup_list_state.select_first() }
     let popup_list = List::new(items).style(Style::default().fg(Color::default())).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);
     let popup_footer = Paragraph::new(Line::from("(a) add selected item (A) add whole album")).block(Block::default());
 

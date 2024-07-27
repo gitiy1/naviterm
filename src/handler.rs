@@ -37,14 +37,15 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
                 KeyCode::Char('h') => { app.play_previous()? }
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_queue()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_queue()?,
-                KeyCode::Char('c') => app.clear_queue()?,
+                KeyCode::Char('c') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL { app.quit(); }
+                    else { app.clear_queue()?; }
+                },
                 KeyCode::Enter => {
                     app.play_queue_song()?;
                 },
                 // Exit application on `ESC` or `q`
                 KeyCode::Esc | KeyCode::Char('q') => { app.quit() }
-                // Exit application on `Ctrl-C`
-                KeyCode::Char('c') | KeyCode::Char('C') => if key_event.modifiers == KeyModifiers::CONTROL { app.quit(); }
                 _ => {}
             }
         }
