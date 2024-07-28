@@ -124,12 +124,6 @@ impl App {
         Ok(())
     }
     
-    pub fn initialize_player_stream(&mut self) -> AppResult<()> {
-        // TODO Try to capture connection error and retry, to give mpv time to initialize
-        self.player.initialize();
-        Ok(())
-    }
-    
     pub async fn poll_player_events(&mut self) -> AppResult<()> {
         self.player.poll_ipc_events().await;
         Ok(())
