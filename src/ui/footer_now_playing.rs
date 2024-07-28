@@ -8,6 +8,7 @@ use ratatui::widgets::{Block, Padding, Paragraph};
 use ratatui::widgets::BorderType::Rounded;
 use crate::app::App;
 use crate::player::mpv::PlayerStatus;
+use crate::ui::utils::duration_to_hhmmss;
 
 pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
     
@@ -17,6 +18,8 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         PlayerStatus::Paused => {"Paused"}
         PlayerStatus::Stopped => {"Stopped"}
     };
+    
+    let seconds_played = (app.ticks_during_playing_state / 4).to_string();
 
     let block = Block::bordered()
         .title(Line::raw(player_status).left_aligned())
@@ -34,6 +37,8 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
             ]),
             Line::from(vec![
                 Span { content: song.artist().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                Span { content: " - ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                Span { content: duration_to_hhmmss(seconds_played.as_str()).into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
             ])
         ]))
     };

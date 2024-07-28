@@ -53,7 +53,8 @@ pub struct App {
     pub queue: Vec<String>,
     pub now_playing: String,
     pub player: Mpv,
-    pub index_in_queue: usize
+    pub index_in_queue: usize,
+    pub ticks_during_playing_state: usize,
 }
 
 #[derive(Default,Debug)]
@@ -80,7 +81,8 @@ impl Default for App {
             queue: vec![],
             now_playing: String::new(),
             player: Mpv::default(),
-            index_in_queue: 0
+            index_in_queue: 0,
+            ticks_during_playing_state: 0,
         }
     }
 }
@@ -94,6 +96,9 @@ impl App {
     /// Handles the tick event of the terminal.
     pub fn tick(&mut self) {
         self.process_player_events();
+        if *self.player.player_status() == PlayerStatus::Playing {
+            self.ticks_during_playing_state += 1;
+        }
     }
 
     /// Set running to false in order to quit the application.
@@ -247,11 +252,13 @@ impl App {
     
     pub fn player_seek_forward(&mut self) -> AppResult<()> {
         self.player.seek_forward();
+        self.ticks_during_playing_state += 40;
         Ok(())
     }
     
     pub fn player_seek_backwards(&mut self) -> AppResult<()> {
         self.player.seek_backwards();
+        self.ticks_during_playing_state = self.ticks_during_playing_state.saturating_sub(40);
         Ok(())
     }
     
@@ -325,6 +332,7 @@ impl App {
 
     fn play_current(&mut self) {
         self.player.play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
+        self.ticks_during_playing_state = 0;
     }
 }
 
