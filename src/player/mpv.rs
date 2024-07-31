@@ -23,14 +23,7 @@ impl Default for Mpv {
     fn default() -> Self {
         Self {
             mpv_process: Command::new("mpv")
-                .arg("--no-video")
-                .arg("--msg-level=all=no,ipc=v")
-                .arg("--no-audio-display")
-                .arg("--no-config")
-                .arg("--load-scripts=no")
-                .arg("--idle")
-                .arg("--log-file=/tmp/naviterm_mpv.log")
-                .arg("--input-ipc-server=".to_owned()+MPV_SOCKET)
+                .arg("--no-video").arg("--idle").arg("--input-ipc-server=".to_owned()+MPV_SOCKET)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -42,6 +35,10 @@ impl Default for Mpv {
 }
 
 impl Mpv {
+    
+    pub fn initialize(&mut self) {
+        self.ipc.initialize_stream();
+    }
     
     pub fn quit_player(&mut self) {
         self.ipc.quit();

@@ -17,44 +17,43 @@ pub enum IpcEvent {
 
 #[derive(Default)]
 pub struct Ipc {
+    stream: Option<UnixStream>,
     events: Arc<Mutex<Vec<IpcEvent>>>
 }
 
 impl Ipc {
+    pub fn initialize_stream(&mut self) {
+        self.stream = Some(UnixStream::connect("/tmp/naviterm_mpv").expect("Cannot create ipc stream"));
+    }
 
     pub fn load_file(&self, file_url: &str) {
         let msg = r#"{"command":["loadfile", ""#.to_owned() + file_url + r#""]}"# + "\n";
-        let stream = UnixStream::connect("/tmp/naviterm_mpv");
-        stream.unwrap()
+        self.stream.as_ref().unwrap()
             .write_all(msg.as_bytes())
             .expect("ipc: Error while loading file");
     }
 
     pub fn quit(&self) {
-        let stream = UnixStream::connect("/tmp/naviterm_mpv");
-        stream.unwrap()
+        self.stream.as_ref().unwrap()
             .write_all(b"{\"command\":[\"quit\"]}\n")
             .expect("ipc: Error while exiting ipc connection");
     }
 
     pub fn toggle_play_pause(&self) {
-        let stream = UnixStream::connect("/tmp/naviterm_mpv");
-        stream.unwrap()
+        self.stream.as_ref().unwrap()
             .write_all(b"{\"command\":[\"cycle\",\"pause\"]}\n")
             .expect("ipc: Error while cycling pause");
     }
     
     pub fn seek(&self, amount: &str) {
         let msg = "{\"command\":[\"seek\",\"".to_owned() + amount + "\"]}\n";
-        let stream = UnixStream::connect("/tmp/naviterm_mpv");
-        stream.unwrap()
+        self.stream.as_ref().unwrap()
             .write_all(msg.as_bytes())
             .expect("ipc: Error while seeking");
     }
 
     pub fn stop(&self) {
-        let stream = UnixStream::connect("/tmp/naviterm_mpv");
-        stream.unwrap()
+        self.stream.as_ref().unwrap()
             .write_all(b"{\"command\":[\"stop\"]}\n")
             .expect("ipc: Error while stopping");
     }
@@ -86,14 +85,10 @@ impl Ipc {
                             events.push(event);
                         }
                     }
-                    Err(ref e) => {
-                        if e.kind() == io::ErrorKind::WouldBlock {
-                            continue;
-                        }
-                        else { 
-                            panic!("Error: {}", e);
-                        }
+                    Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                        continue;
                     }
+                    _ => {}
                 }
             }
         });
