@@ -1,7 +1,7 @@
-use std::io::{Write};
+use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::sync::{Arc, Mutex};
-use log::debug;
+use log::{debug, error};
 use tokio::io;
 use tokio::net::{UnixStream as OtherUnixStream};
 use crate::player::parser::parse_json_event;
@@ -28,34 +28,27 @@ impl Ipc {
 
     pub fn load_file(&self, file_url: &str) {
         let msg = r#"{"command":["loadfile", ""#.to_owned() + file_url + r#""]}"# + "\n";
-        self.stream.as_ref().unwrap()
-            .write_all(msg.as_bytes())
-            .expect("ipc: Error while loading file");
+        self.send_ipc_command(msg);
     }
 
     pub fn quit(&self) {
-        self.stream.as_ref().unwrap()
-            .write_all(b"{\"command\":[\"quit\"]}\n")
-            .expect("ipc: Error while exiting ipc connection");
+        let msg = String::from("{\"command\":[\"quit\"]}\n");
+        self.send_ipc_command(msg);
     }
 
     pub fn toggle_play_pause(&self) {
-        self.stream.as_ref().unwrap()
-            .write_all(b"{\"command\":[\"cycle\",\"pause\"]}\n")
-            .expect("ipc: Error while cycling pause");
+        let msg = String::from("{\"command\":[\"cycle\",\"pause\"]}\n");
+        self.send_ipc_command(msg);
     }
-    
+
     pub fn seek(&self, amount: &str) {
         let msg = "{\"command\":[\"seek\",\"".to_owned() + amount + "\"]}\n";
-        self.stream.as_ref().unwrap()
-            .write_all(msg.as_bytes())
-            .expect("ipc: Error while seeking");
+        self.send_ipc_command(msg);
     }
 
     pub fn stop(&self) {
-        self.stream.as_ref().unwrap()
-            .write_all(b"{\"command\":[\"stop\"]}\n")
-            .expect("ipc: Error while stopping");
+        let msg = String::from("{\"command\":[\"stop\"]}\n");
+        self.send_ipc_command(msg);
     }
 
     pub async fn poll_events(&mut self) {
@@ -96,6 +89,29 @@ impl Ipc {
 
     pub fn events(&self) -> &Arc<Mutex<Vec<IpcEvent>>> {
         &self.events
+    }
+
+    fn read_stream_response(&self) {
+        let mut buf = [0; 4096];
+        match self.stream.as_ref().unwrap().read(&mut buf) {
+            Ok(n) => {
+                let buf_string = String::from_utf8(buf[0..n].to_vec()).unwrap();
+                debug!("Response from stream: {}", buf_string);
+            }
+            Err(e) => error!("Failed to read from stream: {}", e), }
+    }
+
+    fn send_ipc_command(&self, msg: String) {
+        match self.stream.as_ref() {
+            Some(mut stream) => {
+                match stream.write_all(msg.as_bytes()) {
+                    Ok(_) => {
+                        self.read_stream_response();
+                    }
+                    Err(e) => error!("Failed to write to stream: {}", e), }
+            }
+            None => error!("Stream to MPV has not been initialized")
+        }
     }
 }
 
