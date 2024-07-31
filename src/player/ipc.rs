@@ -1,6 +1,7 @@
 use std::io::{Write};
 use std::os::unix::net::UnixStream;
 use std::sync::{Arc, Mutex};
+use log::debug;
 use tokio::io;
 use tokio::net::{UnixStream as OtherUnixStream};
 use crate::player::parser::parse_json_event;
@@ -78,6 +79,7 @@ impl Ipc {
                     Ok(0) => break,
                     Ok(n) => {
                         let buf_string = String::from_utf8(buf[0..n].to_vec()).unwrap();
+                        debug!("Received message: {}", buf_string);
                         let parsed_events = parse_json_event(buf_string);
                         let mut events = events.lock().unwrap();
                         for event in parsed_events {

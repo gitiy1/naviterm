@@ -5,7 +5,12 @@ use naviterm::tui::Tui;
 use std::io;
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
-use config::Config;
+use config::{Config, ConfigError};
+use log4rs::append::file::FileAppender;
+use log4rs::Config as log4rsConfig;
+use log4rs::config::{Appender, Root};
+use log4rs::encode::pattern::PatternEncoder;
+use log::LevelFilter;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -14,13 +19,42 @@ async fn main() -> AppResult<()> {
     let mut xdg_conf = home_dir.clone();
     xdg_conf.push(".config/naviterm/config.ini");
     let settings = Config::builder()
-        // Add in `./Settings.toml`
         .add_source(config::File::with_name(xdg_conf.to_str().unwrap()))
-        // Add in settings from the environment (with a prefix of APP)
-        // Eg.. `APP_DEBUG=1 ./target/app` would set the `debug` key
         .add_source(config::Environment::with_prefix("APP"))
         .build()
         .unwrap();
+
+    let debug_level: Result<String,ConfigError> = settings.get("debug");
+    let level: LevelFilter = match debug_level {
+        Ok(level) => match level.as_str() {
+            "DEBUG" => {
+                LevelFilter::Debug
+            }
+            _ => {
+                LevelFilter::Error
+            }
+        },
+        Err(_) => {
+            LevelFilter::Error
+        }
+    };
+    let file_path = "/tmp/foo.log";
+
+    // Logging to log file.
+    let logfile = FileAppender::builder()
+        // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
+        .encoder(Box::new(PatternEncoder::new("{h({d(%+)(utc)} [{f}:{L}] {l:<6} {m})}")))
+        .build(file_path)
+        .unwrap();
+
+    // Log Trace level output to file where trace is the default level
+    // and the programmatically specified level to stderr.
+    let config = log4rsConfig::builder()
+        .appender(Appender::builder().build("logfile", Box::new(logfile)))
+        .build(Root::builder().appender("logfile").build(level))
+        .unwrap();
+    let _handle = log4rs::init_config(config);
+    
     // Create an application.
     let mut app = App::new();
     app.set_config(settings)?;
