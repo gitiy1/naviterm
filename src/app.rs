@@ -316,7 +316,7 @@ impl App {
         }
     }
     
-    fn queue_has_next(&self) -> bool {
+    pub fn queue_has_next(&self) -> bool {
         if self.queue.len() <= 1 {return false;}
         else {
             self.index_in_queue < self.queue.len()-1
