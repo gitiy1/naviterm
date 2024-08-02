@@ -1046,6 +1046,7 @@ dependencies = [
  "log4rs",
  "md5",
  "minidom",
+ "num-traits",
  "rand",
  "ratatui",
  "reqwest",

@@ -16,9 +16,6 @@ pub struct Mpv {
     pub(crate) ipc: Ipc
 }
 
-impl Mpv {
-}
-
 impl Default for Mpv {
     fn default() -> Self {
         Self {
@@ -64,7 +61,7 @@ impl Mpv {
 
     }
 
-    pub fn stop(&self) {
+    pub fn stop(&mut self) {
         self.ipc.stop();
     }
     
@@ -82,5 +79,8 @@ impl Mpv {
     
     pub async fn poll_ipc_events(&mut self) {
         self.ipc.poll_events().await;
+    }
+    pub fn get_playback_time(&mut self) -> f64 {
+        self.ipc.get_playback_time()
     }
 }

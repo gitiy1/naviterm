@@ -1,5 +1,6 @@
 use std::error;
 use config::Config;
+use log::debug;
 use ratatui::widgets::ListState;
 
 use crate::music_database::MusicDatabase;
@@ -297,7 +298,13 @@ impl App {
                         self.play_current();
                     }
                 }
-                IpcEvent::Seek => {}
+                IpcEvent::Seek => {
+                    let playback_time = self.player.get_playback_time();
+                    debug!("Got {} as playback time\n", playback_time);
+                    if playback_time != -1.0 {
+                        self.ticks_during_playing_state = (playback_time*4.0).floor() as usize;
+                    }
+                }
                 IpcEvent::Idle => {
                     if self.player.player_status == PlayerStatus::Playing && !self.queue_has_next() {
                         self.player.player_status = PlayerStatus::Stopped;
