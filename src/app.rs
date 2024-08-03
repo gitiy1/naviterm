@@ -2,6 +2,8 @@ use std::error;
 
 use config::Config;
 use log::debug;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use ratatui::widgets::ListState;
 
 use crate::music_database::MusicDatabase;
@@ -58,6 +60,7 @@ pub struct App {
     pub player: Mpv,
     pub index_in_queue: usize,
     pub ticks_during_playing_state: usize,
+    pub random_playback: bool
 }
 
 #[derive(Default, Debug)]
@@ -87,6 +90,7 @@ impl Default for App {
             player: Mpv::default(),
             index_in_queue: 0,
             ticks_during_playing_state: 0,
+            random_playback: false
         }
     }
 }
@@ -186,6 +190,7 @@ impl App {
     }
 
     pub async fn add_queue_immediately(&mut self) -> AppResult<()> {
+        self.index_in_queue = 0;
         match self.item_to_be_added.media_type {
             MediaType::Song => {
                 self.queue.clear();
@@ -202,10 +207,11 @@ impl App {
                     populate_album_in_db(&mut self.server, &mut self.database, self.item_to_be_added.id.as_str()).await?;
                 }
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
-                for (i, song) in album.songs().iter().enumerate() {
+                for  song in album.songs() {
                     self.queue.push(song.clone());
-                    self.queue_order.push(i);
                 }
+                self.queue_order = (0..self.queue.len()).collect();
+                if self.random_playback {self.shuffle_queue_order_starting_at_current_index()}
                 self.now_playing.clone_from(self.queue.first().unwrap());
                 self.play_current();
             }
@@ -263,6 +269,22 @@ impl App {
 
     pub fn toggle_playing_status(&mut self) -> AppResult<()> {
         self.player.toggle_play_pause();
+        Ok(())
+    }
+
+    pub fn toggle_random_playback(&mut self) -> AppResult<()> {
+        if self.queue.len() > 1 {
+            if self.random_playback {
+                self.index_in_queue = *self.queue_order.get(self.index_in_queue).unwrap();
+                self.queue_order.clear();
+                self.queue_order = (0..self.queue.len()).collect();
+            }
+            else {
+                self.shuffle_queue_order_starting_at_current_index();
+                self.index_in_queue = 0;
+            }
+        }
+        self.random_playback = !self.random_playback;
         Ok(())
     }
 
@@ -347,6 +369,7 @@ impl App {
     pub fn clear_queue(&mut self) -> AppResult<()> {
         self.queue.clear();
         self.queue_order.clear();
+        self.player.player_status = PlayerStatus::Stopped;
         self.index_in_queue = 0;
         self.player.stop();
         self.now_playing = String::new();
@@ -356,6 +379,18 @@ impl App {
     fn play_current(&mut self) {
         self.player.play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
         self.ticks_during_playing_state = 0;
+    }
+    
+    fn shuffle_queue_order_starting_at_current_index(&mut self) {
+        let mut shuffled_vector = Vec::with_capacity(self.queue.len());
+        self.queue_order.swap_remove(self.index_in_queue);
+        shuffled_vector.push(self.index_in_queue);
+
+        let mut rng = thread_rng();
+        self.queue_order.shuffle(&mut rng);
+
+        shuffled_vector.append(&mut self.queue_order);
+        self.queue_order = shuffled_vector;
     }
 }
 

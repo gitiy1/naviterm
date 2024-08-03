@@ -31,7 +31,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                         Span { content: ")".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                     ])
                 ]);
-                if i == app.index_in_queue {
+                if i == *app.queue_order.get(app.index_in_queue).unwrap() {
                     ListItem::from(song_item).underlined()
                 }
                 else {

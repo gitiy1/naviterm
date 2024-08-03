@@ -87,9 +87,18 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         .label("")
         .line_set(symbols::line::THICK)
         .ratio(ratio);
+    
+    let random_status = if app.random_playback {
+        Span { content: "on".into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) }
+    } else {
+        Span { content: "off".into(), style: Style::default()}
+    };
 
-    let status_text = Line::from("random: off, repeat: off")
-        .style(Style::default().add_modifier(Modifier::ITALIC)).centered();
+    let status_text = Line::from(vec![
+        Span { content: "random: ".into(), style: Style::default()},
+        random_status,
+        Span { content: ", repeat: off".into(), style: Style::default()},
+    ]).style(Style::default().add_modifier(Modifier::ITALIC)).centered();
 
     frame.render_widget(current_song_info, current_song_section);
     if app.player.player_status != PlayerStatus::Stopped {
@@ -98,7 +107,9 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         frame.render_widget(progress, status_progress_bar_area);
     }
     if app.queue_has_next() {
-        let song = app.database.get_song(app.queue.get(app.index_in_queue + 1).unwrap());
+        let next_song_id = app.queue
+            .get(*app.queue_order.get(app.index_in_queue + 1).unwrap()).unwrap();
+        let song = app.database.get_song(next_song_id);
         let next_song_info = Paragraph::new(Text::from(vec![
             Line::from(
                 Span { content: ellipse_line(song.title(), max_width).into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },

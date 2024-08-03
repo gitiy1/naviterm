@@ -101,6 +101,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
     
     // Keycodes that should be considered not matter if in popup or not
     if key_event.code == KeyCode::Char('p') {app.toggle_playing_status()?};
+    if key_event.code == KeyCode::Char('r') {app.toggle_random_playback()?};
     if key_event.code == KeyCode::Right {app.player_seek_forward()?};
     if key_event.code == KeyCode::Left {app.player_seek_backwards()?};
     Ok(())
