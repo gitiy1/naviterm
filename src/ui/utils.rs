@@ -1,4 +1,5 @@
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use unicode_segmentation::UnicodeSegmentation;
 
 pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     // Cut the given rectangle into three vertical pieces
@@ -55,4 +56,12 @@ pub fn duration_to_hhmmss(duration: &str) -> String {
     }
     
     hhmmss
+}
+
+pub fn ellipse_line(line: &str, max_width: usize) -> String {
+    return if line.is_empty() { String::new() } 
+    else if line.graphemes(true).count() > max_width {
+        let clipped_line: String = line.graphemes(true).take(max_width - 4).collect();
+        clipped_line + "..."
+    } else { String::from(line) }
 }

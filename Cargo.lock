@@ -1051,6 +1051,7 @@ dependencies = [
  "ratatui",
  "reqwest",
  "tokio",
+ "unicode-segmentation",
 ]
 
 [[package]]
