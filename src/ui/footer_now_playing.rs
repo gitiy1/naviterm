@@ -22,7 +22,13 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
                 Span { content: "] ".into(), style: Style::default() },
             ])
         }
-        PlayerStatus::Paused => { Line::from("Paused") }
+        PlayerStatus::Paused => { 
+            Line::from(vec![
+                Span { content: "Paused - [".into(), style: Style::default() },
+                Span { content: duration_to_hhmmss(seconds_played.as_str()).into(), style: Style::default() },
+                Span { content: "] ".into(), style: Style::default() },
+            ])
+        }
         PlayerStatus::Stopped => { Line::from("Stopped") }
     };
 
