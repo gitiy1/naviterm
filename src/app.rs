@@ -1,11 +1,12 @@
 use std::error;
+
 use config::Config;
 use log::debug;
 use ratatui::widgets::ListState;
 
 use crate::music_database::MusicDatabase;
-use crate::player::mpv::{Mpv, PlayerStatus};
 use crate::player::ipc::IpcEvent;
+use crate::player::mpv::{Mpv, PlayerStatus};
 use crate::server::Server;
 
 /// Enum with applications screens
@@ -15,7 +16,7 @@ pub enum CurrentScreen {
     Albums,
     Playlists,
     Artists,
-    Queue
+    Queue,
 }
 
 #[derive(Debug, Default)]
@@ -23,7 +24,7 @@ pub enum MediaType {
     #[default]
     Song,
     Album,
-    Playlist
+    Playlist,
 }
 
 /// Enum with applications screens
@@ -52,18 +53,19 @@ pub struct App {
     pub popup_list_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
+    pub queue_order: Vec<usize>,
     pub now_playing: String,
     pub player: Mpv,
     pub index_in_queue: usize,
     pub ticks_during_playing_state: usize,
 }
 
-#[derive(Default,Debug)]
+#[derive(Default, Debug)]
 pub struct ItemToBeAdded {
     pub name: String,
     pub id: String,
     pub parent_id: String,
-    pub media_type: MediaType
+    pub media_type: MediaType,
 }
 
 impl Default for App {
@@ -80,6 +82,7 @@ impl Default for App {
             popup_list_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
             queue: vec![],
+            queue_order: vec![],
             now_playing: String::new(),
             player: Mpv::default(),
             index_in_queue: 0,
@@ -124,44 +127,44 @@ impl App {
         self.server.test_connection().await?;
         Ok(())
     }
-    
+
     pub async fn populate_db(&mut self) -> AppResult<()> {
         self.database.set_recent_albums(self.server.get_recent_albums().await?);
         Ok(())
     }
-    
+
     pub fn initialize_player_stream(&mut self) -> AppResult<()> {
         // TODO Try to capture connection error and retry, to give mpv time to initialize
         self.player.initialize();
         Ok(())
     }
-    
+
     pub async fn poll_player_events(&mut self) -> AppResult<()> {
         self.player.poll_ipc_events().await;
         Ok(())
     }
-    
+
     pub async fn get_current_album_information(&mut self) -> AppResult<()> {
         let selected_album_index = self.home_recent_state.selected().unwrap();
         let selected_album_id: String = self.database.recent_albums().get(selected_album_index).unwrap().id().to_string();
-        
+
         if !self.database.contains_album(selected_album_id.as_str()) {
-            populate_album_in_db(&mut self.server, &mut self.database,selected_album_id.as_str()).await?;
+            populate_album_in_db(&mut self.server, &mut self.database, selected_album_id.as_str()).await?;
         }
         Ok(())
     }
-    
+
 
     pub fn select_next_list(&mut self) -> AppResult<()> {
         self.home_recent_state.select_next();
         Ok(())
     }
-    
+
     pub fn select_previous_list(&mut self) -> AppResult<()> {
         self.home_recent_state.select_previous();
         Ok(())
     }
-    
+
     pub fn select_next_list_popup(&mut self) -> AppResult<()> {
         self.popup_list_state.select_next();
         Ok(())
@@ -186,18 +189,22 @@ impl App {
         match self.item_to_be_added.media_type {
             MediaType::Song => {
                 self.queue.clear();
+                self.queue_order.clear();
                 self.queue.push(self.item_to_be_added.id.clone());
+                self.queue_order.push(self.queue.len() - 1);
                 self.now_playing.clone_from(&self.item_to_be_added.id);
                 self.play_current();
             }
             MediaType::Album => {
                 self.queue.clear();
+                self.queue_order.clear();
                 if !self.database.contains_album(self.item_to_be_added.id.as_str()) {
-                    populate_album_in_db(&mut self.server, &mut self.database,self.item_to_be_added.id.as_str()).await?;
+                    populate_album_in_db(&mut self.server, &mut self.database, self.item_to_be_added.id.as_str()).await?;
                 }
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
-                for song in album.songs() {
+                for (i, song) in album.songs().iter().enumerate() {
                     self.queue.push(song.clone());
+                    self.queue_order.push(i);
                 }
                 self.now_playing.clone_from(self.queue.first().unwrap());
                 self.play_current();
@@ -206,35 +213,37 @@ impl App {
         }
         Ok(())
     }
-    
+
     pub fn add_queue_next(&mut self) -> AppResult<()> {
         match self.item_to_be_added.media_type {
             MediaType::Song => {
                 let index = self.queue.iter().position(|x| x == &self.now_playing).unwrap();
-                self.queue.insert(index+1,self.item_to_be_added.id.clone())
+                self.queue.insert(index + 1, self.item_to_be_added.id.clone());
+                self.queue_order.push(self.queue.len() - 1);
             }
             MediaType::Album => {}
             MediaType::Playlist => {}
         }
         Ok(())
     }
-    
+
     pub fn add_queue_later(&mut self) -> AppResult<()> {
         match self.item_to_be_added.media_type {
             MediaType::Song => {
                 self.queue.push(self.item_to_be_added.id.clone());
+                self.queue_order.push(self.queue.len() - 1);
             }
             MediaType::Album => {}
             MediaType::Playlist => {}
         }
         Ok(())
     }
-    
+
     pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
         match media {
             MediaType::Song => {
                 let selected_album_index = self.home_recent_state.selected().unwrap();
-                let selected_album_id= self.database.recent_albums().get(selected_album_index).unwrap().id();
+                let selected_album_id = self.database.recent_albums().get(selected_album_index).unwrap().id();
                 let songs_ids = self.database.get_album(selected_album_id).songs();
                 let song = self.database.get_song(songs_ids.get(self.popup_list_state.selected().unwrap()).unwrap());
                 self.item_to_be_added.name = song.title().to_string();
@@ -251,24 +260,24 @@ impl App {
         }
         Ok(())
     }
-    
+
     pub fn toggle_playing_status(&mut self) -> AppResult<()> {
         self.player.toggle_play_pause();
         Ok(())
     }
-    
+
     pub fn player_seek_forward(&mut self) -> AppResult<()> {
         self.player.seek_forward();
         self.ticks_during_playing_state += 40;
         Ok(())
     }
-    
+
     pub fn player_seek_backwards(&mut self) -> AppResult<()> {
         self.player.seek_backwards();
         self.ticks_during_playing_state = self.ticks_during_playing_state.saturating_sub(40);
         Ok(())
     }
-    
+
     pub fn play_next(&mut self) -> AppResult<()> {
         if self.queue_has_next() {
             self.go_next_queue();
@@ -276,7 +285,7 @@ impl App {
         }
         Ok(())
     }
-    
+
     pub fn play_previous(&mut self) -> AppResult<()> {
         Ok(())
     }
@@ -293,7 +302,7 @@ impl App {
                     }
                 }
                 IpcEvent::Eof(reason) => {
-                    if reason == "eof" && self.queue_has_next() { 
+                    if reason == "eof" && self.queue_has_next() {
                         self.go_next_queue();
                         self.play_current();
                     }
@@ -302,7 +311,7 @@ impl App {
                     let playback_time = self.player.get_playback_time();
                     debug!("Got {} as playback time\n", playback_time);
                     if playback_time != -1.0 {
-                        self.ticks_during_playing_state = (playback_time*4.0).floor() as usize;
+                        self.ticks_during_playing_state = (playback_time * 4.0).floor() as usize;
                     }
                 }
                 IpcEvent::Idle => {
@@ -315,19 +324,19 @@ impl App {
             }
         }
     }
-    
+
     pub fn queue_has_next(&self) -> bool {
-        if self.queue.len() <= 1 {return false;}
-        else {
-            self.index_in_queue < self.queue.len()-1
+        if self.queue.len() <= 1 { false } else {
+            self.index_in_queue < self.queue_order.len() - 1
         }
     }
 
     fn go_next_queue(&mut self) {
         self.index_in_queue += 1;
-        self.now_playing.clone_from(self.queue.get(self.index_in_queue).unwrap());
+        let next_index = self.queue_order.get(self.index_in_queue).unwrap();
+        self.now_playing.clone_from(self.queue.get(*next_index).unwrap());
     }
-    
+
     pub fn play_queue_song(&mut self) -> AppResult<()> {
         self.now_playing.clone_from(self.queue.get(self.queue_list_state.selected().unwrap()).unwrap());
         self.index_in_queue = self.queue_list_state.selected().unwrap();
@@ -337,6 +346,7 @@ impl App {
 
     pub fn clear_queue(&mut self) -> AppResult<()> {
         self.queue.clear();
+        self.queue_order.clear();
         self.index_in_queue = 0;
         self.player.stop();
         self.now_playing = String::new();
@@ -352,8 +362,8 @@ impl App {
 async fn populate_album_in_db(server: &mut Server, music_database: &mut MusicDatabase, id: &str) -> AppResult<()> {
     let parsed_media = server.get_album(id).await.unwrap();
     music_database.insert_album(String::from(id), parsed_media.0);
-    for song in parsed_media.1  {
-        music_database.insert_song(song.id().to_string(),song);
+    for song in parsed_media.1 {
+        music_database.insert_song(song.id().to_string(), song);
     }
     Ok(())
 }
