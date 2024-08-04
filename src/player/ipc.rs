@@ -52,6 +52,12 @@ impl Ipc {
         self.send_ipc_command(msg, false);
     }
 
+    pub fn seek_percentage(&mut self, percentage: &str) {
+        let msg = "{\"command\":[\"seek\",\"".to_owned() + percentage + "\",\"absolute-percent\"]}\n";
+        debug!("Sending command to seek absolute percent: {}%\n", percentage);
+        self.send_ipc_command(msg, false);
+    }
+
     pub fn stop(&mut self) {
         let msg = String::from("{\"command\":[\"stop\"]}\n");
         self.send_ipc_command(msg, false);

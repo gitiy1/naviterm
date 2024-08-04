@@ -309,6 +309,13 @@ impl App {
     }
 
     pub fn play_previous(&mut self) -> AppResult<()> {
+        if self.queue_has_previous() && self.get_playback_time() < 5 {
+            self.go_previous_queue();
+            self.play_current();
+        }
+        else { 
+            self.player.set_playback_percentage("0");
+        }
         Ok(())
     }
 
@@ -353,12 +360,28 @@ impl App {
         }
     }
 
+    fn queue_has_previous(&self) -> bool {
+        if self.queue.len() <= 1 { false } else {
+            self.index_in_queue > 0
+        }
+    }
+    
+    fn get_playback_time(&self) -> usize{
+        self.ticks_during_playing_state / 4
+    }
+
     fn go_next_queue(&mut self) {
         self.index_in_queue += 1;
         let next_index = self.queue_order.get(self.index_in_queue).unwrap();
         self.now_playing.clone_from(self.queue.get(*next_index).unwrap());
     }
 
+    fn go_previous_queue(&mut self) {
+        self.index_in_queue -= 1;
+        let next_index = self.queue_order.get(self.index_in_queue).unwrap();
+        self.now_playing.clone_from(self.queue.get(*next_index).unwrap());
+    }
+    
     pub fn play_queue_song(&mut self) -> AppResult<()> {
         self.now_playing.clone_from(self.queue.get(self.queue_list_state.selected().unwrap()).unwrap());
         self.index_in_queue = self.queue_list_state.selected().unwrap();

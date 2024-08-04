@@ -1,42 +1,42 @@
 use std::process::{Child, Command, Stdio};
+
 use crate::player::ipc::Ipc;
 
 pub const MPV_SOCKET: &str = "/tmp/naviterm_mpv";
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum PlayerStatus {
     Playing,
     Paused,
-    Stopped
+    Stopped,
 }
 
 pub struct Mpv {
     mpv_process: Child,
     pub(crate) player_status: PlayerStatus,
-    pub(crate) ipc: Ipc
+    pub(crate) ipc: Ipc,
 }
 
 impl Default for Mpv {
     fn default() -> Self {
         Self {
             mpv_process: Command::new("mpv")
-                .arg("--no-video").arg("--idle").arg("--input-ipc-server=".to_owned()+MPV_SOCKET)
+                .arg("--no-video").arg("--idle").arg("--input-ipc-server=".to_owned() + MPV_SOCKET)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn().unwrap(),
             player_status: PlayerStatus::Stopped,
-            ipc: Ipc::default()
+            ipc: Ipc::default(),
         }
     }
 }
 
 impl Mpv {
-    
     pub fn initialize(&mut self) {
         self.ipc.initialize_stream();
     }
-    
+
     pub fn quit_player(&mut self) {
         self.ipc.quit();
         self.mpv_process.wait().expect("Could not wait mpv to finish");
@@ -58,25 +58,26 @@ impl Mpv {
             }
             PlayerStatus::Stopped => {}
         }
-
     }
 
     pub fn stop(&mut self) {
         self.ipc.stop();
     }
-    
+
     pub fn seek_forward(&mut self) {
         self.ipc.seek("10")
     }
-    
+
     pub fn seek_backwards(&mut self) {
         self.ipc.seek("-10")
     }
 
+    pub fn set_playback_percentage(&mut self, percentage: &str) { self.ipc.seek_percentage(percentage); }
+
     pub fn player_status(&self) -> &PlayerStatus {
         &self.player_status
     }
-    
+
     pub async fn poll_ipc_events(&mut self) {
         self.ipc.poll_events().await;
     }
