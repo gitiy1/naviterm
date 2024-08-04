@@ -56,11 +56,11 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
     let max_width = current_song_section.width as usize;
 
     let mut ratio;
-    let current_song_info = if app.now_playing.is_empty() {
+    let current_song_info = if app.now_playing.id.is_empty() {
         ratio = 0f64;
         Paragraph::new("Nothing in the playing queue")
     } else {
-        let song = app.database.get_song(app.now_playing.as_str());
+        let song = app.database.get_song(app.now_playing.id.as_str());
         ratio = (app.ticks_during_playing_state / 4) as f64 / song.duration().parse::<usize>().unwrap() as f64;
         ratio = if ratio > 1f64 { 1f64 } else { ratio };
         Paragraph::new(Text::from(vec![

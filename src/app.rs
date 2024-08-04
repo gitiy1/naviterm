@@ -56,11 +56,12 @@ pub struct App {
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
     pub queue_order: Vec<usize>,
-    pub now_playing: String,
+    pub now_playing: NowPlaying,
     pub player: Mpv,
     pub index_in_queue: usize,
     pub ticks_during_playing_state: usize,
-    pub random_playback: bool
+    pub random_playback: bool,
+    pub next_is_cached: bool
 }
 
 #[derive(Default, Debug)]
@@ -69,6 +70,12 @@ pub struct ItemToBeAdded {
     pub id: String,
     pub parent_id: String,
     pub media_type: MediaType,
+}
+
+#[derive(Default)]
+pub struct NowPlaying {
+    pub id: String,
+    pub duration: String
 }
 
 impl Default for App {
@@ -86,11 +93,12 @@ impl Default for App {
             item_to_be_added: ItemToBeAdded::default(),
             queue: vec![],
             queue_order: vec![],
-            now_playing: String::new(),
+            now_playing: NowPlaying::default(),
             player: Mpv::default(),
             index_in_queue: 0,
             ticks_during_playing_state: 0,
-            random_playback: false
+            random_playback: false,
+            next_is_cached: false
         }
     }
 }
@@ -106,6 +114,10 @@ impl App {
         self.process_player_events();
         if *self.player.player_status() == PlayerStatus::Playing {
             self.ticks_during_playing_state += 1;
+        }
+        if self.next_is_cached && 
+            (self.get_playback_time() + 10 > usize::from_str_radix(self.now_playing.duration.as_str(),10).unwrap()) {
+            
         }
     }
 
@@ -197,7 +209,7 @@ impl App {
                 self.queue_order.clear();
                 self.queue.push(self.item_to_be_added.id.clone());
                 self.queue_order.push(self.queue.len() - 1);
-                self.now_playing.clone_from(&self.item_to_be_added.id);
+                self.change_current_playing_to(self.item_to_be_added.id.clone().as_str());
                 self.play_current();
             }
             MediaType::Album => {
@@ -212,7 +224,7 @@ impl App {
                 }
                 self.queue_order = (0..self.queue.len()).collect();
                 if self.random_playback {self.shuffle_queue_order_starting_at_current_index()}
-                self.now_playing.clone_from(self.queue.first().unwrap());
+                self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
                 self.play_current();
             }
             MediaType::Playlist => {}
@@ -223,7 +235,7 @@ impl App {
     pub fn add_queue_next(&mut self) -> AppResult<()> {
         match self.item_to_be_added.media_type {
             MediaType::Song => {
-                let index = self.queue.iter().position(|x| x == &self.now_playing).unwrap();
+                let index = self.queue.iter().position(|x| x == &self.now_playing.id).unwrap();
                 self.queue.insert(index + 1, self.item_to_be_added.id.clone());
                 self.queue_order.push(self.queue.len() - 1);
             }
@@ -373,17 +385,17 @@ impl App {
     fn go_next_queue(&mut self) {
         self.index_in_queue += 1;
         let next_index = self.queue_order.get(self.index_in_queue).unwrap();
-        self.now_playing.clone_from(self.queue.get(*next_index).unwrap());
+        self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
     }
 
     fn go_previous_queue(&mut self) {
         self.index_in_queue -= 1;
         let next_index = self.queue_order.get(self.index_in_queue).unwrap();
-        self.now_playing.clone_from(self.queue.get(*next_index).unwrap());
+        self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
     }
     
     pub fn play_queue_song(&mut self) -> AppResult<()> {
-        self.now_playing.clone_from(self.queue.get(self.queue_list_state.selected().unwrap()).unwrap());
+        self.change_current_playing_to(self.queue.get(self.queue_list_state.selected().unwrap()).unwrap().clone().as_str());
         self.index_in_queue = self.queue_list_state.selected().unwrap();
         self.play_current();
         Ok(())
@@ -395,12 +407,12 @@ impl App {
         self.player.player_status = PlayerStatus::Stopped;
         self.index_in_queue = 0;
         self.player.stop();
-        self.now_playing = String::new();
+        self.now_playing.id.clear();
         Ok(())
     }
 
     fn play_current(&mut self) {
-        self.player.play_song(self.server.get_song_url(self.now_playing.clone()).as_str());
+        self.player.play_song(self.server.get_song_url(self.now_playing.id.clone()).as_str());
         self.ticks_during_playing_state = 0;
     }
     
@@ -414,6 +426,11 @@ impl App {
 
         shuffled_vector.append(&mut self.queue_order);
         self.queue_order = shuffled_vector;
+    }
+    
+    fn change_current_playing_to(&mut self, new_id: &str) {
+        self.now_playing.id = String::from(new_id);
+        self.now_playing.duration = String::from(self.database.get_song(new_id).duration());
     }
 }
 
