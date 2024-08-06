@@ -21,7 +21,7 @@ impl Default for Mpv {
     fn default() -> Self {
         Self {
             mpv_process: Command::new("mpv")
-                .arg("--no-video").arg("--idle").arg("--input-ipc-server=".to_owned() + MPV_SOCKET)
+                .arg("--no-video").arg("--idle").arg("--input-ipc-server=".to_owned() + MPV_SOCKET).arg("--prefetch-playlist=yes")
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -44,6 +44,10 @@ impl Mpv {
 
     pub fn play_song(&mut self, song_url: &str) {
         self.ipc.load_file(song_url);
+    }
+
+    pub fn add_next_song_to_queue(&mut self, song_url: &str) {
+        self.ipc.load_file_next(song_url);
     }
 
     pub fn toggle_play_pause(&mut self) {

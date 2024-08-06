@@ -36,6 +36,11 @@ impl Ipc {
         self.send_ipc_command(msg, false);
     }
 
+    pub fn load_file_next(&mut self, file_url: &str) {
+        let msg = r#"{"command":["loadfile", ""#.to_owned() + file_url + r#"", "insert-next"]}"# + "\n";
+        self.send_ipc_command(msg, false);
+    }
+
     pub fn quit(&mut self) {
         let msg = String::from("{\"command\":[\"quit\"]}\n");
         self.send_ipc_command(msg, false);

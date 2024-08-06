@@ -96,7 +96,7 @@ impl Server{
     pub async fn test_connection(&mut self) -> AppResult<()> {
 
         let url = self.build_url(SubsonicOperation::Ping, SubsonicParameter::None);
-        let response_text = self.make_request(url).await.unwrap();
+        let response_text = self.make_request_text(url).await.unwrap();
 
         let connection_status = Parser::parse_connection_status(response_text).unwrap();
         self.connection_status = connection_status.status().to_string();
@@ -111,7 +111,7 @@ impl Server{
     pub async fn get_recent_albums(&mut self) -> AppResult<Vec<Album>> {
         
         let url = self.build_url(SubsonicOperation::GetAlbumListRecent, SubsonicParameter::None);
-        let response_text = self.make_request(url).await.unwrap();
+        let response_text = self.make_request_text(url).await.unwrap();
         
         let album_list = Parser::parse_album_list(response_text).unwrap();
         
@@ -121,7 +121,7 @@ impl Server{
     pub async fn get_album(&mut self, album_id: &str) -> AppResult<(Album, Vec<Song>)> {
 
         let url = self.build_url(SubsonicOperation::GetAlbum, SubsonicParameter::AlbumId(String::from(album_id)));
-        let response_text = self.make_request(url).await.unwrap();
+        let response_text = self.make_request_text(url).await.unwrap();
 
         let parsed_media= Parser::parse_album(response_text);
 
@@ -131,8 +131,8 @@ impl Server{
     pub fn get_song_url(&mut self, id: String) -> String {
         self.build_url(SubsonicOperation::DownloadSong, SubsonicParameter::SongId(id))
     }
-
-    async fn make_request (&mut self, url: String) -> AppResult<String> {
+    
+    async fn make_request_text(&mut self, url: String) -> AppResult<String> {
 
         let mut response_text = "".to_string();
 

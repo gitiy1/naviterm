@@ -61,7 +61,7 @@ pub struct App {
     pub index_in_queue: usize,
     pub ticks_during_playing_state: usize,
     pub random_playback: bool,
-    pub next_is_cached: bool
+    pub next_is_in_player_queue: bool
 }
 
 #[derive(Default, Debug)]
@@ -98,7 +98,7 @@ impl Default for App {
             index_in_queue: 0,
             ticks_during_playing_state: 0,
             random_playback: false,
-            next_is_cached: false
+            next_is_in_player_queue: false
         }
     }
 }
@@ -115,9 +115,11 @@ impl App {
         if *self.player.player_status() == PlayerStatus::Playing {
             self.ticks_during_playing_state += 1;
         }
-        if self.next_is_cached && 
-            (self.get_playback_time() + 10 > usize::from_str_radix(self.now_playing.duration.as_str(),10).unwrap()) {
-            
+        if !self.next_is_in_player_queue && self.queue_has_next() && 
+           (self.get_playback_time() + 10 > self.now_playing.duration.as_str().parse::<usize>().unwrap()) {
+            let next_index = self.queue_order.get(self.index_in_queue + 1).unwrap();
+            self.player.add_next_song_to_queue(self.server.get_song_url(self.queue.get(*next_index).unwrap().clone()).as_str());
+            self.next_is_in_player_queue = true;
         }
     }
 
@@ -210,7 +212,7 @@ impl App {
                 self.queue.push(self.item_to_be_added.id.clone());
                 self.queue_order.push(self.queue.len() - 1);
                 self.change_current_playing_to(self.item_to_be_added.id.clone().as_str());
-                self.play_current();
+                self.play_current(false);
             }
             MediaType::Album => {
                 self.queue.clear();
@@ -225,7 +227,7 @@ impl App {
                 self.queue_order = (0..self.queue.len()).collect();
                 if self.random_playback {self.shuffle_queue_order_starting_at_current_index()}
                 self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
-                self.play_current();
+                self.play_current(false);
             }
             MediaType::Playlist => {}
         }
@@ -315,7 +317,7 @@ impl App {
     pub fn play_next(&mut self) -> AppResult<()> {
         if self.queue_has_next() {
             self.go_next_queue();
-            self.play_current();
+            self.play_current(false);
         }
         Ok(())
     }
@@ -323,7 +325,7 @@ impl App {
     pub fn play_previous(&mut self) -> AppResult<()> {
         if self.queue_has_previous() && self.get_playback_time() < 5 {
             self.go_previous_queue();
-            self.play_current();
+            self.play_current(false);
         }
         else { 
             self.player.set_playback_percentage("0");
@@ -345,7 +347,7 @@ impl App {
                 IpcEvent::Eof(reason) => {
                     if reason == "eof" && self.queue_has_next() {
                         self.go_next_queue();
-                        self.play_current();
+                        self.play_current(true);
                     }
                 }
                 IpcEvent::Seek => {
@@ -397,7 +399,7 @@ impl App {
     pub fn play_queue_song(&mut self) -> AppResult<()> {
         self.change_current_playing_to(self.queue.get(self.queue_list_state.selected().unwrap()).unwrap().clone().as_str());
         self.index_in_queue = self.queue_list_state.selected().unwrap();
-        self.play_current();
+        self.play_current(false);
         Ok(())
     }
 
@@ -411,8 +413,14 @@ impl App {
         Ok(())
     }
 
-    fn play_current(&mut self) {
-        self.player.play_song(self.server.get_song_url(self.now_playing.id.clone()).as_str());
+    fn play_current(&mut self, check_next_song: bool) {
+        if check_next_song && self.next_is_in_player_queue {
+            self.next_is_in_player_queue = false;
+        }
+        else {
+            self.player.play_song(self.server.get_song_url(self.now_playing.id.clone()).as_str());
+            self.next_is_in_player_queue = false;
+        }
         self.ticks_during_playing_state = 0;
     }
     
