@@ -5,7 +5,8 @@ use log::debug;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use ratatui::widgets::ListState;
-
+use zbus::Connection;
+use crate::dbus;
 use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
@@ -49,6 +50,7 @@ pub struct App {
     pub current_popup: Popup,
     pub previous_popup: Popup,
     pub server: Server,
+    pub mpris_connection: Option<Connection>,
     pub database: MusicDatabase,
     pub home_recent_state: ListState,
     pub queue_list_state: ListState,
@@ -86,6 +88,7 @@ impl Default for App {
             current_popup: Popup::None,
             previous_popup: Popup::None,
             server: Server::new(),
+            mpris_connection: None,
             database: MusicDatabase::new(),
             home_recent_state: ListState::default(),
             queue_list_state: ListState::default(),
@@ -439,6 +442,11 @@ impl App {
     fn change_current_playing_to(&mut self, new_id: &str) {
         self.now_playing.id = String::from(new_id);
         self.now_playing.duration = String::from(self.database.get_song(new_id).duration());
+    }
+    
+    pub async fn set_up_mpris_connection(&mut self) -> AppResult<()> {
+        self.mpris_connection = Some(dbus::set_up_mpris().await?);
+        Ok(())
     }
 }
 

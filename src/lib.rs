@@ -24,4 +24,5 @@ pub mod model;
 pub mod music_database;
 
 pub mod player;
+pub mod dbus;
 

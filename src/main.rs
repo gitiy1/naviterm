@@ -63,6 +63,7 @@ async fn main() -> AppResult<()> {
     app.populate_db().await?;
     app.initialize_player_stream()?;
     app.poll_player_events().await?;
+    app.set_up_mpris_connection().await?;
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stderr());
     let terminal = Terminal::new(backend)?;
