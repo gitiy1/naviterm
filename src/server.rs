@@ -14,7 +14,8 @@ enum SubsonicOperation {
     Ping,
     GetAlbumListRecent,
     GetAlbum,
-    DownloadSong
+    DownloadSong,
+    GetCoverArt,
 }
 
 #[derive(Debug)]
@@ -131,7 +132,11 @@ impl Server{
     pub fn get_song_url(&mut self, id: String) -> String {
         self.build_url(SubsonicOperation::DownloadSong, SubsonicParameter::SongId(id))
     }
-    
+
+    pub fn get_song_art_url(&mut self, id: String) -> String {
+        self.build_url(SubsonicOperation::GetCoverArt, SubsonicParameter::SongId(id))
+    }
+
     async fn make_request_text(&mut self, url: String) -> AppResult<String> {
 
         let mut response_text = "".to_string();
@@ -182,6 +187,11 @@ impl Server{
             SubsonicOperation::DownloadSong => {
                 format!("{}/navidrome/rest/download?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
+                        self.server_address, subsonic_parameter, self.user, self.token, self.salt)
+            }
+            SubsonicOperation::GetCoverArt => {
+                format!("{}/navidrome/rest/getCoverArt.view?id={}&\
+                    u={}&t={}&s={}&v=0.1&c=naviterm&size=300",
                         self.server_address, subsonic_parameter, self.user, self.token, self.salt)
             }
         };

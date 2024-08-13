@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error;
 
 use config::Config;
@@ -5,8 +6,8 @@ use log::debug;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use ratatui::widgets::ListState;
-use zbus::Connection;
-use crate::dbus;
+use tokio::sync::mpsc::UnboundedSender;
+use crate::event::Event;
 use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
@@ -50,7 +51,7 @@ pub struct App {
     pub current_popup: Popup,
     pub previous_popup: Popup,
     pub server: Server,
-    pub mpris_connection: Option<Connection>,
+    pub event_sender: Option<UnboundedSender<Event>>,
     pub database: MusicDatabase,
     pub home_recent_state: ListState,
     pub queue_list_state: ListState,
@@ -88,7 +89,7 @@ impl Default for App {
             current_popup: Popup::None,
             previous_popup: Popup::None,
             server: Server::new(),
-            mpris_connection: None,
+            event_sender: None,
             database: MusicDatabase::new(),
             home_recent_state: ListState::default(),
             queue_list_state: ListState::default(),
@@ -415,6 +416,32 @@ impl App {
         self.now_playing.id.clear();
         Ok(())
     }
+    
+    pub fn try_play_current(&mut self) -> bool {
+        if !self.now_playing.id.is_empty() { 
+            if self.player.player_status == PlayerStatus::Paused  {
+                self.toggle_playing_status().unwrap();
+                return true
+            }
+            else if self.player.player_status == PlayerStatus::Stopped {
+                self.play_current(false);
+                return true
+            }
+            else {
+                return false
+            }
+        }
+        false
+    }
+
+    pub fn try_pause_current(&mut self) -> bool {
+        if !self.now_playing.id.is_empty()  && self.player.player_status == PlayerStatus::Playing{
+            self.toggle_playing_status().unwrap();
+            return true
+        }
+        false
+    }
+    
 
     fn play_current(&mut self, check_next_song: bool) {
         if check_next_song && self.next_is_in_player_queue {
@@ -424,6 +451,7 @@ impl App {
             self.player.play_song(self.server.get_song_url(self.now_playing.id.clone()).as_str());
             self.next_is_in_player_queue = false;
         }
+        self.event_sender.as_ref().unwrap().send(Event::Playing).unwrap();
         self.ticks_during_playing_state = 0;
     }
     
@@ -444,9 +472,21 @@ impl App {
         self.now_playing.duration = String::from(self.database.get_song(new_id).duration());
     }
     
-    pub async fn set_up_mpris_connection(&mut self) -> AppResult<()> {
-        self.mpris_connection = Some(dbus::set_up_mpris().await?);
+    pub async fn set_event_handler(&mut self, sender: UnboundedSender<Event>) -> AppResult<()> {
+        self.event_sender = Some(sender);
         Ok(())
+    }
+    
+    pub fn get_metada_for_current_song(&mut self) -> HashMap<String,String> {
+        let mut metadata = HashMap::new();
+        let song = self.database.get_song(self.now_playing.id.as_str());
+        metadata.insert("title".to_string(),song.title().to_string());
+        metadata.insert("album".to_string(),song.album().to_string());
+        metadata.insert("artist".to_string(),song.artist().to_string());
+        metadata.insert("id".to_string(),song.id().to_string());
+        metadata.insert("cover".to_string(),self.server.get_song_art_url(song.id().to_string()));
+        
+        metadata
     }
 }
 
