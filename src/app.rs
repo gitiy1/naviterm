@@ -384,7 +384,7 @@ impl App {
         }
     }
     
-    fn get_playback_time(&self) -> usize{
+    pub fn get_playback_time(&self) -> usize{
         self.ticks_during_playing_state / 4
     }
 
@@ -486,6 +486,7 @@ impl App {
         metadata.insert("album".to_string(),song.album().to_string());
         metadata.insert("artist".to_string(),song.artist().to_string());
         metadata.insert("id".to_string(),song.id().to_string());
+        metadata.insert("length".to_string(),song.duration().to_string());
         metadata.insert("cover".to_string(),self.server.get_song_art_url(song.id().to_string()));
         
         metadata

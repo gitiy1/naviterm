@@ -24,6 +24,8 @@ pub enum Event {
     Previous,
     Playing,
     Stop,
+    SeekForward,
+    SeekBackwards,
 }
 
 /// Terminal event handler.
