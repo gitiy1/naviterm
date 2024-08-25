@@ -89,15 +89,21 @@ async fn main() -> AppResult<()> {
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
             Event::PlayPause => {
-                app.toggle_playing_status().unwrap();
                 let mut iface = iface_ref.get_mut().await;
-                if *app.player.player_status() == PlayerStatus::Playing {
+                if *app.player.player_status() == PlayerStatus::Stopped && app.try_play_current() {
                     iface.set_playback_status(String::from("Playing"));
+                    iface.playback_status_changed(iface_ref.signal_context()).await?;
                 }
-                else if *app.player.player_status() == PlayerStatus::Paused {
-                    iface.set_playback_status(String::from("Paused"));
+                else {
+                    app.toggle_playing_status().unwrap();
+                    if *app.player.player_status() == PlayerStatus::Playing {
+                        iface.set_playback_status(String::from("Playing"));
+                    }
+                    else if *app.player.player_status() == PlayerStatus::Paused {
+                        iface.set_playback_status(String::from("Paused"));
+                    }
+                    iface.playback_status_changed(iface_ref.signal_context()).await?;
                 }
-                iface.playback_status_changed(iface_ref.signal_context()).await?;
             }
             Event::Next => {app.play_next()?}
             Event::Previous => {app.play_previous()?}
@@ -119,6 +125,14 @@ async fn main() -> AppResult<()> {
                 let mut iface = iface_ref.get_mut().await;
                 if app.try_pause_current() {
                     iface.set_playback_status(String::from("Paused"));
+                    iface.playback_status_changed(iface_ref.signal_context()).await?;
+                }
+            }
+            Event::Stop => {
+                if *app.player.player_status() != PlayerStatus::Stopped {
+                    app.stop_playback();
+                    let mut iface = iface_ref.get_mut().await;
+                    iface.set_playback_status(String::from("Stopped"));
                     iface.playback_status_changed(iface_ref.signal_context()).await?;
                 }
             }

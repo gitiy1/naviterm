@@ -408,27 +408,24 @@ impl App {
     }
 
     pub fn clear_queue(&mut self) -> AppResult<()> {
+        self.stop_playback();
         self.queue.clear();
         self.queue_order.clear();
-        self.player.player_status = PlayerStatus::Stopped;
-        self.index_in_queue = 0;
-        self.player.stop();
         self.now_playing.id.clear();
+        self.index_in_queue = 0;
         Ok(())
     }
     
     pub fn try_play_current(&mut self) -> bool {
-        if !self.now_playing.id.is_empty() { 
-            if self.player.player_status == PlayerStatus::Paused  {
+        if !self.now_playing.id.is_empty() {
+            return if self.player.player_status == PlayerStatus::Paused {
                 self.toggle_playing_status().unwrap();
-                return true
-            }
-            else if self.player.player_status == PlayerStatus::Stopped {
+                true
+            } else if self.player.player_status == PlayerStatus::Stopped {
                 self.play_current(false);
-                return true
-            }
-            else {
-                return false
+                true
+            } else {
+                false
             }
         }
         false
@@ -440,6 +437,11 @@ impl App {
             return true
         }
         false
+    }
+    
+    pub fn stop_playback(&mut self) {
+        self.player.stop();
+        self.player.player_status = PlayerStatus::Stopped;
     }
     
 

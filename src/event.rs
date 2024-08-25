@@ -22,7 +22,8 @@ pub enum Event {
     Pause,
     Next,
     Previous,
-    Playing
+    Playing,
+    Stop,
 }
 
 /// Terminal event handler.

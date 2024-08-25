@@ -174,6 +174,12 @@ impl MediaPlayer2Player {
         debug!("Previous request from dbus!\n");
         self.sender.send(Event::Previous).unwrap();
     }
+    
+    async fn stop(&self) {
+        debug!("Stop request from dbus!\n");
+        self.sender.send(Event::Stop).unwrap();
+    }
+
 }
 
 impl MediaPlayer2Player {
