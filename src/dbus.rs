@@ -4,7 +4,8 @@ use tokio::sync::mpsc::UnboundedSender;
 use zbus::{interface, Connection, SignalContext};
 use zbus::zvariant::{Value, ObjectPath};
 use crate::app::AppResult;
-use crate::event::{Event};
+use crate::event::{DbusEvent, Event};
+use crate::event::DbusEvent::{Next, Pause, Play, PlayPause, Previous, SeekBackwards, SeekForward, Stop};
 
 struct MediaPlayer2 {
     can_quit: bool,
@@ -86,6 +87,7 @@ pub struct MediaPlayer2Player {
     can_control: bool,
     can_go_next: bool,
     can_go_previous: bool,
+    shuffle: bool,
     playback_status: String,
     position: i64,
     metadata: HashMap<String,String>,
@@ -151,6 +153,17 @@ impl MediaPlayer2Player {
     }
 
     #[zbus(property)]
+    async fn shuffle(&self) -> &bool {
+        &self.shuffle
+    }
+
+    #[zbus(property)]
+    async fn set_shuffle(&mut self, _shuffle: bool) {
+        debug!("Shuffle request from dbus!\n");
+        self.sender.send(Event::Dbus(DbusEvent::Shuffle)).unwrap();
+    }
+
+    #[zbus(property)]
     async fn metadata(&self) -> HashMap<String, Value> {
         let mut fields = HashMap::new();
         for field in &self.metadata {
@@ -185,41 +198,41 @@ impl MediaPlayer2Player {
 
     async fn play_pause(&self) {
         debug!("PlayPause request from dbus!\n");
-        self.sender.send(Event::PlayPause).unwrap();
+        self.sender.send(Event::Dbus(PlayPause)).unwrap();
     }
 
     async fn play(&self) {
         debug!("Play request from dbus!\n");
-        self.sender.send(Event::Play).unwrap();
+        self.sender.send(Event::Dbus(Play)).unwrap();
     }
 
     async fn pause(&self) {
         debug!("Pause request from dbus!\n");
-        self.sender.send(Event::Pause).unwrap();
+        self.sender.send(Event::Dbus(Pause)).unwrap();
     }
 
     async fn next(&self) {
         debug!("Next request from dbus!\n");
-        self.sender.send(Event::Next).unwrap();
+        self.sender.send(Event::Dbus(Next)).unwrap();
     }
 
     async fn previous(&self) {
         debug!("Previous request from dbus!\n");
-        self.sender.send(Event::Previous).unwrap();
+        self.sender.send(Event::Dbus(Previous)).unwrap();
     }
 
     async fn stop(&self) {
         debug!("Stop request from dbus!\n");
-        self.sender.send(Event::Stop).unwrap();
+        self.sender.send(Event::Dbus(Stop)).unwrap();
     }
 
     async fn seek(&self, offset: i64) {
         debug!("Seek request from dbus!\n");
         if offset > 0 {
-            self.sender.send(Event::SeekForward).unwrap();
+            self.sender.send(Event::Dbus(SeekForward)).unwrap();
         }
         else {
-            self.sender.send(Event::SeekBackwards).unwrap();
+            self.sender.send(Event::Dbus(SeekBackwards)).unwrap();
         }
     }
 
@@ -236,6 +249,10 @@ impl MediaPlayer2Player {
 
     pub fn set_position(&mut self, new_position: i64) {
         self.position = new_position;
+    }
+    
+    pub fn update_shuffle(&mut self, new_shuffle_status: bool) {
+        self.shuffle = new_shuffle_status;
     }
 
 }
@@ -266,10 +283,11 @@ pub async fn set_up_mpris(sender: UnboundedSender<Event>) -> AppResult<Connectio
                 can_control: true,
                 can_go_next: true,
                 can_go_previous: true,
+                shuffle: false,
                 position: 0,
                 metadata:HashMap::new(),
                 playback_status: String::from("Stopped"),
-                sender
+                sender,
         }
     ).await?;
     // before requesting the name

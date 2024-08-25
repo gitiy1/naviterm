@@ -6,6 +6,20 @@ use tokio::sync::mpsc;
 
 use crate::app::AppResult;
 
+#[derive(Clone, Copy, Debug)]
+pub enum DbusEvent {
+    PlayPause,
+    Play,
+    Pause,
+    Next,
+    Previous,
+    Playing,
+    Stop,
+    SeekForward,
+    SeekBackwards,
+    Shuffle,
+}
+
 /// Terminal events.
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
@@ -17,15 +31,7 @@ pub enum Event {
     Mouse(MouseEvent),
     /// Terminal resize.
     Resize(u16, u16),
-    PlayPause,
-    Play,
-    Pause,
-    Next,
-    Previous,
-    Playing,
-    Stop,
-    SeekForward,
-    SeekBackwards,
+    Dbus(DbusEvent)
 }
 
 /// Terminal event handler.

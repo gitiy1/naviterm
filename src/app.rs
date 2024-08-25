@@ -7,7 +7,9 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use ratatui::widgets::ListState;
 use tokio::sync::mpsc::UnboundedSender;
+use crate::event::DbusEvent::Playing;
 use crate::event::Event;
+use crate::event::Event::Dbus;
 use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
@@ -453,7 +455,7 @@ impl App {
             self.player.play_song(self.server.get_song_url(self.now_playing.id.clone()).as_str());
             self.next_is_in_player_queue = false;
         }
-        self.event_sender.as_ref().unwrap().send(Event::Playing).unwrap();
+        self.event_sender.as_ref().unwrap().send(Dbus(Playing)).unwrap();
         self.ticks_during_playing_state = 0;
     }
     

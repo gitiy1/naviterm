@@ -1,6 +1,6 @@
 use naviterm::app::{App, AppResult};
 use naviterm::event::{Event, EventHandler};
-use naviterm::handler::handle_key_events;
+use naviterm::handler::{handle_dbus_events, handle_key_events};
 use naviterm::tui::Tui;
 use std::io;
 use ratatui::backend::CrosstermBackend;
@@ -12,7 +12,6 @@ use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log::LevelFilter;
 use naviterm::dbus;
-use naviterm::player::mpv::PlayerStatus;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -83,72 +82,12 @@ async fn main() -> AppResult<()> {
         // Render the user interface.
         tui.draw(&mut app)?;
         // Handle events.
-        let mut iface = iface_ref.get_mut().await;
         match tui.events.next().await? {
-            Event::Tick => {
-                app.tick();
-                iface.set_position((app.get_playback_time()*1000000) as i64);
-
-            },
-            Event::Key(key_event) => handle_key_events(key_event, &mut app).await?,
+            Event::Tick => app.tick(),
+            Event::Key(key_event) => handle_key_events(key_event, &mut app, iface_ref.clone()).await?,
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
-            Event::PlayPause => {
-                if *app.player.player_status() == PlayerStatus::Stopped && app.try_play_current() {
-                    iface.set_playback_status(String::from("Playing"));
-                    iface.playback_status_changed(iface_ref.signal_context()).await?;
-                }
-                else {
-                    app.toggle_playing_status().unwrap();
-                    if *app.player.player_status() == PlayerStatus::Playing {
-                        iface.set_playback_status(String::from("Playing"));
-                    }
-                    else if *app.player.player_status() == PlayerStatus::Paused {
-                        iface.set_playback_status(String::from("Paused"));
-                    }
-                    iface.playback_status_changed(iface_ref.signal_context()).await?;
-                }
-            }
-            Event::Next => {app.play_next()?}
-            Event::Previous => {app.play_previous()?}
-            Event::Playing => {
-                iface.set_metadata(app.get_metada_for_current_song());
-                iface.metadata_changed(iface_ref.signal_context()).await?;
-                iface.set_playback_status(String::from("Playing"));
-                iface.playback_status_changed(iface_ref.signal_context()).await?;
-            }
-            Event::Play => {
-                if app.try_play_current() {
-                    iface.set_playback_status(String::from("Playing"));
-                    iface.playback_status_changed(iface_ref.signal_context()).await?;
-                }
-            }
-            Event::Pause => {
-                if app.try_pause_current() {
-                    iface.set_playback_status(String::from("Paused"));
-                    iface.playback_status_changed(iface_ref.signal_context()).await?;
-                }
-            }
-            Event::Stop => {
-                if *app.player.player_status() != PlayerStatus::Stopped {
-                    app.stop_playback();
-                    iface.set_playback_status(String::from("Stopped"));
-                    iface.playback_status_changed(iface_ref.signal_context()).await?;
-                }
-            }
-            Event::SeekForward => {
-                app.player_seek_forward().unwrap();
-                let new_position = (app.get_playback_time()*1000000) as i64;
-                iface.set_position(new_position);
-                dbus::MediaPlayer2Player::seeked(iface_ref.signal_context(), new_position).await?;
-
-            }
-            Event::SeekBackwards => {
-                app.player_seek_backwards().unwrap();
-                let new_position = (app.get_playback_time()*1000000) as i64;
-                iface.set_position(new_position);
-                dbus::MediaPlayer2Player::seeked(iface_ref.signal_context(), new_position).await?;
-            }
+            Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, iface_ref.clone()).await?
         }
     }
 
