@@ -84,10 +84,10 @@ async fn main() -> AppResult<()> {
         // Handle events.
         match tui.events.next().await? {
             Event::Tick => app.tick(),
-            Event::Key(key_event) => handle_key_events(key_event, &mut app, iface_ref.clone()).await?,
+            Event::Key(key_event) => handle_key_events(key_event, &mut app, &iface_ref).await?,
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
-            Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, iface_ref.clone()).await?
+            Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, &iface_ref).await?
         }
     }
 
