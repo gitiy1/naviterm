@@ -7,7 +7,7 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use ratatui::widgets::ListState;
 use tokio::sync::mpsc::UnboundedSender;
-use crate::event::DbusEvent::Playing;
+use crate::event::DbusEvent::{Clear, Playing};
 use crate::event::Event;
 use crate::event::Event::Dbus;
 use crate::music_database::MusicDatabase;
@@ -309,8 +309,13 @@ impl App {
     }
 
     pub fn player_seek_forward(&mut self) -> AppResult<()> {
-        self.player.seek_forward();
-        self.ticks_during_playing_state += 40;
+        if self.get_playback_time() + 10 > self.now_playing.duration.as_str().parse::<usize>().unwrap() {
+            self.play_next()?;
+        }
+        else {
+            self.player.seek_forward();
+            self.ticks_during_playing_state += 40;
+        }
         Ok(())
     }
 
@@ -410,11 +415,11 @@ impl App {
     }
 
     pub fn clear_queue(&mut self) -> AppResult<()> {
-        self.stop_playback();
         self.queue.clear();
         self.queue_order.clear();
         self.now_playing.id.clear();
         self.index_in_queue = 0;
+        self.event_sender.as_ref().unwrap().send(Dbus(Clear)).unwrap();
         Ok(())
     }
     

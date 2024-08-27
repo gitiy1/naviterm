@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::app::{App, AppResult, Popup, CurrentScreen, MediaType};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use zbus::InterfaceRef;
@@ -44,7 +45,10 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_queue()?,
                 KeyCode::Char('c') => {
                     if key_event.modifiers == KeyModifiers::CONTROL { app.quit(); }
-                    else { app.clear_queue()?; }
+                    else {
+                        handle_stop_playback(app, iface_ref).await?;
+                        app.clear_queue()?;
+                    }
                 },
                 KeyCode::Enter => {
                     app.play_queue_song()?;
@@ -105,7 +109,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
     }
     
     // Keycodes that should be considered not matter if in popup or not
-    if key_event.code == KeyCode::Char('p') {app.toggle_playing_status()?};
+    if key_event.code == KeyCode::Char('p') { handle_toggle_play_pause(app, iface_ref).await? };
     if key_event.code == KeyCode::Char('r') { handle_shuffle_update(app, iface_ref).await? };
     if key_event.code == KeyCode::Right { handle_seek_forward(app, iface_ref).await? };
     if key_event.code == KeyCode::Left { handle_seek_backwards(app, iface_ref).await? };
@@ -123,16 +127,7 @@ pub async fn handle_dbus_events(dbus_event: DbusEvent, app: &mut App, iface_ref:
                 iface.playback_status_changed(iface_ref.signal_context()).await?;
             }
             else {
-                app.toggle_playing_status().unwrap();
-                let mut iface = iface_ref.get_mut().await;
-                iface.set_position((app.get_playback_time()*1000000) as i64);
-                if *app.player.player_status() == PlayerStatus::Playing {
-                    iface.set_playback_status(String::from("Playing"));
-                }
-                else if *app.player.player_status() == PlayerStatus::Paused {
-                    iface.set_playback_status(String::from("Paused"));
-                }
-                iface.playback_status_changed(iface_ref.signal_context()).await?;
+                handle_toggle_play_pause(app, iface_ref).await?;
             }
         }
         DbusEvent::Next => {app.play_next()?}
@@ -161,20 +156,11 @@ pub async fn handle_dbus_events(dbus_event: DbusEvent, app: &mut App, iface_ref:
                 iface.playback_status_changed(iface_ref.signal_context()).await?;
             }
         }
-        DbusEvent::Stop => {
-            if *app.player.player_status() != PlayerStatus::Stopped {
-                let mut iface = iface_ref.get_mut().await;
-                iface.set_position((app.get_playback_time()*1000000) as i64);
-                app.stop_playback();
-                iface.set_playback_status(String::from("Stopped"));
-                iface.playback_status_changed(iface_ref.signal_context()).await?;
-            }
-        }
+        DbusEvent::Stop => { handle_stop_playback(app, iface_ref).await?; }
         DbusEvent::SeekForward => handle_seek_forward(app, iface_ref).await?,
         DbusEvent::SeekBackwards => handle_seek_backwards(app, iface_ref).await?,
-        DbusEvent::Shuffle => {
-            handle_shuffle_update(app, iface_ref).await?;
-        }
+        DbusEvent::Shuffle => { handle_shuffle_update(app, iface_ref).await?; }
+        DbusEvent::Clear => { handle_clear_queue(iface_ref).await?; }
     }
     Ok(())
 }
@@ -206,5 +192,38 @@ async fn handle_seek_backwards(app: &mut App, iface_ref: &InterfaceRef<MediaPlay
     iface.set_position(new_position);
     MediaPlayer2Player::seeked(iface_ref.signal_context(), new_position).await?;
 
+    Ok(())
+}
+async fn handle_toggle_play_pause(app: &mut App, iface_ref: &InterfaceRef<MediaPlayer2Player>) -> AppResult<()> {
+    app.toggle_playing_status().unwrap();
+    let mut iface = iface_ref.get_mut().await;
+    iface.set_position((app.get_playback_time()*1000000) as i64);
+    if *app.player.player_status() == PlayerStatus::Playing {
+        iface.set_playback_status(String::from("Playing"));
+    }
+    else if *app.player.player_status() == PlayerStatus::Paused {
+        iface.set_playback_status(String::from("Paused"));
+    }
+    iface.playback_status_changed(iface_ref.signal_context()).await?;
+    
+    Ok(())
+}
+
+async fn handle_stop_playback(app: &mut App, iface_ref: &InterfaceRef<MediaPlayer2Player>) -> AppResult<()> {
+    
+    if *app.player.player_status() != PlayerStatus::Stopped {
+        let mut iface = iface_ref.get_mut().await;
+        iface.set_position((app.get_playback_time()*1000000) as i64);
+        app.stop_playback();
+        iface.set_playback_status(String::from("Stopped"));
+        iface.playback_status_changed(iface_ref.signal_context()).await?;
+    }
+
+    Ok(())
+}
+async fn handle_clear_queue(iface_ref: &InterfaceRef<MediaPlayer2Player>) -> AppResult<()> {
+    let mut iface = iface_ref.get_mut().await;
+    iface.set_metadata(HashMap::new());
+    iface.metadata_changed(iface_ref.signal_context()).await?;
     Ok(())
 }

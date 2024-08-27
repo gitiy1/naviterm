@@ -18,6 +18,7 @@ pub enum DbusEvent {
     SeekForward,
     SeekBackwards,
     Shuffle,
+    Clear,
 }
 
 /// Terminal events.
