@@ -241,10 +241,15 @@ impl App {
     }
 
     pub fn add_queue_next(&mut self) -> AppResult<()> {
+        let index_to_insert_to = if self.queue.is_empty() { 
+            self.change_current_playing_to(self.item_to_be_added.id.clone().as_str());
+            0
+        } else {
+            self.queue.iter().position(|x| x == &self.now_playing.id).unwrap() + 1
+        };
         match self.item_to_be_added.media_type {
             MediaType::Song => {
-                let index = self.queue.iter().position(|x| x == &self.now_playing.id).unwrap();
-                self.queue.insert(index + 1, self.item_to_be_added.id.clone());
+                self.queue.insert(index_to_insert_to, self.item_to_be_added.id.clone());
                 self.queue_order.push(self.queue.len() - 1);
             }
             MediaType::Album => {}
