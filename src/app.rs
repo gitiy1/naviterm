@@ -251,7 +251,7 @@ impl App {
                     populate_album_in_db(&mut self.server, &mut self.database, self.item_to_be_added.id.as_str()).await?;
                 }
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
-                for  song in album.songs() {
+                for song in album.songs() {
                     self.queue.push(song.clone());
                 }
                 self.queue_order = (0..self.queue.len()).collect();
@@ -264,9 +264,10 @@ impl App {
         Ok(())
     }
 
-    pub fn add_queue_next(&mut self) -> AppResult<()> {
-        let index_to_insert_to = if self.queue.is_empty() { 
-            self.change_current_playing_to(self.item_to_be_added.id.clone().as_str());
+    pub async fn add_queue_next(&mut self) -> AppResult<()> {
+        let mut was_empty = false;
+        let mut index_to_insert_to = if self.queue.is_empty() { 
+            was_empty = true;
             0
         } else {
             self.queue.iter().position(|x| x == &self.now_playing.id).unwrap() + 1
@@ -276,20 +277,46 @@ impl App {
                 self.queue.insert(index_to_insert_to, self.item_to_be_added.id.clone());
                 self.queue_order.push(self.queue.len() - 1);
             }
-            MediaType::Album => {}
+            MediaType::Album => {
+                if !self.database.contains_album(self.item_to_be_added.id.as_str()) {
+                    populate_album_in_db(&mut self.server, &mut self.database, self.item_to_be_added.id.as_str()).await?;
+                }
+                let album = self.database.get_album(self.item_to_be_added.id.as_str());
+                for song in album.songs() {
+                    self.queue.insert(index_to_insert_to, song.clone());
+                    self.queue_order.push(self.queue.len() - 1);
+                    index_to_insert_to += 1;
+                }
+            }
             MediaType::Playlist => {}
+        }
+        if was_empty {
+            self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
         }
         Ok(())
     }
 
-    pub fn add_queue_later(&mut self) -> AppResult<()> {
+    pub async fn add_queue_later(&mut self) -> AppResult<()> {
+        let was_empty = self.queue.is_empty();
         match self.item_to_be_added.media_type {
             MediaType::Song => {
                 self.queue.push(self.item_to_be_added.id.clone());
                 self.queue_order.push(self.queue.len() - 1);
             }
-            MediaType::Album => {}
+            MediaType::Album => {
+                if !self.database.contains_album(self.item_to_be_added.id.as_str()) {
+                    populate_album_in_db(&mut self.server, &mut self.database, self.item_to_be_added.id.as_str()).await?;
+                }
+                let album = self.database.get_album(self.item_to_be_added.id.as_str());
+                for song in album.songs() {
+                    self.queue.push(song.clone());
+                    self.queue_order.push(self.queue.len() - 1);
+                }
+            }
             MediaType::Playlist => {}
+        }
+        if was_empty {
+            self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
         }
         Ok(())
     }
@@ -318,6 +345,7 @@ impl App {
             }
             MediaType::Album => {
                 self.item_to_be_added.id = album_list.get(selected_album_index).unwrap().id().to_string();
+                self.item_to_be_added.name = album_list.get(selected_album_index).unwrap().name().to_string();
                 self.item_to_be_added.media_type = MediaType::Album;
             }
             MediaType::Playlist => {}

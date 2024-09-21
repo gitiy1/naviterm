@@ -25,6 +25,10 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                     app.get_current_album_information().await?;
                     app.current_popup = Popup::AlbumInformation;
                 },
+                KeyCode::Char('a') => {
+                    app.current_popup = Popup::AddTo;
+                    app.set_item_to_be_added(MediaType::Album)?;
+                },
                 KeyCode::Enter => {
                     app.set_item_to_be_added(MediaType::Album)?;
                     app.add_queue_immediately().await?;
@@ -90,6 +94,10 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 KeyCode::Char('a') => {
                     app.current_popup = Popup::AddTo;
                     app.set_item_to_be_added(MediaType::Song)?;
+                },
+                KeyCode::Char('A') => {
+                    app.current_popup = Popup::AddTo;
+                    app.set_item_to_be_added(MediaType::Album)?;
                 }
                 _ => {}
             }
@@ -98,11 +106,11 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                     app.current_popup = Popup::None;
                 },
                 KeyCode::Char('n') => {
-                    app.add_queue_next()?;
+                    app.add_queue_next().await?;
                     app.current_popup = Popup::None;
                 },
                 KeyCode::Char('e') => {
-                    app.add_queue_later()?;
+                    app.add_queue_later().await?;
                     app.current_popup = Popup::None;
                 }
                 _ => {}
