@@ -5,6 +5,7 @@ use crate::model::song::Song;
 #[derive(Debug)]
 pub struct MusicDatabase {
     recent_albums: Vec<Album>,
+    most_listened_albums: Vec<Album>,
     albums: HashMap<String,Album>,
     songs: HashMap<String,Song>,
 }
@@ -13,6 +14,7 @@ impl Default for MusicDatabase {
     fn default() -> Self {
         Self {
             recent_albums: vec![],
+            most_listened_albums: vec![],
             albums: HashMap::new(),
             songs: HashMap::new()
         }
@@ -28,8 +30,16 @@ impl MusicDatabase {
         &self.recent_albums
     }
 
+    pub fn most_listened_albums(&self) -> &Vec<Album> {
+        &self.most_listened_albums
+    }
+
     pub fn set_recent_albums(&mut self, recent_albums: Vec<Album>) {
         self.recent_albums = recent_albums;
+    }
+
+    pub fn set_most_listened_albums(&mut self, most_listened_albums: Vec<Album>) {
+        self.most_listened_albums = most_listened_albums;
     }
     
     pub fn insert_album(&mut self, id: String, album: Album) {

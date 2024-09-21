@@ -28,6 +28,9 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 KeyCode::Enter => {
                     app.set_item_to_be_added(MediaType::Album)?;
                     app.add_queue_immediately().await?;
+                },
+                KeyCode::Tab => {
+                    app.cycle_home_pane()?; 
                 }
                 // Other handlers you could add here.
                 _ => {}

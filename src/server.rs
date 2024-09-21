@@ -13,6 +13,7 @@ use crate::model::song::Song;
 enum SubsonicOperation {
     Ping,
     GetAlbumListRecent,
+    GetAlbumListMostListened,
     GetAlbum,
     DownloadSong,
     GetCoverArt,
@@ -119,6 +120,16 @@ impl Server{
         Ok(album_list)
     }
 
+    pub async fn get_most_listened_albums(&mut self) -> AppResult<Vec<Album>> {
+
+        let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, SubsonicParameter::None);
+        let response_text = self.make_request_text(url).await.unwrap();
+
+        let album_list = Parser::parse_album_list(response_text).unwrap();
+
+        Ok(album_list)
+    }
+
     pub async fn get_album(&mut self, album_id: &str) -> AppResult<(Album, Vec<Song>)> {
 
         let url = self.build_url(SubsonicOperation::GetAlbum, SubsonicParameter::AlbumId(String::from(album_id)));
@@ -177,6 +188,12 @@ impl Server{
                 format!("{}/navidrome/rest/getAlbumList.view?type=recent&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, self.user, self.token, self.salt)
+            }
+            ,
+            SubsonicOperation::GetAlbumListMostListened => {
+                format!("{}/navidrome/rest/getAlbumList.view?type=frequent&\
+                    u={}&t={}&s={}&v=0.1&c=naviterm",
+                        self.server_address, self.user, self.token, self.salt)
             }
             ,
             SubsonicOperation::GetAlbum => {

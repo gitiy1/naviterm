@@ -25,6 +25,11 @@ pub enum CurrentScreen {
     Queue,
 }
 
+pub enum HomePane {
+    Top,
+    Bottom
+}
+
 #[derive(Debug, Default)]
 pub enum MediaType {
     #[default]
@@ -50,12 +55,14 @@ pub struct App {
     /// Is the application running?
     pub running: bool,
     pub current_screen: CurrentScreen,
+    pub home_pane: HomePane,
     pub current_popup: Popup,
     pub previous_popup: Popup,
     pub server: Server,
     pub event_sender: Option<UnboundedSender<Event>>,
     pub database: MusicDatabase,
-    pub home_recent_state: ListState,
+    pub home_top_state: ListState,
+    pub home_bottom_state: ListState,
     pub queue_list_state: ListState,
     pub popup_list_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
@@ -88,12 +95,14 @@ impl Default for App {
         Self {
             running: true,
             current_screen: CurrentScreen::Home,
+            home_pane: HomePane::Top,
             current_popup: Popup::None,
             previous_popup: Popup::None,
             server: Server::new(),
             event_sender: None,
             database: MusicDatabase::new(),
-            home_recent_state: ListState::default(),
+            home_top_state: ListState::default(),
+            home_bottom_state: ListState::default(),
             queue_list_state: ListState::default(),
             popup_list_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
@@ -154,6 +163,7 @@ impl App {
 
     pub async fn populate_db(&mut self) -> AppResult<()> {
         self.database.set_recent_albums(self.server.get_recent_albums().await?);
+        self.database.set_most_listened_albums(self.server.get_most_listened_albums().await?);
         Ok(())
     }
 
@@ -169,8 +179,15 @@ impl App {
     }
 
     pub async fn get_current_album_information(&mut self) -> AppResult<()> {
-        let selected_album_index = self.home_recent_state.selected().unwrap();
-        let selected_album_id: String = self.database.recent_albums().get(selected_album_index).unwrap().id().to_string();
+        let selected_album_id = match self.home_pane {
+            HomePane::Top => {
+                self.database.recent_albums().get(self.home_top_state.selected().unwrap()).unwrap().id().to_string()
+            }
+            HomePane::Bottom => {
+                self.database.most_listened_albums().get(self.home_bottom_state.selected().unwrap()).unwrap().id().to_string()
+            }
+        };
+         
 
         if !self.database.contains_album(selected_album_id.as_str()) {
             populate_album_in_db(&mut self.server, &mut self.database, selected_album_id.as_str()).await?;
@@ -180,12 +197,19 @@ impl App {
 
 
     pub fn select_next_list(&mut self) -> AppResult<()> {
-        self.home_recent_state.select_next();
+        match self.home_pane {
+            HomePane::Top => {self.home_top_state.select_next();}
+            HomePane::Bottom => {self.home_bottom_state.select_next();}
+        }
+        
         Ok(())
     }
 
     pub fn select_previous_list(&mut self) -> AppResult<()> {
-        self.home_recent_state.select_previous();
+        match self.home_pane {
+            HomePane::Top => {self.home_top_state.select_previous();}
+            HomePane::Bottom => {self.home_bottom_state.select_previous();}
+        }
         Ok(())
     }
 
@@ -271,10 +295,20 @@ impl App {
     }
 
     pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
+        let selected_album_index;
+        let album_list = match self.home_pane {
+            HomePane::Top => {
+                selected_album_index = self.home_top_state.selected().unwrap();
+                self.database.recent_albums()
+            }
+            HomePane::Bottom => {
+                selected_album_index = self.home_bottom_state.selected().unwrap();
+                self.database.most_listened_albums()
+            }
+        };
         match media {
             MediaType::Song => {
-                let selected_album_index = self.home_recent_state.selected().unwrap();
-                let selected_album_id = self.database.recent_albums().get(selected_album_index).unwrap().id();
+                let selected_album_id = album_list.get(selected_album_index).unwrap().id();
                 let songs_ids = self.database.get_album(selected_album_id).songs();
                 let song = self.database.get_song(songs_ids.get(self.popup_list_state.selected().unwrap()).unwrap());
                 self.item_to_be_added.name = song.title().to_string();
@@ -283,8 +317,7 @@ impl App {
                 self.item_to_be_added.media_type = MediaType::Song;
             }
             MediaType::Album => {
-                let selected_album_index = self.home_recent_state.selected().unwrap();
-                self.item_to_be_added.id = self.database.recent_albums().get(selected_album_index).unwrap().id().to_string();
+                self.item_to_be_added.id = album_list.get(selected_album_index).unwrap().id().to_string();
                 self.item_to_be_added.media_type = MediaType::Album;
             }
             MediaType::Playlist => {}
@@ -502,6 +535,15 @@ impl App {
         metadata.insert("cover".to_string(),self.server.get_song_art_url(song.id().to_string()));
         
         metadata
+    }
+    
+    pub fn cycle_home_pane(&mut self) -> AppResult<()> {
+        match self.home_pane {
+            HomePane::Top => { self.home_pane = HomePane::Bottom; }
+            HomePane::Bottom => { self.home_pane = HomePane::Top; }
+        }
+        
+        Ok(())
     }
 }
 
