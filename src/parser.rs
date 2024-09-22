@@ -61,6 +61,7 @@ impl Parser {
                     }
                     "coverArt" => {new_album.set_cover_art(attribute.1.to_string())}
                     "duration" => {new_album.set_duration(attribute.1.to_string())}
+                    "playCount" => {new_album.set_play_count(attribute.1.to_string())}
                     "songCount" => {new_album.set_song_count(attribute.1.to_string())}
                     "genre" => {
                         let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
@@ -98,6 +99,7 @@ impl Parser {
                 }
                 "coverArt" => {new_album.set_cover_art(attribute.1.to_string())}
                 "duration" => {new_album.set_duration(attribute.1.to_string())}
+                "playCount" => {new_album.set_play_count(attribute.1.to_string())}
                 "songCount" => {new_album.set_song_count(attribute.1.to_string())}
                 &_ => {}
             }
