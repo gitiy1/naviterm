@@ -6,3 +6,4 @@ mod popup_album_info;
 mod popup_add_to;
 mod tab_queue;
 mod footer_now_playing;
+mod tab_albums;

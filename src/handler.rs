@@ -13,11 +13,8 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
     if app.current_popup == Popup::None {
         match app.current_screen {
             CurrentScreen::Home => match key_event.code {
+                KeyCode::Char('2') => { app.current_screen = CurrentScreen::Albums; }
                 KeyCode::Char('5') => { app.current_screen = CurrentScreen::Queue; }
-                // Exit application on `ESC` or `q`
-                KeyCode::Esc | KeyCode::Char('q') => { app.quit(); }
-                // Exit application on `Ctrl-C`
-                KeyCode::Char('c') | KeyCode::Char('C') => if key_event.modifiers == KeyModifiers::CONTROL { app.quit(); }
                 KeyCode::F(1) => { app.current_popup = Popup::ConnectionTest; }
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
@@ -39,51 +36,47 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 // Other handlers you could add here.
                 _ => {}
             },
-            CurrentScreen::Albums => {}
+            CurrentScreen::Albums => match key_event.code {
+                KeyCode::Char('1') => { app.current_screen = CurrentScreen::Home; }
+                KeyCode::Char('5') => { app.current_screen = CurrentScreen::Queue; }
+                _ => {}
+            }
             CurrentScreen::Playlists => {}
             CurrentScreen::Artists => {}
             CurrentScreen::Queue => match key_event.code {
-                KeyCode::Char('1') => {
-                    app.current_screen = CurrentScreen::Home;
-                }
+                KeyCode::Char('1') => { app.current_screen = CurrentScreen::Home; }
+                KeyCode::Char('2') => { app.current_screen = CurrentScreen::Albums; }
                 KeyCode::Char('l') => { app.play_next()? }
                 KeyCode::Char('h') => { app.play_previous()? }
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_queue()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_queue()?,
                 KeyCode::Char('c') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL { app.quit(); }
-                    else {
+                    if key_event.modifiers != KeyModifiers::CONTROL {
                         handle_stop_playback(app, iface_ref).await?;
                         app.clear_queue()?;
                     }
                 },
-                KeyCode::Enter => {
-                    app.play_queue_song()?;
-                },
-                // Exit application on `ESC` or `q`
-                KeyCode::Esc | KeyCode::Char('q') => { app.quit() }
+                KeyCode::Enter => { app.play_queue_song()?; },
                 _ => {}
             }
         }
+        // Exit application no matter the current_screen
+        // Exit application on `ESC` or `q` or  `<C-c>`
+        if key_event.code == KeyCode::Esc ||
+            key_event.code == KeyCode::Char('q') ||
+            key_event.code == KeyCode::Char('c') && key_event.modifiers == KeyModifiers::CONTROL
+        { app.quit(); }
     }
     else {
         match app.current_popup {
             Popup::ConnectionTest => match key_event.code {
-                KeyCode::Esc | KeyCode::Char('q') => {
-                    app.current_popup = Popup::None;
-                }
-                KeyCode::Char('r') => {
-                    app.renew_credentials()?;
-                }
-                KeyCode::Char('t') => {
-                    app.test_connection().await?;
-                }
+                KeyCode::Esc | KeyCode::Char('q') => { app.current_popup = Popup::None; }
+                KeyCode::Char('r') => { app.renew_credentials()?; }
+                KeyCode::Char('t') => { app.test_connection().await?; }
                 _ => {}
             }
             Popup::AlbumInformation => match key_event.code {
-                KeyCode::Esc | KeyCode::Char('q') => {
-                    app.current_popup = Popup::None;
-                }
+                KeyCode::Esc | KeyCode::Char('q') => { app.current_popup = Popup::None; }
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
                 KeyCode::Enter => {
@@ -102,9 +95,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 _ => {}
             }
             Popup::AddTo => match key_event.code {
-                KeyCode::Esc | KeyCode::Char('q') => {
-                    app.current_popup = Popup::None;
-                },
+                KeyCode::Esc | KeyCode::Char('q') => { app.current_popup = Popup::None; },
                 KeyCode::Char('n') => {
                     app.add_queue_next().await?;
                     app.current_popup = Popup::None;

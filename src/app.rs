@@ -73,7 +73,11 @@ pub struct App {
     pub index_in_queue: usize,
     pub ticks_during_playing_state: usize,
     pub random_playback: bool,
-    pub next_is_in_player_queue: bool
+    pub next_is_in_player_queue: bool,
+    pub album_genre_filter: String,
+    pub album_year_filter: String,
+    pub album_sorting_mode: String,
+    pub album_sorting_direction: String,
 }
 
 #[derive(Default, Debug)]
@@ -113,7 +117,11 @@ impl Default for App {
             index_in_queue: 0,
             ticks_during_playing_state: 0,
             random_playback: false,
-            next_is_in_player_queue: false
+            next_is_in_player_queue: false,
+            album_genre_filter: String::from("any"),
+            album_year_filter: String::from("any"),
+            album_sorting_mode: String::from("alphabetically"),
+            album_sorting_direction: String::from("descending")
         }
     }
 }
