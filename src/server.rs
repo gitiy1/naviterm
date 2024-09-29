@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::vec;
 use reqwest::header::{CONTENT_TYPE, ACCEPT};
 use chrono;
 use rand::distributions::{Alphanumeric, DistString};
@@ -14,6 +15,7 @@ enum SubsonicOperation {
     Ping,
     GetAlbumListRecent,
     GetAlbumListMostListened,
+    GetAlbumListAlphabetical,
     GetAlbum,
     DownloadSong,
     GetCoverArt,
@@ -23,7 +25,9 @@ enum SubsonicOperation {
 enum SubsonicParameter {
     None,
     AlbumId(String),
-    SongId(String)
+    SongId(String),
+    Size(usize),
+    Offset(usize)
 }
 
 impl Display for SubsonicParameter {
@@ -32,6 +36,8 @@ impl Display for SubsonicParameter {
             SubsonicParameter::AlbumId(val) => val.to_string(),
             SubsonicParameter::SongId(val) => val.to_string(),
             SubsonicParameter::None => { "None".to_string() },
+            SubsonicParameter::Size(val) => {val.to_string()}
+            SubsonicParameter::Offset(val) => {val.to_string()}
         };
         write!(f, "{}", str)
     }
@@ -97,7 +103,7 @@ impl Server{
 
     pub async fn test_connection(&mut self) -> AppResult<()> {
 
-        let url = self.build_url(SubsonicOperation::Ping, SubsonicParameter::None);
+        let url = self.build_url(SubsonicOperation::Ping, vec![SubsonicParameter::None]);
         let response_text = self.make_request_text(url).await.unwrap();
 
         let connection_status = Parser::parse_connection_status(response_text).unwrap();
@@ -112,7 +118,7 @@ impl Server{
     
     pub async fn get_recent_albums(&mut self) -> AppResult<Vec<Album>> {
         
-        let url = self.build_url(SubsonicOperation::GetAlbumListRecent, SubsonicParameter::None);
+        let url = self.build_url(SubsonicOperation::GetAlbumListRecent, vec![SubsonicParameter::None]);
         let response_text = self.make_request_text(url).await.unwrap();
         
         let album_list = Parser::parse_album_list(response_text).unwrap();
@@ -122,7 +128,7 @@ impl Server{
 
     pub async fn get_most_listened_albums(&mut self) -> AppResult<Vec<Album>> {
 
-        let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, SubsonicParameter::None);
+        let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, vec![SubsonicParameter::None]);
         let response_text = self.make_request_text(url).await.unwrap();
 
         let album_list = Parser::parse_album_list(response_text).unwrap();
@@ -130,9 +136,32 @@ impl Server{
         Ok(album_list)
     }
 
+    pub async fn get_album_list_alphabetical(&mut self) -> AppResult<Vec<Album>> {
+
+        let mut stop = false;
+        let mut offset = 0;
+
+        let mut album_list: Vec<Album> = vec![];
+        while !stop {
+            let parameters = vec![SubsonicParameter::Size(500),SubsonicParameter::Offset(offset)];
+            let url = self.build_url(SubsonicOperation::GetAlbumListAlphabetical, parameters);
+            let response_text = self.make_request_text(url).await.unwrap();
+            let mut partial_album_list: Vec<Album> = Parser::parse_album_list(response_text).unwrap();
+            stop = partial_album_list.is_empty();
+            if !stop {
+                album_list.append(&mut partial_album_list);
+                offset += 500;
+            }
+        }
+            
+
+        Ok(album_list)
+    }
+
     pub async fn get_album(&mut self, album_id: &str) -> AppResult<(Album, Vec<Song>)> {
 
-        let url = self.build_url(SubsonicOperation::GetAlbum, SubsonicParameter::AlbumId(String::from(album_id)));
+        let parameters = vec![SubsonicParameter::AlbumId(String::from(album_id))];
+        let url = self.build_url(SubsonicOperation::GetAlbum, parameters);
         let response_text = self.make_request_text(url).await.unwrap();
 
         let parsed_media= Parser::parse_album(response_text);
@@ -141,11 +170,11 @@ impl Server{
     }
     
     pub fn get_song_url(&mut self, id: String) -> String {
-        self.build_url(SubsonicOperation::DownloadSong, SubsonicParameter::SongId(id))
+        self.build_url(SubsonicOperation::DownloadSong, vec![SubsonicParameter::SongId(id)])
     }
 
     pub fn get_song_art_url(&mut self, id: String) -> String {
-        self.build_url(SubsonicOperation::GetCoverArt, SubsonicParameter::SongId(id))
+        self.build_url(SubsonicOperation::GetCoverArt, vec![SubsonicParameter::SongId(id)])
     }
 
     async fn make_request_text(&mut self, url: String) -> AppResult<String> {
@@ -177,7 +206,7 @@ impl Server{
         Ok(response_text)
     }
 
-    fn build_url(&mut self, subsonic_operation: SubsonicOperation, subsonic_parameter: SubsonicParameter) -> String {
+    fn build_url(&mut self, subsonic_operation: SubsonicOperation, parameters: Vec<SubsonicParameter>) -> String {
         let url: String = match subsonic_operation {
             SubsonicOperation::Ping => 
                 format!("{}/navidrome/rest/ping.view?\
@@ -196,20 +225,26 @@ impl Server{
                         self.server_address, self.user, self.token, self.salt)
             }
             ,
+            SubsonicOperation::GetAlbumListAlphabetical => {
+                format!("{}/navidrome/rest/getAlbumList.view?type=alphabeticalByName&\
+                    size={}&offset={}&u={}&t={}&s={}&v=0.1&c=naviterm",
+                        self.server_address, parameters[0], parameters[1], self.user, self.token, self.salt)
+            }
+            ,
             SubsonicOperation::GetAlbum => {
                 format!("{}/navidrome/rest/getAlbum.view?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
-                        self.server_address, subsonic_parameter, self.user, self.token, self.salt)
+                        self.server_address, parameters[0], self.user, self.token, self.salt)
             }
             SubsonicOperation::DownloadSong => {
                 format!("{}/navidrome/rest/download?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
-                        self.server_address, subsonic_parameter, self.user, self.token, self.salt)
+                        self.server_address, parameters[0], self.user, self.token, self.salt)
             }
             SubsonicOperation::GetCoverArt => {
                 format!("{}/navidrome/rest/getCoverArt.view?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm&size=300",
-                        self.server_address, subsonic_parameter, self.user, self.token, self.salt)
+                        self.server_address, parameters[0], self.user, self.token, self.salt)
             }
         };
 

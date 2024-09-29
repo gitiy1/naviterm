@@ -5,7 +5,7 @@ use ratatui::style::Color::{Gray, Yellow};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Clear, HighlightSpacing, List, ListItem, Padding, Paragraph};
 use ratatui::widgets::BorderType::Rounded;
-use crate::app::{App, AppResult, HomePane};
+use crate::app::{App, AppResult, CurrentScreen, HomePane};
 use crate::ui::utils;
 use crate::ui::utils::duration_to_hhmmss;
 
@@ -20,13 +20,19 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
 
 
     //let album = app.get_current_album().unwrap();
-    let album = match app.home_pane {
-        HomePane::Top => {
-            app.database.get_album(app.database.recent_albums().get(app.home_top_state.selected().unwrap()).unwrap().id())
+    let album = match app.current_screen {
+        CurrentScreen::Home => match app.home_pane {
+            HomePane::Top => {
+                app.database.get_album(app.database.recent_albums().get(app.home_top_state.selected().unwrap()).unwrap().id())
+            }
+            HomePane::Bottom => {
+                app.database.get_album(app.database.most_listened_albums().get(app.home_bottom_state.selected().unwrap()).unwrap().id())
+            }
+        },
+        CurrentScreen::Albums => {
+            app.database.get_album(app.database.alphabetical_list_albums().get(app.album_state.selected().unwrap()).unwrap().id())
         }
-        HomePane::Bottom => {
-            app.database.get_album(app.database.most_listened_albums().get(app.home_bottom_state.selected().unwrap()).unwrap().id())
-        }
+        _ => {panic!("Should not reach")}
     };
 
     let album_info = Text::from(vec![

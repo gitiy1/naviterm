@@ -39,6 +39,20 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
             CurrentScreen::Albums => match key_event.code {
                 KeyCode::Char('1') => { app.current_screen = CurrentScreen::Home; }
                 KeyCode::Char('5') => { app.current_screen = CurrentScreen::Queue; }
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
+                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
+                KeyCode::Char('i') => {
+                    app.get_current_album_information().await?;
+                    app.current_popup = Popup::AlbumInformation;
+                },
+                KeyCode::Char('a') => {
+                    app.current_popup = Popup::AddTo;
+                    app.set_item_to_be_added(MediaType::Album)?;
+                },
+                KeyCode::Enter => {
+                    app.set_item_to_be_added(MediaType::Album)?;
+                    app.add_queue_immediately().await?;
+                },
                 _ => {}
             }
             CurrentScreen::Playlists => {}

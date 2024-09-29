@@ -65,6 +65,7 @@ pub struct App {
     pub home_bottom_state: ListState,
     pub queue_list_state: ListState,
     pub popup_list_state: ListState,
+    pub album_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
     pub queue_order: Vec<usize>,
@@ -109,6 +110,7 @@ impl Default for App {
             home_bottom_state: ListState::default(),
             queue_list_state: ListState::default(),
             popup_list_state: ListState::default(),
+            album_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
             queue: vec![],
             queue_order: vec![],
@@ -172,6 +174,7 @@ impl App {
     pub async fn populate_db(&mut self) -> AppResult<()> {
         self.database.set_recent_albums(self.server.get_recent_albums().await?);
         self.database.set_most_listened_albums(self.server.get_most_listened_albums().await?);
+        self.database.set_alphabetical_albums(self.server.get_album_list_alphabetical().await?);
         Ok(())
     }
 
@@ -187,13 +190,19 @@ impl App {
     }
 
     pub async fn get_current_album_information(&mut self) -> AppResult<()> {
-        let selected_album_id = match self.home_pane {
-            HomePane::Top => {
-                self.database.recent_albums().get(self.home_top_state.selected().unwrap()).unwrap().id().to_string()
+        let selected_album_id = match self.current_screen {
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::Top => {
+                    self.database.recent_albums().get(self.home_top_state.selected().unwrap()).unwrap().id().to_string()
+                }
+                HomePane::Bottom => {
+                    self.database.most_listened_albums().get(self.home_bottom_state.selected().unwrap()).unwrap().id().to_string()
+                }
             }
-            HomePane::Bottom => {
-                self.database.most_listened_albums().get(self.home_bottom_state.selected().unwrap()).unwrap().id().to_string()
+            CurrentScreen::Albums => {
+                self.database.alphabetical_list_albums().get(self.album_state.selected().unwrap()).unwrap().id().to_string()
             }
+            _ => {"".to_string()}
         };
          
 
@@ -205,18 +214,38 @@ impl App {
 
 
     pub fn select_next_list(&mut self) -> AppResult<()> {
-        match self.home_pane {
-            HomePane::Top => {self.home_top_state.select_next();}
-            HomePane::Bottom => {self.home_bottom_state.select_next();}
+        match self.current_screen {
+            CurrentScreen::Home => {
+                match self.home_pane {
+                    HomePane::Top => {self.home_top_state.select_next();}
+                    HomePane::Bottom => {self.home_bottom_state.select_next();}
+                }
+            }
+            CurrentScreen::Albums => {
+                self.album_state.select_next()
+            }
+            CurrentScreen::Playlists => {}
+            CurrentScreen::Artists => {}
+            CurrentScreen::Queue => {}
         }
         
         Ok(())
     }
 
     pub fn select_previous_list(&mut self) -> AppResult<()> {
-        match self.home_pane {
-            HomePane::Top => {self.home_top_state.select_previous();}
-            HomePane::Bottom => {self.home_bottom_state.select_previous();}
+        match self.current_screen {
+            CurrentScreen::Home => {
+                match self.home_pane {
+                    HomePane::Top => {self.home_top_state.select_previous();}
+                    HomePane::Bottom => {self.home_bottom_state.select_previous();}
+                }
+            }
+            CurrentScreen::Albums => {
+                self.album_state.select_previous()
+            }
+            CurrentScreen::Playlists => {}
+            CurrentScreen::Artists => {}
+            CurrentScreen::Queue => {}
         }
         Ok(())
     }
@@ -331,16 +360,25 @@ impl App {
 
     pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
         let selected_album_index;
-        let album_list = match self.home_pane {
-            HomePane::Top => {
-                selected_album_index = self.home_top_state.selected().unwrap();
-                self.database.recent_albums()
+        let album_list = match self.current_screen {
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::Top => {
+                    selected_album_index = self.home_top_state.selected().unwrap();
+                    self.database.recent_albums()
+                }
+                HomePane::Bottom => {
+                    selected_album_index = self.home_bottom_state.selected().unwrap();
+                    self.database.most_listened_albums()
+                }
+            },
+            CurrentScreen::Albums => {
+                selected_album_index = self.album_state.selected().unwrap();
+                self.database.alphabetical_list_albums()
             }
-            HomePane::Bottom => {
-                selected_album_index = self.home_bottom_state.selected().unwrap();
-                self.database.most_listened_albums()
-            }
+            _ => {panic!("Should not reach")}
         };
+            
+            
         match media {
             MediaType::Song => {
                 let selected_album_id = album_list.get(selected_album_index).unwrap().id();

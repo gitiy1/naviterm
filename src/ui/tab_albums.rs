@@ -2,9 +2,9 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::prelude::Modifier;
 use ratatui::style::{Style};
-use ratatui::style::Color::{Yellow};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block};
+use ratatui::style::Color::{Gray, Yellow};
+use ratatui::text::{Line, Span, Text};
+use ratatui::widgets::{Block, HighlightSpacing, List, ListItem};
 use ratatui::widgets::BorderType::Rounded;
 use crate::app::{App, AppResult};
 
@@ -54,7 +54,28 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         .title(Line::raw("Albums").left_aligned())
         .border_type(Rounded).style(Style::default());
 
-    frame.render_widget(results_block, chunks[1]);
+
+    let items = app.database.alphabetical_list_albums().iter().enumerate()
+        .map(|(_i, album)| {
+            let album_item = Text::from(vec![
+                Line::from(vec![
+                    Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },
+                    Span { content: " from ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                    Span { content: album.artist().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                ]),
+                Line::from(vec![
+                    Span { content: album.genres().join(", ").into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                    Span { content: ", ".into(), style: Style::default() },
+                    Span { content: album.song_count().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                    Span { content: " songs".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                ])
+            ]);
+            ListItem::from(album_item)
+        });
+    let list = List::new(items).block(results_block).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);
+
+    if app.album_state.selected().is_none() { app.album_state.select_first() }
+    frame.render_stateful_widget(list, chunks[1], &mut app.album_state);
     
     Ok(())
 }
