@@ -7,6 +7,7 @@ pub struct MusicDatabase {
     recent_albums: Vec<Album>,
     most_listened_albums: Vec<Album>,
     alphabetical_albums: Vec<Album>,
+    genres: Vec<String>,
     albums: HashMap<String,Album>,
     songs: HashMap<String,Song>,
 }
@@ -17,6 +18,7 @@ impl Default for MusicDatabase {
             recent_albums: vec![],
             most_listened_albums: vec![],
             alphabetical_albums: vec![],
+            genres: vec![],
             albums: HashMap::new(),
             songs: HashMap::new()
         }
@@ -76,4 +78,11 @@ impl MusicDatabase {
         self.songs.contains_key(id)
     }
 
+    pub fn genres(&self) -> &Vec<String> {
+        &self.genres
+    }
+
+    pub fn set_genres(&mut self, genres: Vec<String>) {
+        self.genres = genres;
+    }
 }

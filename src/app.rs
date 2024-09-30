@@ -175,6 +175,7 @@ impl App {
         self.database.set_recent_albums(self.server.get_recent_albums().await?);
         self.database.set_most_listened_albums(self.server.get_most_listened_albums().await?);
         self.database.set_alphabetical_albums(self.server.get_album_list_alphabetical().await?);
+        self.database.set_genres(self.server.get_genres().await?);
         Ok(())
     }
 

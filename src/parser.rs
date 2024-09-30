@@ -40,6 +40,17 @@ impl Parser {
 
     }
 
+    pub fn parse_genres_list (response: String) -> AppResult<Vec<String>> {
+        let mut genres_list: Vec<String> = Vec::new();
+        let root: minidom::Element = response.parse().unwrap();
+
+        let list = root.get_child("genres", Self::NAMESPACE).unwrap();
+        for genre in list.children() {
+                genres_list.push(genre.text());
+        }
+        Ok(genres_list)
+    }
+    
     pub fn parse_album_list (response: String) -> AppResult<Vec<Album>> {
         let root: minidom::Element = response.parse().unwrap();
         let mut album_list = Vec::new();
