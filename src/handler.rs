@@ -53,6 +53,9 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                     app.set_item_to_be_added(MediaType::Album)?;
                     app.add_queue_immediately().await?;
                 },
+                KeyCode::Char('e') => {
+                    app.current_popup = Popup::GenreFilter;
+                },
                 _ => {}
             }
             CurrentScreen::Playlists => {}
@@ -84,13 +87,11 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
     else {
         match app.current_popup {
             Popup::ConnectionTest => match key_event.code {
-                KeyCode::Esc | KeyCode::Char('q') => { app.current_popup = Popup::None; }
                 KeyCode::Char('r') => { app.renew_credentials()?; }
                 KeyCode::Char('t') => { app.test_connection().await?; }
                 _ => {}
             }
             Popup::AlbumInformation => match key_event.code {
-                KeyCode::Esc | KeyCode::Char('q') => { app.current_popup = Popup::None; }
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
                 KeyCode::Enter => {
@@ -109,7 +110,6 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 _ => {}
             }
             Popup::AddTo => match key_event.code {
-                KeyCode::Esc | KeyCode::Char('q') => { app.current_popup = Popup::None; },
                 KeyCode::Char('n') => {
                     app.add_queue_next().await?;
                     app.current_popup = Popup::None;
@@ -120,8 +120,20 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 }
                 _ => {}
             }
+            Popup::GenreFilter => match key_event.code {
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
+                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
+                KeyCode::Enter => { 
+                    app.set_genre_filter()?;
+                    app.current_popup = Popup::None;
+                }
+                _ => {}
+            }
             Popup::None => {}
+            // Exit popup no matter the current_popup
         }
+        if key_event.code == KeyCode::Esc ||
+            key_event.code == KeyCode::Char('q') { app.current_popup = Popup::None; }
     }
     
     // Keycodes that should be considered not matter if in popup or not

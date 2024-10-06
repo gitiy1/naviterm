@@ -4,7 +4,7 @@ use ratatui::prelude::Modifier;
 use ratatui::style::{Style};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, HighlightSpacing, List, ListItem};
+use ratatui::widgets::{Block, HighlightSpacing, List};
 use ratatui::widgets::BorderType::Rounded;
 use crate::app::{App, AppResult};
 
@@ -54,9 +54,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         .title(Line::raw("Albums").left_aligned())
         .border_type(Rounded).style(Style::default());
 
-
-    let items = app.database.alphabetical_list_albums().iter().enumerate()
-        .map(|(_i, album)| {
+    let mut album_vector = Vec::new();
+    if app.database.filtered_albums().is_empty() {
+        for album in app.database.alphabetical_list_albums() {
             let album_item = Text::from(vec![
                 Line::from(vec![
                     Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },
@@ -70,9 +70,29 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                     Span { content: " songs".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                 ])
             ]);
-            ListItem::from(album_item)
-        });
-    let list = List::new(items).block(results_block).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);
+            album_vector.push(album_item);
+        }
+    }
+    else { 
+        for album_id in app.database.filtered_albums() {
+            let album_item = Text::from(vec![
+                Line::from(vec![
+                    Span { content: app.database.get_album(album_id).name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },
+                    Span { content: " from ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                    Span { content: app.database.get_album(album_id).artist().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                ]),
+                Line::from(vec![
+                    Span { content: app.database.get_album(album_id).genres().join(", ").into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                    Span { content: ", ".into(), style: Style::default() },
+                    Span { content: app.database.get_album(album_id).song_count().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                    Span { content: " songs".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                ])
+            ]);
+            album_vector.push(album_item);
+        }
+    }
+    
+    let list = List::new(album_vector).block(results_block).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);
 
     if app.album_state.selected().is_none() { app.album_state.select_first() }
     frame.render_stateful_widget(list, chunks[1], &mut app.album_state);

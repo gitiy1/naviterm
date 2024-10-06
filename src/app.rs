@@ -44,6 +44,7 @@ pub enum Popup {
     ConnectionTest,
     AlbumInformation,
     AddTo,
+    GenreFilter,
     None,
 }
 
@@ -65,6 +66,7 @@ pub struct App {
     pub home_bottom_state: ListState,
     pub queue_list_state: ListState,
     pub popup_list_state: ListState,
+    pub popup_genre_list_state: ListState,
     pub album_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
@@ -110,6 +112,7 @@ impl Default for App {
             home_bottom_state: ListState::default(),
             queue_list_state: ListState::default(),
             popup_list_state: ListState::default(),
+            popup_genre_list_state: ListState::default(),
             album_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
             queue: vec![],
@@ -252,12 +255,28 @@ impl App {
     }
 
     pub fn select_next_list_popup(&mut self) -> AppResult<()> {
-        self.popup_list_state.select_next();
+        match self.current_popup {
+            Popup::AlbumInformation => {
+                self.popup_list_state.select_next();
+            }
+            Popup::GenreFilter => {
+                self.popup_genre_list_state.select_next();
+            }
+            _ => {unreachable!()}
+        }
         Ok(())
     }
 
     pub fn select_previous_list_popup(&mut self) -> AppResult<()> {
-        self.popup_list_state.select_previous();
+        match self.current_popup {
+            Popup::AlbumInformation => {
+                self.popup_list_state.select_previous();
+            }
+            Popup::GenreFilter => {
+                self.popup_genre_list_state.select_previous();
+            }
+            _ => {unreachable!()}
+        }
         Ok(())
     }
 
@@ -620,6 +639,12 @@ impl App {
         
         Ok(())
     }
+
+    pub fn set_genre_filter(&mut self) -> AppResult<()> {
+        self.album_genre_filter = self.database.genres().get(self.popup_genre_list_state.selected().unwrap()).unwrap().clone();
+        Ok(())
+    }
+    
 }
 
 async fn populate_album_in_db(server: &mut Server, music_database: &mut MusicDatabase, id: &str) -> AppResult<()> {

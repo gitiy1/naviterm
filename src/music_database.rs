@@ -2,27 +2,15 @@ use std::collections::HashMap;
 use crate::model::album::Album;
 use crate::model::song::Song;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MusicDatabase {
     recent_albums: Vec<Album>,
     most_listened_albums: Vec<Album>,
     alphabetical_albums: Vec<Album>,
+    filtered_albums: Vec<String>,
     genres: Vec<String>,
     albums: HashMap<String,Album>,
     songs: HashMap<String,Song>,
-}
-
-impl Default for MusicDatabase {
-    fn default() -> Self {
-        Self {
-            recent_albums: vec![],
-            most_listened_albums: vec![],
-            alphabetical_albums: vec![],
-            genres: vec![],
-            albums: HashMap::new(),
-            songs: HashMap::new()
-        }
-    }
 }
 
 impl MusicDatabase {
@@ -41,9 +29,17 @@ impl MusicDatabase {
     pub fn alphabetical_list_albums(&self) -> &Vec<Album> {
         &self.alphabetical_albums
     }
-    
+
+    pub fn filtered_albums(&self) -> &Vec<String> {
+        &self.filtered_albums
+    }
+
     pub fn set_recent_albums(&mut self, recent_albums: Vec<Album>) {
         self.recent_albums = recent_albums;
+    }
+
+    pub fn set_filtered_albums(&mut self, filtered_albums: Vec<String>) {
+        self.filtered_albums = filtered_albums;
     }
 
     pub fn set_most_listened_albums(&mut self, most_listened_albums: Vec<Album>) {

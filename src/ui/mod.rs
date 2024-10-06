@@ -7,3 +7,4 @@ mod popup_add_to;
 mod tab_queue;
 mod footer_now_playing;
 mod tab_albums;
+mod popup_genre_filter;
