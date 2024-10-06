@@ -38,7 +38,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     }
     else {
         let items = recent_albums.iter().enumerate()
-            .map(|(_i, album)| {
+            .map(|(_i, album_id)| {
+                let album = app.database.get_album(album_id);
                 let album_item = Text::from(vec![
                     Line::from(vec![
                         Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },
@@ -65,7 +66,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     }
     else {
         let items = most_listened_albums.iter().enumerate()
-            .map(|(_i, album)| {
+            .map(|(_i, album_id)| {
+                let album = app.database.get_album(album_id);
                 let album_item = Text::from(vec![
                     Line::from(vec![
                         Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },

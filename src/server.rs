@@ -127,22 +127,22 @@ impl Server{
         Ok(genres_list)
     }
 
-    pub async fn get_recent_albums(&mut self) -> AppResult<Vec<Album>> {
+    pub async fn get_recent_albums(&mut self) -> AppResult<Vec<String>> {
         
         let url = self.build_url(SubsonicOperation::GetAlbumListRecent, vec![SubsonicParameter::None]);
         let response_text = self.make_request_text(url).await.unwrap();
         
-        let album_list = Parser::parse_album_list(response_text).unwrap();
+        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
         
         Ok(album_list)
     }
 
-    pub async fn get_most_listened_albums(&mut self) -> AppResult<Vec<Album>> {
+    pub async fn get_most_listened_albums(&mut self) -> AppResult<Vec<String>> {
 
         let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, vec![SubsonicParameter::None]);
         let response_text = self.make_request_text(url).await.unwrap();
 
-        let album_list = Parser::parse_album_list(response_text).unwrap();
+        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
 
         Ok(album_list)
     }
@@ -169,17 +169,17 @@ impl Server{
         Ok(album_list)
     }
 
-    pub async fn get_album(&mut self, album_id: &str) -> AppResult<(Album, Vec<Song>)> {
+    pub async fn get_album_songs(&mut self, album_id: &str) -> AppResult<Vec<Song>> {
 
         let parameters = vec![SubsonicParameter::AlbumId(String::from(album_id))];
         let url = self.build_url(SubsonicOperation::GetAlbum, parameters);
         let response_text = self.make_request_text(url).await.unwrap();
 
-        let parsed_media= Parser::parse_album(response_text);
+        let parsed_media= Parser::parse_album_songs(response_text);
 
         Ok(parsed_media)
     }
-    
+
     pub fn get_song_url(&mut self, id: String) -> String {
         self.build_url(SubsonicOperation::DownloadSong, vec![SubsonicParameter::SongId(id)])
     }

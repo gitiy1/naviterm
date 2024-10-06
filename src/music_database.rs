@@ -4,9 +4,9 @@ use crate::model::song::Song;
 
 #[derive(Debug, Default)]
 pub struct MusicDatabase {
-    recent_albums: Vec<Album>,
-    most_listened_albums: Vec<Album>,
-    alphabetical_albums: Vec<Album>,
+    recent_albums: Vec<String>,
+    most_listened_albums: Vec<String>,
+    alphabetical_albums: Vec<String>,
     filtered_albums: Vec<String>,
     genres: Vec<String>,
     albums: HashMap<String,Album>,
@@ -18,15 +18,15 @@ impl MusicDatabase {
         Self::default()
     }
 
-    pub fn recent_albums(&self) -> &Vec<Album> {
+    pub fn recent_albums(&self) -> &Vec<String> {
         &self.recent_albums
     }
 
-    pub fn most_listened_albums(&self) -> &Vec<Album> {
+    pub fn most_listened_albums(&self) -> &Vec<String> {
         &self.most_listened_albums
     }
 
-    pub fn alphabetical_list_albums(&self) -> &Vec<Album> {
+    pub fn alphabetical_list_albums(&self) -> &Vec<String> {
         &self.alphabetical_albums
     }
 
@@ -34,7 +34,7 @@ impl MusicDatabase {
         &self.filtered_albums
     }
 
-    pub fn set_recent_albums(&mut self, recent_albums: Vec<Album>) {
+    pub fn set_recent_albums(&mut self, recent_albums: Vec<String>) {
         self.recent_albums = recent_albums;
     }
 
@@ -42,11 +42,11 @@ impl MusicDatabase {
         self.filtered_albums = filtered_albums;
     }
 
-    pub fn set_most_listened_albums(&mut self, most_listened_albums: Vec<Album>) {
+    pub fn set_most_listened_albums(&mut self, most_listened_albums: Vec<String>) {
         self.most_listened_albums = most_listened_albums;
     }
 
-    pub fn set_alphabetical_albums(&mut self, alphabetical_list: Vec<Album>) {
+    pub fn set_alphabetical_albums(&mut self, alphabetical_list: Vec<String>) {
         self.alphabetical_albums = alphabetical_list;
     }
     
@@ -58,8 +58,16 @@ impl MusicDatabase {
         self.albums.get(id).unwrap()
     }
     
+    pub fn set_album_songs(&mut self, id: &str, songs: Vec<String>) {
+        self.albums.get_mut(id).unwrap().set_songs(songs);
+    }
+    
     pub fn contains_album(&self, id: &str) -> bool {
         self.albums.contains_key(id)
+    }
+
+    pub fn contains_complete_album(&self, id: &str) -> bool {
+        !self.albums.get(id).unwrap().songs().is_empty()
     }
 
     pub fn insert_song(&mut self, id: String, song: Song) {

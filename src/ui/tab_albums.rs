@@ -56,7 +56,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
 
     let mut album_vector = Vec::new();
     if app.database.filtered_albums().is_empty() {
-        for album in app.database.alphabetical_list_albums() {
+        for album_id in app.database.alphabetical_list_albums() {
+            let album = app.database.get_album(album_id);
             let album_item = Text::from(vec![
                 Line::from(vec![
                     Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },
