@@ -81,6 +81,9 @@ pub struct App {
     pub album_year_filter: String,
     pub album_sorting_mode: String,
     pub album_sorting_direction: String,
+    pub recent_list_complete: bool,
+    pub most_listened_list_complete: bool,
+    pub filtered_list_complete: bool,
 }
 
 #[derive(Default, Debug)]
@@ -126,7 +129,10 @@ impl Default for App {
             album_genre_filter: String::from("any"),
             album_year_filter: String::from("any"),
             album_sorting_mode: String::from("alphabetically"),
-            album_sorting_direction: String::from("descending")
+            album_sorting_direction: String::from("descending"),
+            recent_list_complete: false,
+            most_listened_list_complete: false,
+            filtered_list_complete: false,
         }
     }
 }
@@ -181,7 +187,7 @@ impl App {
         let most_listened = self.server.get_most_listened_albums().await?;
         self.get_complete_albums_and_populate_db(&most_listened).await?;
         self.database.set_most_listened_albums(most_listened);
-        let list_alphabetical = self.server.get_album_list_alphabetical().await?;
+        let list_alphabetical = self.server.get_album_list_alphabetical(0).await?;
         self.get_complete_albums_and_populate_db(&list_alphabetical).await?;
         self.database.set_filtered_albums(list_alphabetical);
         self.database.set_genres(self.server.get_genres().await?);
@@ -194,7 +200,9 @@ impl App {
             for song in songs {
                 self.database.insert_song(song.id().to_string(),song);
             }
-            self.database.insert_album(album_id.to_string(),album);
+            if !self.database.contains_album(album_id) {
+                self.database.insert_album(album_id.to_string(),album);
+            }
         }
         Ok(())
     }
@@ -234,7 +242,7 @@ impl App {
     }
 
 
-    pub fn select_next_list(&mut self) -> AppResult<()> {
+    pub async fn select_next_list(&mut self) -> AppResult<()> {
         match self.current_screen {
             CurrentScreen::Home => {
                 match self.home_pane {
@@ -243,13 +251,28 @@ impl App {
                 }
             }
             CurrentScreen::Albums => {
-                self.album_state.select_next()
+                self.album_state.select_next();
+                if self.album_state.selected().unwrap() > self.database.filtered_albums().len() - 5
+                    && !self.filtered_list_complete {
+                    self.expand_filtered_list().await?;
+                }
             }
             CurrentScreen::Playlists => {}
             CurrentScreen::Artists => {}
             CurrentScreen::Queue => {}
         }
         
+        Ok(())
+    }
+    
+    async fn expand_filtered_list(&mut self) -> AppResult<()>{
+        if self.album_genre_filter == "any" { 
+            if self.album_sorting_mode == "alphabetically" {
+                let list = self.server.get_album_list_alphabetical(self.database.filtered_albums().len()).await?;
+                self.get_complete_albums_and_populate_db(&list).await?;
+                self.database.expand_filtered_albums(list);
+            }
+        }
         Ok(())
     }
 

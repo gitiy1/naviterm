@@ -147,9 +147,9 @@ impl Server{
         Ok(album_list)
     }
 
-    pub async fn get_album_list_alphabetical(&mut self) -> AppResult<Vec<String>> {
+    pub async fn get_album_list_alphabetical(&mut self, offset: usize) -> AppResult<Vec<String>> {
 
-        let parameters = vec![SubsonicParameter::Size(10),SubsonicParameter::Offset(0)];
+        let parameters = vec![SubsonicParameter::Size(10),SubsonicParameter::Offset(offset)];
         let url = self.build_url(SubsonicOperation::GetAlbumListAlphabetical, parameters);
         let response_text = self.make_request_text(url).await.unwrap();
 

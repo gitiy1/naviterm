@@ -16,7 +16,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 KeyCode::Char('2') => { app.current_screen = CurrentScreen::Albums; }
                 KeyCode::Char('5') => { app.current_screen = CurrentScreen::Queue; }
                 KeyCode::F(1) => { app.current_popup = Popup::ConnectionTest; }
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_list().await?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
                 KeyCode::Char('i') => {
                     app.get_current_album_information().await?;
@@ -39,7 +39,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
             CurrentScreen::Albums => match key_event.code {
                 KeyCode::Char('1') => { app.current_screen = CurrentScreen::Home; }
                 KeyCode::Char('5') => { app.current_screen = CurrentScreen::Queue; }
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_list().await?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
                 KeyCode::Char('i') => {
                     app.get_current_album_information().await?;

@@ -33,6 +33,10 @@ impl MusicDatabase {
     pub fn filtered_albums(&self) -> &Vec<String> {
         &self.filtered_albums
     }
+    
+    pub fn expand_filtered_albums(&mut self, mut list: Vec<String>) {
+        self.filtered_albums.append(&mut list);
+    }
 
     pub fn set_recent_albums(&mut self, recent_albums: Vec<String>) {
         self.recent_albums = recent_albums;
