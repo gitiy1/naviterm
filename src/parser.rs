@@ -46,7 +46,8 @@ impl Parser {
 
         let list = root.get_child("genres", Self::NAMESPACE).unwrap();
         for genre in list.children() {
-                genres_list.push(genre.text());
+                let chars = ISO_8859_1.encode(genre.text().as_str(), EncoderTrap::Ignore).unwrap();
+                genres_list.push(String::from_utf8(chars).unwrap());
         }
         Ok(genres_list)
     }

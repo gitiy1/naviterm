@@ -210,7 +210,12 @@ impl App {
                 }
             }
             CurrentScreen::Albums => {
-                self.database.alphabetical_list_albums().get(self.album_state.selected().unwrap()).unwrap().clone()
+                if self.database.filtered_albums().is_empty() {
+                    self.database.alphabetical_list_albums().get(self.album_state.selected().unwrap()).unwrap().clone()
+                }
+                else {
+                    self.database.filtered_albums().get(self.album_state.selected().unwrap()).unwrap().clone()
+                }
             }
             _ => {"".to_string()}
         };
@@ -399,7 +404,12 @@ impl App {
             },
             CurrentScreen::Albums => {
                 selected_album_index = self.album_state.selected().unwrap();
-                self.database.alphabetical_list_albums()
+                if self.database.filtered_albums().is_empty() {
+                    self.database.alphabetical_list_albums()
+                }
+                else {
+                    self.database.filtered_albums()
+                }
             }
             _ => {panic!("Should not reach")}
         };
@@ -648,6 +658,7 @@ impl App {
 
     pub fn set_genre_filter(&mut self) -> AppResult<()> {
         self.album_genre_filter = self.database.genres().get(self.popup_genre_list_state.selected().unwrap()).unwrap().clone();
+        self.process_filtered_album_list();
         Ok(())
     }
 
@@ -662,5 +673,16 @@ impl App {
 
         Ok(())
     }
-    
+
+    fn process_filtered_album_list(&mut self) {
+        let mut new_list: Vec<String> = vec![];
+        
+        for album_id in self.database.alphabetical_list_albums() {
+            if self.database.get_album(album_id).genres().contains(&self.album_genre_filter) {
+                new_list.push(album_id.to_string());
+            }
+        }
+        
+        self.database.set_filtered_albums(new_list);
+    }
 }
