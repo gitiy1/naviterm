@@ -183,11 +183,11 @@ impl App {
         self.database.set_most_listened_albums(most_listened);
         let list_alphabetical = self.server.get_album_list_alphabetical().await?;
         self.get_complete_albums_and_populate_db(&list_alphabetical).await?;
-        self.database.set_alphabetical_albums(list_alphabetical);
+        self.database.set_filtered_albums(list_alphabetical);
         self.database.set_genres(self.server.get_genres().await?);
         Ok(())
     }
-    
+
     async fn get_complete_albums_and_populate_db(&mut self, list: &Vec<String>) -> AppResult<()> {
         for album_id in list {
             let (album,songs) = self.server.get_complete_album(album_id).await?;
@@ -221,12 +221,7 @@ impl App {
                 }
             }
             CurrentScreen::Albums => {
-                if self.database.filtered_albums().is_empty() {
-                    self.database.alphabetical_list_albums().get(self.album_state.selected().unwrap()).unwrap().clone()
-                }
-                else {
-                    self.database.filtered_albums().get(self.album_state.selected().unwrap()).unwrap().clone()
-                }
+                self.database.filtered_albums().get(self.album_state.selected().unwrap()).unwrap().clone()
             }
             _ => {"".to_string()}
         };
@@ -415,12 +410,7 @@ impl App {
             },
             CurrentScreen::Albums => {
                 selected_album_index = self.album_state.selected().unwrap();
-                if self.database.filtered_albums().is_empty() {
-                    self.database.alphabetical_list_albums()
-                }
-                else {
-                    self.database.filtered_albums()
-                }
+                self.database.filtered_albums()
             }
             _ => {panic!("Should not reach")}
         };

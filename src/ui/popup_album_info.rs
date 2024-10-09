@@ -30,12 +30,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             }
         },
         CurrentScreen::Albums => {
-            if app.database.filtered_albums().is_empty() {
-                app.database.get_album(app.database.alphabetical_list_albums().get(app.album_state.selected().unwrap()).unwrap())
-            }
-            else {
-                app.database.get_album(app.database.filtered_albums().get(app.album_state.selected().unwrap()).unwrap())
-            }
+            app.database.get_album(app.database.filtered_albums().get(app.album_state.selected().unwrap()).unwrap())
         }
         _ => {panic!("Should not reach")}
     };

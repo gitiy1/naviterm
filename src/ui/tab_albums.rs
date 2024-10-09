@@ -55,26 +55,6 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         .border_type(Rounded).style(Style::default());
 
     let mut album_vector = Vec::new();
-    if app.database.filtered_albums().is_empty() {
-        for album_id in app.database.alphabetical_list_albums() {
-            let album = app.database.get_album(album_id);
-            let album_item = Text::from(vec![
-                Line::from(vec![
-                    Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },
-                    Span { content: " from ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                    Span { content: album.artist().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                ]),
-                Line::from(vec![
-                    Span { content: album.genres().join(", ").into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                    Span { content: ", ".into(), style: Style::default() },
-                    Span { content: album.song_count().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                    Span { content: " songs".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                ])
-            ]);
-            album_vector.push(album_item);
-        }
-    }
-    else { 
         for album_id in app.database.filtered_albums() {
             let album_item = Text::from(vec![
                 Line::from(vec![
@@ -90,7 +70,6 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 ])
             ]);
             album_vector.push(album_item);
-        }
     }
     
     let list = List::new(album_vector).block(results_block).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);
