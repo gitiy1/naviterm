@@ -147,7 +147,18 @@ impl Server{
         Ok(album_list)
     }
 
-    pub async fn get_album_list_alphabetical(&mut self) -> AppResult<Vec<Album>> {
+    pub async fn get_album_list_alphabetical(&mut self) -> AppResult<Vec<String>> {
+
+        let parameters = vec![SubsonicParameter::Size(10),SubsonicParameter::Offset(0)];
+        let url = self.build_url(SubsonicOperation::GetAlbumListAlphabetical, parameters);
+        let response_text = self.make_request_text(url).await.unwrap();
+
+        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
+
+        Ok(album_list)
+    }
+
+    pub async fn get_album_list_alphabetical_complete(&mut self) -> AppResult<Vec<Album>> {
 
         let mut stop = false;
         let mut offset = 0;
@@ -167,6 +178,16 @@ impl Server{
             
 
         Ok(album_list)
+    }
+
+    pub async fn get_complete_album(&mut self, album_id: &str) -> AppResult<(Album, Vec<Song>)> {
+
+        let url = self.build_url(SubsonicOperation::GetAlbum, vec![SubsonicParameter::AlbumId(album_id.to_string())]);
+        let response_text = self.make_request_text(url).await.unwrap();
+        
+        let parsed_media= Parser::parse_album(response_text);
+
+        Ok(parsed_media)
     }
 
     pub async fn get_album_songs(&mut self, album_id: &str) -> AppResult<Vec<Song>> {

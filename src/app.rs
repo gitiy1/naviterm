@@ -175,16 +175,27 @@ impl App {
     }
 
     pub async fn populate_db(&mut self) -> AppResult<()> {
-        self.database.set_recent_albums(self.server.get_recent_albums().await?);
-        self.database.set_most_listened_albums(self.server.get_most_listened_albums().await?);
-        let mut alphabetical_albums_list: Vec<String> = Vec::new();
-        for album in self.server.get_album_list_alphabetical().await.unwrap() {
-            let id = album.id().to_string();
-            self.database.insert_album(id.clone(), album);
-            alphabetical_albums_list.push(id);
-        }
-        self.database.set_alphabetical_albums(alphabetical_albums_list);
+        let recents = self.server.get_recent_albums().await?;
+        self.get_complete_albums_and_populate_db(&recents).await?;
+        self.database.set_recent_albums(recents);
+        let most_listened = self.server.get_most_listened_albums().await?;
+        self.get_complete_albums_and_populate_db(&most_listened).await?;
+        self.database.set_most_listened_albums(most_listened);
+        let list_alphabetical = self.server.get_album_list_alphabetical().await?;
+        self.get_complete_albums_and_populate_db(&list_alphabetical).await?;
+        self.database.set_alphabetical_albums(list_alphabetical);
         self.database.set_genres(self.server.get_genres().await?);
+        Ok(())
+    }
+    
+    async fn get_complete_albums_and_populate_db(&mut self, list: &Vec<String>) -> AppResult<()> {
+        for album_id in list {
+            let (album,songs) = self.server.get_complete_album(album_id).await?;
+            for song in songs {
+                self.database.insert_song(song.id().to_string(),song);
+            }
+            self.database.insert_album(album_id.to_string(),album);
+        }
         Ok(())
     }
 
