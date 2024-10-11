@@ -182,11 +182,19 @@ impl App {
 
     pub async fn populate_db(&mut self) -> AppResult<()> {
         let recents = self.server.get_recent_albums().await?;
-        self.get_complete_albums_and_populate_db(&recents).await?;
-        self.database.set_recent_albums(recents);
+        let mut recents_ids = vec![];
+        for album in recents {
+            recents_ids.push(album.id().to_string());
+            self.database.insert_album(album.id().to_string(), album);
+        }
+        self.database.set_recent_albums(recents_ids);
         let most_listened = self.server.get_most_listened_albums().await?;
-        self.get_complete_albums_and_populate_db(&most_listened).await?;
-        self.database.set_most_listened_albums(most_listened);
+        let mut most_listened_ids = vec![];
+        for album in most_listened {
+            most_listened_ids.push(album.id().to_string());
+            self.database.insert_album(album.id().to_string(), album);
+        }
+        self.database.set_most_listened_albums(most_listened_ids);
         let list_alphabetical = self.server.get_album_list_alphabetical(0).await?;
         self.get_complete_albums_and_populate_db(&list_alphabetical).await?;
         self.database.set_filtered_albums(list_alphabetical);
@@ -202,6 +210,10 @@ impl App {
             }
             if !self.database.contains_album(album_id) {
                 self.database.insert_album(album_id.to_string(),album);
+            }
+            else if !self.database.contains_complete_album(album_id) { 
+                self.database.delete_album(album_id.to_string());
+                self.database.insert_album(album_id.to_string(), album);
             }
         }
         Ok(())

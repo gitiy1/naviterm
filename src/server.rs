@@ -127,22 +127,22 @@ impl Server{
         Ok(genres_list)
     }
 
-    pub async fn get_recent_albums(&mut self) -> AppResult<Vec<String>> {
+    pub async fn get_recent_albums(&mut self) -> AppResult<Vec<Album>> {
         
         let url = self.build_url(SubsonicOperation::GetAlbumListRecent, vec![SubsonicParameter::None]);
         let response_text = self.make_request_text(url).await.unwrap();
         
-        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
+        let album_list = Parser::parse_album_list(response_text).unwrap();
         
         Ok(album_list)
     }
 
-    pub async fn get_most_listened_albums(&mut self) -> AppResult<Vec<String>> {
+    pub async fn get_most_listened_albums(&mut self) -> AppResult<Vec<Album>> {
 
         let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, vec![SubsonicParameter::None]);
         let response_text = self.make_request_text(url).await.unwrap();
 
-        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
+        let album_list = Parser::parse_album_list(response_text).unwrap();
 
         Ok(album_list)
     }

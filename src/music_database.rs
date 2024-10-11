@@ -58,6 +58,10 @@ impl MusicDatabase {
         self.albums.insert(id, album);
     }
     
+    pub fn delete_album(&mut self, id: String) {
+        self.albums.remove(&id);
+    }
+    
     pub fn get_album(&self, id: &str) -> &Album {
         self.albums.get(id).unwrap()
     }

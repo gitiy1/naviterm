@@ -41,14 +41,11 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .map(|(_i, album_id)| {
                 let album = app.database.get_album(album_id);
                 let album_item = Text::from(vec![
+                    Line::from(Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) }),
                     Line::from(vec![
-                        Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },
-                        Span { content: " from ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                        Span { content: "from ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                         Span { content: album.artist().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                    ]),
-                    Line::from(vec![
-                        Span { content: album.genres().join(", ").into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                        Span { content: ", ".into(), style: Style::default() },
+                        Span { content: ", ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                         Span { content: album.song_count().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                         Span { content: " songs".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                     ])
@@ -69,14 +66,11 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .map(|(_i, album_id)| {
                 let album = app.database.get_album(album_id);
                 let album_item = Text::from(vec![
+                    Line::from(Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) }),
                     Line::from(vec![
-                        Span { content: album.name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },
-                        Span { content: " from ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
+                        Span { content: "from ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                         Span { content: album.artist().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                    ]),
-                    Line::from(vec![
-                        Span { content: album.genres().join(", ").into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
-                        Span { content: ", ".into(), style: Style::default() },
+                        Span { content: ", ".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                         Span { content: album.song_count().into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                         Span { content: " songs".into(), style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC) },
                     ])
