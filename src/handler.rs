@@ -124,7 +124,8 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
                 KeyCode::Enter => { 
-                    app.set_genre_filter()?;
+                    app.album_state.select_first();
+                    app.set_genre_filter().await?;
                     app.current_popup = Popup::None;
                 }
                 _ => {}
