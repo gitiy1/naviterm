@@ -16,10 +16,11 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         Constraint::Length(1),
     ]).split(area);
 
-    let items = app.database.genres().iter().enumerate()
-        .map(|(_i, genre)| {
-            ListItem::from(Text::from(genre.clone()))
-        });
+    let mut items = vec![ListItem::from(Text::from("Any"))];
+    for genre in app.database.genres() {
+        items.push(ListItem::from(Text::from(genre.clone())))
+    }
+    
 
     if app.popup_genre_list_state.selected().is_none() { app.popup_genre_list_state.select_first() }
     let popup_list = List::new(items).style(Style::default().fg(Color::default())).highlight_symbol("-> ").highlight_spacing(HighlightSpacing::Always);

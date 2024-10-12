@@ -709,7 +709,11 @@ impl App {
     }
 
     pub async fn set_genre_filter(&mut self) -> AppResult<()> {
-        self.album_genre_filter = self.database.genres().get(self.popup_genre_list_state.selected().unwrap()).unwrap().clone();
+        self.album_genre_filter = if self.popup_genre_list_state.selected().unwrap() == 0 { 
+            "any".to_string()
+        } else {
+            self.database.genres().get(self.popup_genre_list_state.selected().unwrap() - 1).unwrap().clone()
+        };
         self.process_filtered_album_list().await?;
         Ok(())
     }
@@ -727,7 +731,12 @@ impl App {
     }
 
     async fn process_filtered_album_list(&mut self) -> AppResult<()> {
-        let new_filtered_list = self.server.get_album_list_by_genre(0, self.album_genre_filter.clone(), false).await?; 
+        let new_filtered_list = if self.album_genre_filter == "any" {
+            self.server.get_album_list_alphabetical(0).await?
+        }
+        else {
+            self.server.get_album_list_by_genre(0, self.album_genre_filter.clone(), false).await?
+        };
         self.get_complete_albums_and_populate_db(&new_filtered_list).await?;
         self.database.set_filtered_albums(new_filtered_list);
         self.filtered_list_complete = false;
