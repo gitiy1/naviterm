@@ -53,9 +53,19 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let results_block = Block::bordered()
         .title(Line::raw("Albums").left_aligned())
         .border_type(Rounded).style(Style::default());
+    
+    let list = if app.album_genre_filter == "any" {
+        if app.album_sorting_mode == "frequent" {
+            app.database.most_listened_albums()
+        } else {
+            app.database.alphabetical_list_albums()
+        }
+    } else { 
+        app.database.filtered_albums()
+    };
 
     let mut album_vector = Vec::new();
-        for album_id in app.database.filtered_albums() {
+        for album_id in list {
             let album_item = Text::from(vec![
                 Line::from(vec![
                     Span { content: app.database.get_album(album_id).name().into(), style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD) },

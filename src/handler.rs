@@ -56,6 +56,15 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 KeyCode::Char('e') => {
                     app.current_popup = Popup::GenreFilter;
                 },
+                KeyCode::Char('m') => {
+                    app.album_sorting_mode = if app.album_sorting_mode == "alphabetically" {
+                        "frequent".to_string()
+                    } else {
+                        "alphabetically".to_string()
+                    };
+                    app.album_state.select_first();
+                    app.process_filtered_album_list().await?;
+                },
                 _ => {}
             }
             CurrentScreen::Playlists => {}
@@ -125,7 +134,8 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
                 KeyCode::Enter => { 
                     app.album_state.select_first();
-                    app.set_genre_filter().await?;
+                    app.set_genre_filter()?;
+                    app.process_filtered_album_list().await?;
                     app.current_popup = Popup::None;
                 }
                 _ => {}

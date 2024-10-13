@@ -11,7 +11,8 @@ use crate::parser::Parser;
 use crate::model::album::Album;
 use crate::model::song::Song;
 
-enum SubsonicOperation {
+#[derive(Clone, Copy)]
+pub enum SubsonicOperation {
     Ping,
     GetGenres,
     GetAlbumListRecent,
@@ -131,31 +132,20 @@ impl Server{
         Ok(genres_list)
     }
 
-    pub async fn get_recent_albums(&mut self) -> AppResult<Vec<Album>> {
+    pub async fn get_recent_albums(&mut self) -> AppResult<Vec<String>> {
         
         let url = self.build_url(SubsonicOperation::GetAlbumListRecent, vec![SubsonicParameter::None]);
         let response_text = self.make_request_text(url).await.unwrap();
         
-        let album_list = Parser::parse_album_list(response_text).unwrap();
+        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
         
         Ok(album_list)
     }
 
-    pub async fn get_most_listened_albums(&mut self) -> AppResult<Vec<Album>> {
+    pub async fn get_most_listened_albums(&mut self) -> AppResult<Vec<String>> {
 
-        let parameters = vec![SubsonicParameter::Size(10),SubsonicParameter::Offset(0)];
+        let parameters = vec![SubsonicParameter::Size(20),SubsonicParameter::Offset(0)];
         let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, parameters);
-        let response_text = self.make_request_text(url).await.unwrap();
-
-        let album_list = Parser::parse_album_list(response_text).unwrap();
-
-        Ok(album_list)
-    }
-
-    pub async fn get_album_list_alphabetical(&mut self, offset: usize) -> AppResult<Vec<String>> {
-
-        let parameters = vec![SubsonicParameter::Size(10),SubsonicParameter::Offset(offset)];
-        let url = self.build_url(SubsonicOperation::GetAlbumListAlphabetical, parameters);
         let response_text = self.make_request_text(url).await.unwrap();
 
         let album_list = Parser::parse_album_list_simple(response_text).unwrap();
@@ -163,7 +153,18 @@ impl Server{
         Ok(album_list)
     }
 
-    pub async fn get_album_list_by_most_listened(&mut self, offset: usize) -> AppResult<Vec<String>> {
+    pub async fn get_most_listened_albums_ids(&mut self, offset: usize) -> AppResult<Vec<String>> {
+
+        let parameters = vec![SubsonicParameter::Size(10),SubsonicParameter::Offset(offset)];
+        let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, parameters);
+        let response_text = self.make_request_text(url).await.unwrap();
+
+        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
+
+        Ok(album_list)
+    }
+
+    pub async fn get_album_list_alphabetical(&mut self, offset: usize) -> AppResult<Vec<String>> {
 
         let parameters = vec![SubsonicParameter::Size(10),SubsonicParameter::Offset(offset)];
         let url = self.build_url(SubsonicOperation::GetAlbumListAlphabetical, parameters);
@@ -189,24 +190,23 @@ impl Server{
         Ok(album_list)
     }
 
-    pub async fn get_album_list_alphabetical_complete(&mut self) -> AppResult<Vec<Album>> {
+    pub async fn get_album_list_complete(&mut self, operation: SubsonicOperation) -> AppResult<Vec<String>> {
 
         let mut stop = false;
         let mut offset = 0;
 
-        let mut album_list: Vec<Album> = vec![];
+        let mut album_list: Vec<String> = vec![];
         while !stop {
             let parameters = vec![SubsonicParameter::Size(500),SubsonicParameter::Offset(offset)];
-            let url = self.build_url(SubsonicOperation::GetAlbumListAlphabetical, parameters);
+            let url = self.build_url(operation, parameters);
             let response_text = self.make_request_text(url).await.unwrap();
-            let mut partial_album_list: Vec<Album> = Parser::parse_album_list(response_text).unwrap();
+            let mut partial_album_list: Vec<String> = Parser::parse_album_list_simple(response_text).unwrap();
             stop = partial_album_list.is_empty();
             if !stop {
                 album_list.append(&mut partial_album_list);
                 offset += 500;
             }
         }
-            
 
         Ok(album_list)
     }
@@ -301,7 +301,7 @@ impl Server{
             }
             ,
             SubsonicOperation::GetAlbumListByGenreAndMostListened => {
-                format!("{}/navidrome/rest/getAlbumList.view?type=byGenre&type=frequent&\
+                format!("{}/navidrome/rest/getAlbumList.view?type=frequent&type=byGenre&\
                     size={}&offset={}&genre={}&u={}&t={}&s={}&v=0.1&c=naviterm",
                         self.server_address, parameters[0], parameters[1], parameters[2], self.user, self.token, self.salt)
             }

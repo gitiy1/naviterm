@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::error;
 
 use config::Config;
-use log::debug;
+use log::{debug, info};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use ratatui::widgets::ListState;
@@ -13,7 +13,7 @@ use crate::event::Event::Dbus;
 use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
-use crate::server::Server;
+use crate::server::{Server, SubsonicOperation};
 
 /// Enum with applications screens
 #[derive(Debug)]
@@ -83,7 +83,6 @@ pub struct App {
     pub album_sorting_direction: String,
     pub recent_list_complete: bool,
     pub most_listened_list_complete: bool,
-    pub filtered_list_complete: bool,
 }
 
 #[derive(Default, Debug)]
@@ -132,7 +131,6 @@ impl Default for App {
             album_sorting_direction: String::from("descending"),
             recent_list_complete: false,
             most_listened_list_complete: false,
-            filtered_list_complete: false,
         }
     }
 }
@@ -181,41 +179,34 @@ impl App {
     }
 
     pub async fn populate_db(&mut self) -> AppResult<()> {
-        let recents = self.server.get_recent_albums().await?;
-        let mut recents_ids = vec![];
-        for album in recents {
-            recents_ids.push(album.id().to_string());
-            self.database.insert_album(album.id().to_string(), album);
-        }
-        self.database.set_recent_albums(recents_ids);
-        let most_listened = self.server.get_most_listened_albums().await?;
-        let mut most_listened_ids = vec![];
-        for album in most_listened {
-            most_listened_ids.push(album.id().to_string());
-            self.database.insert_album(album.id().to_string(), album);
-        }
-        self.database.set_most_listened_albums(most_listened_ids);
-        let list_alphabetical = self.server.get_album_list_alphabetical(0).await?;
-        self.get_complete_albums_and_populate_db(&list_alphabetical).await?;
-        self.database.set_filtered_albums(list_alphabetical);
+        info!("Starting database population...");
+        let alphabetical_albums_list = self.server.get_album_list_complete(SubsonicOperation::GetAlbumListAlphabetical).await.unwrap();
+        self.get_complete_albums_and_populate_db(&alphabetical_albums_list).await?;
+        self.database.set_alphabetical_albums(alphabetical_albums_list);
+        self.database.set_recent_albums(self.server.get_recent_albums().await?);
+        self.database.set_most_listened_albums(self.server.get_album_list_complete(SubsonicOperation::GetAlbumListMostListened).await?);
         self.database.set_genres(self.server.get_genres().await?);
         Ok(())
     }
 
-    async fn get_complete_albums_and_populate_db(&mut self, list: &Vec<String>) -> AppResult<()> {
-        for album_id in list {
-            let (album,songs) = self.server.get_complete_album(album_id).await?;
-            for song in songs {
-                if !self.database.contains_song(song.id()) {
-                    self.database.insert_song(song.id().to_string(),song);
+    async fn get_complete_albums_and_populate_db(&mut self, list: &[String]) -> AppResult<()> {
+        let list_length = list.len();
+        for (i, album_id) in list.iter().enumerate() {
+            debug!("Fetching album ({}/{}): {}%\n", i, list_length, album_id);
+            if !self.database.contains_album(album_id) || !self.database.contains_complete_album(album_id) {
+                let (album,songs) = self.server.get_complete_album(album_id).await?;
+                for song in songs {
+                    if !self.database.contains_song(song.id()) {
+                        self.database.insert_song(song.id().to_string(),song);
+                    }
                 }
-            }
-            if !self.database.contains_album(album_id) {
-                self.database.insert_album(album_id.to_string(),album);
-            }
-            else if !self.database.contains_complete_album(album_id) {
-                self.database.delete_album(album_id.to_string());
-                self.database.insert_album(album_id.to_string(), album);
+                if !self.database.contains_album(album_id) {
+                    self.database.insert_album(album_id.to_string(),album);
+                }
+                else if !self.database.contains_complete_album(album_id) {
+                    self.database.delete_album(album_id.to_string());
+                    self.database.insert_album(album_id.to_string(), album);
+                }
             }
         }
         Ok(())
@@ -266,10 +257,6 @@ impl App {
             }
             CurrentScreen::Albums => {
                 self.album_state.select_next();
-                if self.album_state.selected().unwrap() > self.database.filtered_albums().len().saturating_sub(5)
-                    && !self.filtered_list_complete {
-                    self.expand_filtered_list().await?;
-                }
             }
             CurrentScreen::Playlists => {}
             CurrentScreen::Artists => {}
@@ -279,30 +266,6 @@ impl App {
         Ok(())
     }
     
-    async fn expand_filtered_list(&mut self) -> AppResult<()>{
-        if self.filtered_list_complete  { return Ok(()) }
-        if self.album_genre_filter == "any" { 
-            if self.album_sorting_mode == "alphabetically" {
-                let list = self.server.get_album_list_alphabetical(self.database.filtered_albums().len()).await?;
-                if !list.is_empty() {
-                    self.get_complete_albums_and_populate_db(&list).await?;
-                    self.database.expand_filtered_albums(list);
-                }
-                else { self.filtered_list_complete = true; }
-            }
-        }
-        else {
-            if self.album_sorting_mode == "alphabetically" {
-                let list = self.server.get_album_list_by_genre(self.database.filtered_albums().len(), self.album_genre_filter.to_string(), false).await?;
-                if !list.is_empty() {
-                    self.get_complete_albums_and_populate_db(&list).await?;
-                    self.database.expand_filtered_albums(list);
-                }
-                else { self.filtered_list_complete = true; }
-            }
-        }
-        Ok(())
-    }
 
     pub fn select_previous_list(&mut self) -> AppResult<()> {
         match self.current_screen {
@@ -708,13 +671,12 @@ impl App {
         Ok(())
     }
 
-    pub async fn set_genre_filter(&mut self) -> AppResult<()> {
+    pub fn set_genre_filter(&mut self) -> AppResult<()> {
         self.album_genre_filter = if self.popup_genre_list_state.selected().unwrap() == 0 { 
             "any".to_string()
         } else {
             self.database.genres().get(self.popup_genre_list_state.selected().unwrap() - 1).unwrap().clone()
         };
-        self.process_filtered_album_list().await?;
         Ok(())
     }
 
@@ -730,16 +692,21 @@ impl App {
         Ok(())
     }
 
-    async fn process_filtered_album_list(&mut self) -> AppResult<()> {
-        let new_filtered_list = if self.album_genre_filter == "any" {
-            self.server.get_album_list_alphabetical(0).await?
-        }
-        else {
-            self.server.get_album_list_by_genre(0, self.album_genre_filter.clone(), false).await?
+    pub async fn process_filtered_album_list(&mut self) -> AppResult<()> {
+        let mut new_filtered_list: Vec<String> = vec![];
+        let list = if self.album_sorting_mode == "frequent" {
+            self.database.most_listened_albums()
+        } else {
+            self.database.alphabetical_list_albums()
         };
-        self.get_complete_albums_and_populate_db(&new_filtered_list).await?;
+        if self.album_genre_filter != "any" {
+            for album_id in list {
+                if self.database.get_album(album_id).genres().contains(&self.album_genre_filter) {
+                    new_filtered_list.push(album_id.clone());
+                }
+            }
+        }
         self.database.set_filtered_albums(new_filtered_list);
-        self.filtered_list_complete = false;
         Ok(())
     }
 }
