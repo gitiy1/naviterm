@@ -179,7 +179,7 @@ impl App {
     }
 
     pub async fn populate_db(&mut self) -> AppResult<()> {
-        info!("Starting database population...");
+        info!("Starting database population...\n");
         let alphabetical_albums_list = self.server.get_album_list_complete(SubsonicOperation::GetAlbumListAlphabetical).await.unwrap();
         self.get_complete_albums_and_populate_db(&alphabetical_albums_list).await?;
         self.database.set_alphabetical_albums(alphabetical_albums_list);

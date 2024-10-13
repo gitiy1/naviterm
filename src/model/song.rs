@@ -1,4 +1,5 @@
-#[derive(Debug,Default)]
+use serde::{Deserialize, Serialize};
+#[derive(Serialize, Deserialize, Debug,Default)]
 pub struct Song {
     id: String,
     track: String,

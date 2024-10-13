@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use crate::model::album::Album;
 use crate::model::song::Song;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct MusicDatabase {
     recent_albums: Vec<String>,
     most_listened_albums: Vec<String>,

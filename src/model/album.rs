@@ -1,5 +1,6 @@
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug,Default)]
+#[derive(Serialize, Deserialize, Debug,Default)]
 pub struct Album {
     id: String,
     name: String,
