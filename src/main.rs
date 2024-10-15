@@ -10,10 +10,10 @@ use log4rs::append::file::FileAppender;
 use log4rs::Config as log4rsConfig;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
-use log::{error, info, LevelFilter};
+use log::{debug, error, info, LevelFilter};
 use naviterm::dbus;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
+use std::fs::{copy, File, remove_file};
 use std::io::{Read, Write};
 use std::path::Path;
 use naviterm::music_database::MusicDatabase;
@@ -22,10 +22,11 @@ use naviterm::music_database::MusicDatabase;
 async fn main() -> AppResult<()> {
     //Load config
     let home_dir = dirs::home_dir().unwrap();
-    let mut xdg_conf = home_dir.clone();
-    xdg_conf.push(".config/naviterm/config.ini");
+    let xdg_conf = home_dir.to_string_lossy().to_string() + "/.config/naviterm/";
+    let config_file = xdg_conf.clone()  + "config.ini";
+    let database_file = xdg_conf.clone() + "database.bin";
     let settings = Config::builder()
-        .add_source(config::File::with_name(xdg_conf.to_str().unwrap()))
+        .add_source(config::File::with_name(config_file.as_str()))
         .add_source(config::Environment::with_prefix("APP"))
         .build()
         .unwrap();
@@ -67,11 +68,11 @@ async fn main() -> AppResult<()> {
     app.renew_credentials()?;
     app.test_connection().await?;
     // Try to load database
-    match load_from_disk::<MusicDatabase>("database.bin") {
+    match load_from_disk::<MusicDatabase>(database_file.as_str()) {
         Ok(loaded_data) => app.database = loaded_data,
         Err(_e) => app.populate_db().await?,
     }
-    //return Ok(());
+    app.update_recent_albums().await?;
     app.initialize_player_stream()?;
     app.poll_player_events().await?;
     // Initialize the terminal user interface.
@@ -104,9 +105,9 @@ async fn main() -> AppResult<()> {
     // Exit the user interface.
     tui.exit()?;
     // Save music database if it does not exist
-    match save_to_disk(&app.database,"database.bin") {
+    match save_to_disk(&app.database, database_file.as_str()) {
         Ok(..) => info!("Database saved successfully!\n"),
-        Err(_e) => error!("Error saving database!\n")
+        Err(e) => error!("Error saving database: {}\n", e.to_string())
     }
     Ok(())
 }
@@ -114,14 +115,17 @@ async fn main() -> AppResult<()> {
 fn save_to_disk<T: Serialize>(data: &T, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Check if the file exists
     if Path::new(filename).exists() {
-        info!("Database already exists in disk\n");
-        return Ok(())
+        debug!("Database already exists in disk, backing up before saving\n");
+        copy(filename,"/tmp/database_back.bin")?;
+        remove_file(filename)?;
     }
     // Serialize the struct into a byte array
     let encoded: Vec<u8> = bincode::serialize(data)?;
     // Write the serialized data to a file
     let mut file = File::create(filename)?;
     file.write_all(&encoded)?;
+    // All went well, delete backup
+    remove_file("/tmp/database_back.bin")?;
     Ok(())
 }
 

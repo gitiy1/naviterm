@@ -183,9 +183,18 @@ impl App {
         let alphabetical_albums_list = self.server.get_album_list_complete(SubsonicOperation::GetAlbumListAlphabetical).await.unwrap();
         self.get_complete_albums_and_populate_db(&alphabetical_albums_list).await?;
         self.database.set_alphabetical_albums(alphabetical_albums_list);
-        self.database.set_recent_albums(self.server.get_recent_albums().await?);
-        self.database.set_most_listened_albums(self.server.get_album_list_complete(SubsonicOperation::GetAlbumListMostListened).await?);
+        self.update_most_listened_albums().await?;
         self.database.set_genres(self.server.get_genres().await?);
+        Ok(())
+    }
+    
+    pub async fn update_recent_albums(&mut self) -> AppResult<()> {
+        self.database.set_recent_albums(self.server.get_recent_albums().await?);
+        Ok(())
+    }
+
+    pub async fn update_most_listened_albums(&mut self) -> AppResult<()> {
+        self.database.set_most_listened_albums(self.server.get_album_list_complete(SubsonicOperation::GetAlbumListMostListened).await?);
         Ok(())
     }
 
