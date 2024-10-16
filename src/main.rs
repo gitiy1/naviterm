@@ -73,6 +73,7 @@ async fn main() -> AppResult<()> {
         Err(_e) => app.populate_db().await?,
     }
     app.update_recent_albums().await?;
+    app.process_filtered_album_list().await?;
     app.initialize_player_stream()?;
     app.poll_player_events().await?;
     // Initialize the terminal user interface.

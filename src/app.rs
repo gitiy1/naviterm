@@ -14,6 +14,7 @@ use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
 use crate::server::{Server, SubsonicOperation};
+use crate::constants;
 
 /// Enum with applications screens
 #[derive(Debug)]
@@ -717,6 +718,7 @@ impl App {
                 }
             }
         }
+        else { new_filtered_list = list.clone() }
         self.database.set_filtered_albums(new_filtered_list);
         Ok(())
     }
@@ -726,20 +728,20 @@ impl App {
             match self.current_screen {
                 CurrentScreen::Home => {
                     match self.home_pane {
-                        HomePane::Top => { self.home_top_state.select(Option::from(self.home_top_state.selected().unwrap() + 5)); }
-                        HomePane::Bottom => { self.home_bottom_state.select(Option::from(self.home_bottom_state.selected().unwrap() + 5)); }
+                        HomePane::Top => { self.home_top_state.select(Option::from(self.home_top_state.selected().unwrap() + constants::PAGE_SIZE)); }
+                        HomePane::Bottom => { self.home_bottom_state.select(Option::from(self.home_bottom_state.selected().unwrap() + constants::PAGE_SIZE)); }
                     }
                 }
-                CurrentScreen::Albums => { self.album_state.select(Option::from(self.album_state.selected().unwrap() + 5)); }
+                CurrentScreen::Albums => { self.album_state.select(Option::from(self.album_state.selected().unwrap() + constants::PAGE_SIZE)); }
                 CurrentScreen::Playlists => {}
                 CurrentScreen::Artists => {}
-                CurrentScreen::Queue => { self.queue_list_state.select(Option::from(self.queue_list_state.selected().unwrap() + 5)) }
+                CurrentScreen::Queue => { self.queue_list_state.select(Option::from(self.queue_list_state.selected().unwrap() + constants::PAGE_SIZE)) }
             }
         }
         else { 
             match self.current_popup {
-                Popup::GenreFilter => {self.popup_genre_list_state.select(Option::from(self.popup_genre_list_state.selected().unwrap() + 5))}
-                Popup::AlbumInformation => {self.popup_list_state.select(Option::from(self.popup_list_state.selected().unwrap() + 5))}
+                Popup::GenreFilter => {self.popup_genre_list_state.select(Option::from(self.popup_genre_list_state.selected().unwrap() + constants::PAGE_SIZE))}
+                Popup::AlbumInformation => {self.popup_list_state.select(Option::from(self.popup_list_state.selected().unwrap() + constants::PAGE_SIZE))}
                 _ => {}
             }
         }
@@ -751,20 +753,20 @@ impl App {
             match self.current_screen {
                 CurrentScreen::Home => {
                     match self.home_pane {
-                        HomePane::Top => { self.home_top_state.select(Option::from(self.home_top_state.selected().unwrap().saturating_sub(5))); }
-                        HomePane::Bottom => { self.home_bottom_state.select(Option::from(self.home_bottom_state.selected().unwrap().saturating_sub(5))); }
+                        HomePane::Top => { self.home_top_state.select(Option::from(self.home_top_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE))); }
+                        HomePane::Bottom => { self.home_bottom_state.select(Option::from(self.home_bottom_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE))); }
                     }
                 }
-                CurrentScreen::Albums => { self.album_state.select(Option::from(self.album_state.selected().unwrap().saturating_sub(5))); }
+                CurrentScreen::Albums => { self.album_state.select(Option::from(self.album_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE))); }
                 CurrentScreen::Playlists => {}
                 CurrentScreen::Artists => {}
-                CurrentScreen::Queue => { self.queue_list_state.select(Option::from(self.queue_list_state.selected().unwrap().saturating_sub(5))) }
+                CurrentScreen::Queue => { self.queue_list_state.select(Option::from(self.queue_list_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE))) }
             }
         }
         else {
             match self.current_popup {
-                Popup::GenreFilter => {self.popup_genre_list_state.select(Option::from(self.popup_genre_list_state.selected().unwrap().saturating_sub(5)))}
-                Popup::AlbumInformation => {self.popup_list_state.select(Option::from(self.popup_list_state.selected().unwrap().saturating_sub(5)))}
+                Popup::GenreFilter => {self.popup_genre_list_state.select(Option::from(self.popup_genre_list_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE)))}
+                Popup::AlbumInformation => {self.popup_list_state.select(Option::from(self.popup_list_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE)))}
                 _ => {}
             }
         }
