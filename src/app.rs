@@ -184,7 +184,9 @@ impl App {
         self.get_complete_albums_and_populate_db(&alphabetical_albums_list).await?;
         self.database.set_alphabetical_albums(alphabetical_albums_list);
         self.update_most_listened_albums().await?;
-        self.database.set_genres(self.server.get_genres().await?);
+        let mut genres = self.server.get_genres().await?;
+        genres.sort();
+        self.database.set_genres(genres);
         Ok(())
     }
     
