@@ -16,7 +16,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 KeyCode::Char('2') => { app.current_screen = CurrentScreen::Albums; }
                 KeyCode::Char('5') => { app.current_screen = CurrentScreen::Queue; }
                 KeyCode::F(1) => { app.current_popup = Popup::ConnectionTest; }
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list().await?,
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
                 KeyCode::Char('i') => {
                     app.get_current_album_information().await?;
@@ -32,6 +32,16 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 },
                 KeyCode::Tab => {
                     app.cycle_home_pane()?; 
+                },
+                KeyCode::Char('d') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_down()?;
+                    }
+                },
+                KeyCode::Char('u') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_up()?;
+                    }
                 }
                 // Other handlers you could add here.
                 _ => {}
@@ -39,7 +49,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
             CurrentScreen::Albums => match key_event.code {
                 KeyCode::Char('1') => { app.current_screen = CurrentScreen::Home; }
                 KeyCode::Char('5') => { app.current_screen = CurrentScreen::Queue; }
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list().await?,
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
                 KeyCode::Char('i') => {
                     app.get_current_album_information().await?;
@@ -65,6 +75,16 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                     app.album_state.select_first();
                     app.process_filtered_album_list().await?;
                 },
+                KeyCode::Char('d') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_down()?;
+                    }
+                },
+                KeyCode::Char('u') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_up()?;
+                    }
+                }
                 _ => {}
             }
             CurrentScreen::Playlists => {}
@@ -83,6 +103,16 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                     }
                 },
                 KeyCode::Enter => { app.play_queue_song()?; },
+                KeyCode::Char('d') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_down()?;
+                    }
+                },
+                KeyCode::Char('u') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_up()?;
+                    }
+                }
                 _ => {}
             }
         }
@@ -115,6 +145,16 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                 KeyCode::Char('A') => {
                     app.current_popup = Popup::AddTo;
                     app.set_item_to_be_added(MediaType::Album)?;
+                },
+                KeyCode::Char('d') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_down()?;
+                    }
+                },
+                KeyCode::Char('u') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_up()?;
+                    }
                 }
                 _ => {}
             }
@@ -137,6 +177,16 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App, iface_ref: &I
                     app.set_genre_filter()?;
                     app.process_filtered_album_list().await?;
                     app.current_popup = Popup::None;
+                }
+                KeyCode::Char('d') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_down()?;
+                    }
+                },
+                KeyCode::Char('u') => {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
+                        app.page_up()?;
+                    }
                 }
                 _ => {}
             }

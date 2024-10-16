@@ -258,7 +258,7 @@ impl App {
     }
 
 
-    pub async fn select_next_list(&mut self) -> AppResult<()> {
+    pub fn select_next_list(&mut self) -> AppResult<()> {
         match self.current_screen {
             CurrentScreen::Home => {
                 match self.home_pane {
@@ -718,6 +718,56 @@ impl App {
             }
         }
         self.database.set_filtered_albums(new_filtered_list);
+        Ok(())
+    }
+    
+    pub fn page_down(&mut self) -> AppResult<()> {
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => {
+                    match self.home_pane {
+                        HomePane::Top => { self.home_top_state.select(Option::from(self.home_top_state.selected().unwrap() + 5)); }
+                        HomePane::Bottom => { self.home_bottom_state.select(Option::from(self.home_bottom_state.selected().unwrap() + 5)); }
+                    }
+                }
+                CurrentScreen::Albums => { self.album_state.select(Option::from(self.album_state.selected().unwrap() + 5)); }
+                CurrentScreen::Playlists => {}
+                CurrentScreen::Artists => {}
+                CurrentScreen::Queue => { self.queue_list_state.select(Option::from(self.queue_list_state.selected().unwrap() + 5)) }
+            }
+        }
+        else { 
+            match self.current_popup {
+                Popup::GenreFilter => {self.popup_genre_list_state.select(Option::from(self.popup_genre_list_state.selected().unwrap() + 5))}
+                Popup::AlbumInformation => {self.popup_list_state.select(Option::from(self.popup_list_state.selected().unwrap() + 5))}
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    pub fn page_up(&mut self) -> AppResult<()> {
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => {
+                    match self.home_pane {
+                        HomePane::Top => { self.home_top_state.select(Option::from(self.home_top_state.selected().unwrap().saturating_sub(5))); }
+                        HomePane::Bottom => { self.home_bottom_state.select(Option::from(self.home_bottom_state.selected().unwrap().saturating_sub(5))); }
+                    }
+                }
+                CurrentScreen::Albums => { self.album_state.select(Option::from(self.album_state.selected().unwrap().saturating_sub(5))); }
+                CurrentScreen::Playlists => {}
+                CurrentScreen::Artists => {}
+                CurrentScreen::Queue => { self.queue_list_state.select(Option::from(self.queue_list_state.selected().unwrap().saturating_sub(5))) }
+            }
+        }
+        else {
+            match self.current_popup {
+                Popup::GenreFilter => {self.popup_genre_list_state.select(Option::from(self.popup_genre_list_state.selected().unwrap().saturating_sub(5)))}
+                Popup::AlbumInformation => {self.popup_list_state.select(Option::from(self.popup_list_state.selected().unwrap().saturating_sub(5)))}
+                _ => {}
+            }
+        }
         Ok(())
     }
 }
