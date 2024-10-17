@@ -23,7 +23,6 @@ pub mod model;
 
 pub mod music_database;
 
-pub mod player;
-pub mod dbus;
 pub mod constants;
-
+pub mod dbus;
+pub mod player;

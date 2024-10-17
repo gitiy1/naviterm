@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use crate::model::album::Album;
 use crate::model::song::Song;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct MusicDatabase {
@@ -10,8 +10,8 @@ pub struct MusicDatabase {
     alphabetical_albums: Vec<String>,
     filtered_albums: Vec<String>,
     genres: Vec<String>,
-    albums: HashMap<String,Album>,
-    songs: HashMap<String,Song>,
+    albums: HashMap<String, Album>,
+    songs: HashMap<String, Song>,
 }
 
 impl MusicDatabase {
@@ -34,7 +34,7 @@ impl MusicDatabase {
     pub fn filtered_albums(&self) -> &Vec<String> {
         &self.filtered_albums
     }
-    
+
     pub fn expand_filtered_albums(&mut self, mut list: Vec<String>) {
         self.filtered_albums.append(&mut list);
     }
@@ -54,23 +54,23 @@ impl MusicDatabase {
     pub fn set_alphabetical_albums(&mut self, alphabetical_list: Vec<String>) {
         self.alphabetical_albums = alphabetical_list;
     }
-    
+
     pub fn insert_album(&mut self, id: String, album: Album) {
         self.albums.insert(id, album);
     }
-    
+
     pub fn delete_album(&mut self, id: String) {
         self.albums.remove(&id);
     }
-    
+
     pub fn get_album(&self, id: &str) -> &Album {
         self.albums.get(id).unwrap()
     }
-    
+
     pub fn set_album_songs(&mut self, id: &str, songs: Vec<String>) {
         self.albums.get_mut(id).unwrap().set_songs(songs);
     }
-    
+
     pub fn contains_album(&self, id: &str) -> bool {
         self.albums.contains_key(id)
     }

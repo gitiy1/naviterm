@@ -1,12 +1,7 @@
 use std::collections::HashMap;
 use std::error;
 
-use config::Config;
-use log::{debug, info};
-use rand::seq::SliceRandom;
-use rand::thread_rng;
-use ratatui::widgets::ListState;
-use tokio::sync::mpsc::UnboundedSender;
+use crate::constants;
 use crate::event::DbusEvent::{Clear, Playing};
 use crate::event::Event;
 use crate::event::Event::Dbus;
@@ -14,7 +9,12 @@ use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
 use crate::server::{Server, SubsonicOperation};
-use crate::constants;
+use config::Config;
+use log::{debug, info};
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use ratatui::widgets::ListState;
+use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum with applications screens
 #[derive(Debug)]
@@ -28,7 +28,7 @@ pub enum CurrentScreen {
 
 pub enum HomePane {
     Top,
-    Bottom
+    Bottom,
 }
 
 #[derive(Debug, Default)]
@@ -83,7 +83,7 @@ pub struct App {
     pub album_sorting_mode: String,
     pub album_sorting_direction: String,
     pub recent_list_complete: bool,
-    pub most_listened_list_complete: bool,
+    pub searching: bool,
 }
 
 #[derive(Default, Debug)]
@@ -97,7 +97,7 @@ pub struct ItemToBeAdded {
 #[derive(Default)]
 pub struct NowPlaying {
     pub id: String,
-    pub duration: String
+    pub duration: String,
 }
 
 impl Default for App {
@@ -131,7 +131,7 @@ impl Default for App {
             album_sorting_mode: String::from("alphabetically"),
             album_sorting_direction: String::from("descending"),
             recent_list_complete: false,
-            most_listened_list_complete: false,
+            searching: false,
         }
     }
 }
@@ -148,10 +148,17 @@ impl App {
         if *self.player.player_status() == PlayerStatus::Playing {
             self.ticks_during_playing_state += 1;
         }
-        if !self.next_is_in_player_queue && self.queue_has_next() && 
-           (self.get_playback_time() + 10 > self.now_playing.duration.as_str().parse::<usize>().unwrap()) {
+        if !self.next_is_in_player_queue
+            && self.queue_has_next()
+            && (self.get_playback_time() + 10
+                > self.now_playing.duration.as_str().parse::<usize>().unwrap())
+        {
             let next_index = self.queue_order.get(self.index_in_queue + 1).unwrap();
-            self.player.add_next_song_to_queue(self.server.get_song_url(self.queue.get(*next_index).unwrap().clone()).as_str());
+            self.player.add_next_song_to_queue(
+                self.server
+                    .get_song_url(self.queue.get(*next_index).unwrap().clone())
+                    .as_str(),
+            );
             self.next_is_in_player_queue = true;
         }
     }
@@ -181,23 +188,34 @@ impl App {
 
     pub async fn populate_db(&mut self) -> AppResult<()> {
         info!("Starting database population...\n");
-        let alphabetical_albums_list = self.server.get_album_list_complete(SubsonicOperation::GetAlbumListAlphabetical).await.unwrap();
-        self.get_complete_albums_and_populate_db(&alphabetical_albums_list).await?;
-        self.database.set_alphabetical_albums(alphabetical_albums_list);
+        let alphabetical_albums_list = self
+            .server
+            .get_album_list_complete(SubsonicOperation::GetAlbumListAlphabetical)
+            .await
+            .unwrap();
+        self.get_complete_albums_and_populate_db(&alphabetical_albums_list)
+            .await?;
+        self.database
+            .set_alphabetical_albums(alphabetical_albums_list);
         self.update_most_listened_albums().await?;
         let mut genres = self.server.get_genres().await?;
         genres.sort();
         self.database.set_genres(genres);
         Ok(())
     }
-    
+
     pub async fn update_recent_albums(&mut self) -> AppResult<()> {
-        self.database.set_recent_albums(self.server.get_recent_albums().await?);
+        self.database
+            .set_recent_albums(self.server.get_recent_albums().await?);
         Ok(())
     }
 
     pub async fn update_most_listened_albums(&mut self) -> AppResult<()> {
-        self.database.set_most_listened_albums(self.server.get_album_list_complete(SubsonicOperation::GetAlbumListMostListened).await?);
+        self.database.set_most_listened_albums(
+            self.server
+                .get_album_list_complete(SubsonicOperation::GetAlbumListMostListened)
+                .await?,
+        );
         Ok(())
     }
 
@@ -205,17 +223,18 @@ impl App {
         let list_length = list.len();
         for (i, album_id) in list.iter().enumerate() {
             debug!("Fetching album ({}/{}): {}%\n", i, list_length, album_id);
-            if !self.database.contains_album(album_id) || !self.database.contains_complete_album(album_id) {
-                let (album,songs) = self.server.get_complete_album(album_id).await?;
+            if !self.database.contains_album(album_id)
+                || !self.database.contains_complete_album(album_id)
+            {
+                let (album, songs) = self.server.get_complete_album(album_id).await?;
                 for song in songs {
                     if !self.database.contains_song(song.id()) {
-                        self.database.insert_song(song.id().to_string(),song);
+                        self.database.insert_song(song.id().to_string(), song);
                     }
                 }
                 if !self.database.contains_album(album_id) {
-                    self.database.insert_album(album_id.to_string(),album);
-                }
-                else if !self.database.contains_complete_album(album_id) {
+                    self.database.insert_album(album_id.to_string(), album);
+                } else if !self.database.contains_complete_album(album_id) {
                     self.database.delete_album(album_id.to_string());
                     self.database.insert_album(album_id.to_string(), album);
                 }
@@ -238,35 +257,48 @@ impl App {
     pub async fn get_current_album_information(&mut self) -> AppResult<()> {
         let selected_album_id = match self.current_screen {
             CurrentScreen::Home => match self.home_pane {
-                HomePane::Top => {
-                    self.database.recent_albums().get(self.home_top_state.selected().unwrap()).unwrap().clone()
-                }
-                HomePane::Bottom => {
-                    self.database.most_listened_albums().get(self.home_bottom_state.selected().unwrap()).unwrap().clone()
-                }
-            }
-            CurrentScreen::Albums => {
-                self.database.filtered_albums().get(self.album_state.selected().unwrap()).unwrap().clone()
-            }
-            _ => {"".to_string()}
+                HomePane::Top => self
+                    .database
+                    .recent_albums()
+                    .get(self.home_top_state.selected().unwrap())
+                    .unwrap()
+                    .clone(),
+                HomePane::Bottom => self
+                    .database
+                    .most_listened_albums()
+                    .get(self.home_bottom_state.selected().unwrap())
+                    .unwrap()
+                    .clone(),
+            },
+            CurrentScreen::Albums => self
+                .database
+                .filtered_albums()
+                .get(self.album_state.selected().unwrap())
+                .unwrap()
+                .clone(),
+            _ => "".to_string(),
         };
-         
 
-        if !self.database.contains_complete_album(selected_album_id.as_str()) {
-            self.populate_album_songs_in_db(selected_album_id.as_str()).await?;
+        if !self
+            .database
+            .contains_complete_album(selected_album_id.as_str())
+        {
+            self.populate_album_songs_in_db(selected_album_id.as_str())
+                .await?;
         }
         Ok(())
     }
 
-
     pub fn select_next_list(&mut self) -> AppResult<()> {
         match self.current_screen {
-            CurrentScreen::Home => {
-                match self.home_pane {
-                    HomePane::Top => {self.home_top_state.select_next();}
-                    HomePane::Bottom => {self.home_bottom_state.select_next();}
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::Top => {
+                    self.home_top_state.select_next();
                 }
-            }
+                HomePane::Bottom => {
+                    self.home_bottom_state.select_next();
+                }
+            },
             CurrentScreen::Albums => {
                 self.album_state.select_next();
             }
@@ -274,22 +306,21 @@ impl App {
             CurrentScreen::Artists => {}
             CurrentScreen::Queue => {}
         }
-        
+
         Ok(())
     }
-    
 
     pub fn select_previous_list(&mut self) -> AppResult<()> {
         match self.current_screen {
-            CurrentScreen::Home => {
-                match self.home_pane {
-                    HomePane::Top => {self.home_top_state.select_previous();}
-                    HomePane::Bottom => {self.home_bottom_state.select_previous();}
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::Top => {
+                    self.home_top_state.select_previous();
                 }
-            }
-            CurrentScreen::Albums => {
-                self.album_state.select_previous()
-            }
+                HomePane::Bottom => {
+                    self.home_bottom_state.select_previous();
+                }
+            },
+            CurrentScreen::Albums => self.album_state.select_previous(),
             CurrentScreen::Playlists => {}
             CurrentScreen::Artists => {}
             CurrentScreen::Queue => {}
@@ -305,7 +336,9 @@ impl App {
             Popup::GenreFilter => {
                 self.popup_genre_list_state.select_next();
             }
-            _ => {unreachable!()}
+            _ => {
+                unreachable!()
+            }
         }
         Ok(())
     }
@@ -318,7 +351,9 @@ impl App {
             Popup::GenreFilter => {
                 self.popup_genre_list_state.select_previous();
             }
-            _ => {unreachable!()}
+            _ => {
+                unreachable!()
+            }
         }
         Ok(())
     }
@@ -347,15 +382,21 @@ impl App {
             MediaType::Album => {
                 self.queue.clear();
                 self.queue_order.clear();
-                if !self.database.contains_complete_album(self.item_to_be_added.id.as_str()) {
-                    self.populate_album_songs_in_db(self.item_to_be_added.id.clone().as_str()).await?;
+                if !self
+                    .database
+                    .contains_complete_album(self.item_to_be_added.id.as_str())
+                {
+                    self.populate_album_songs_in_db(self.item_to_be_added.id.clone().as_str())
+                        .await?;
                 }
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
                     self.queue.push(song.clone());
                 }
                 self.queue_order = (0..self.queue.len()).collect();
-                if self.random_playback {self.shuffle_queue_order_starting_at_current_index()}
+                if self.random_playback {
+                    self.shuffle_queue_order_starting_at_current_index()
+                }
                 self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
                 self.play_current(false);
             }
@@ -366,20 +407,29 @@ impl App {
 
     pub async fn add_queue_next(&mut self) -> AppResult<()> {
         let mut was_empty = false;
-        let mut index_to_insert_to = if self.queue.is_empty() { 
+        let mut index_to_insert_to = if self.queue.is_empty() {
             was_empty = true;
             0
         } else {
-            self.queue.iter().position(|x| x == &self.now_playing.id).unwrap() + 1
+            self.queue
+                .iter()
+                .position(|x| x == &self.now_playing.id)
+                .unwrap()
+                + 1
         };
         match self.item_to_be_added.media_type {
             MediaType::Song => {
-                self.queue.insert(index_to_insert_to, self.item_to_be_added.id.clone());
+                self.queue
+                    .insert(index_to_insert_to, self.item_to_be_added.id.clone());
                 self.queue_order.push(self.queue.len() - 1);
             }
             MediaType::Album => {
-                if !self.database.contains_complete_album(self.item_to_be_added.id.as_str()) {
-                    self.populate_album_songs_in_db(self.item_to_be_added.id.clone().as_str()).await?;
+                if !self
+                    .database
+                    .contains_complete_album(self.item_to_be_added.id.as_str())
+                {
+                    self.populate_album_songs_in_db(self.item_to_be_added.id.clone().as_str())
+                        .await?;
                 }
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
@@ -404,8 +454,12 @@ impl App {
                 self.queue_order.push(self.queue.len() - 1);
             }
             MediaType::Album => {
-                if !self.database.contains_complete_album(self.item_to_be_added.id.as_str()) {
-                    self.populate_album_songs_in_db(self.item_to_be_added.id.clone().as_str()).await?;
+                if !self
+                    .database
+                    .contains_complete_album(self.item_to_be_added.id.as_str())
+                {
+                    self.populate_album_songs_in_db(self.item_to_be_added.id.clone().as_str())
+                        .await?;
                 }
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
@@ -438,23 +492,33 @@ impl App {
                 selected_album_index = self.album_state.selected().unwrap();
                 self.database.filtered_albums()
             }
-            _ => {panic!("Should not reach")}
+            _ => {
+                panic!("Should not reach")
+            }
         };
-            
-            
+
         match media {
             MediaType::Song => {
                 let selected_album_id = album_list.get(selected_album_index).unwrap();
                 let songs_ids = self.database.get_album(selected_album_id).songs();
-                let song = self.database.get_song(songs_ids.get(self.popup_list_state.selected().unwrap()).unwrap());
+                let song = self.database.get_song(
+                    songs_ids
+                        .get(self.popup_list_state.selected().unwrap())
+                        .unwrap(),
+                );
                 self.item_to_be_added.name = song.title().to_string();
                 self.item_to_be_added.id = song.id().to_string();
                 self.item_to_be_added.parent_id = selected_album_id.to_string();
                 self.item_to_be_added.media_type = MediaType::Song;
             }
             MediaType::Album => {
-                self.item_to_be_added.id = album_list.get(selected_album_index).unwrap().to_string();
-                self.item_to_be_added.name = self.database.get_album(album_list.get(selected_album_index).unwrap()).name().to_string();
+                self.item_to_be_added.id =
+                    album_list.get(selected_album_index).unwrap().to_string();
+                self.item_to_be_added.name = self
+                    .database
+                    .get_album(album_list.get(selected_album_index).unwrap())
+                    .name()
+                    .to_string();
                 self.item_to_be_added.media_type = MediaType::Album;
             }
             MediaType::Playlist => {}
@@ -473,8 +537,7 @@ impl App {
                 self.index_in_queue = *self.queue_order.get(self.index_in_queue).unwrap();
                 self.queue_order.clear();
                 self.queue_order = (0..self.queue.len()).collect();
-            }
-            else {
+            } else {
                 self.shuffle_queue_order_starting_at_current_index();
                 self.index_in_queue = 0;
             }
@@ -484,10 +547,11 @@ impl App {
     }
 
     pub fn player_seek_forward(&mut self) -> AppResult<()> {
-        if self.get_playback_time() + 10 > self.now_playing.duration.as_str().parse::<usize>().unwrap() {
+        if self.get_playback_time() + 10
+            > self.now_playing.duration.as_str().parse::<usize>().unwrap()
+        {
             self.play_next()?;
-        }
-        else {
+        } else {
             self.player.seek_forward();
             self.ticks_during_playing_state += 40;
         }
@@ -512,13 +576,11 @@ impl App {
         if self.queue_has_previous() && self.get_playback_time() < 5 {
             self.go_previous_queue();
             self.play_current(false);
-        }
-        else { 
+        } else {
             self.player.set_playback_percentage("0");
         }
         Ok(())
     }
-
 
     fn process_player_events(&mut self) {
         let events = self.player.ipc.events().clone();
@@ -544,7 +606,8 @@ impl App {
                     }
                 }
                 IpcEvent::Idle => {
-                    if self.player.player_status == PlayerStatus::Playing && !self.queue_has_next() {
+                    if self.player.player_status == PlayerStatus::Playing && !self.queue_has_next()
+                    {
                         self.player.player_status = PlayerStatus::Stopped;
                     }
                 }
@@ -555,18 +618,22 @@ impl App {
     }
 
     pub fn queue_has_next(&self) -> bool {
-        if self.queue.len() <= 1 { false } else {
+        if self.queue.len() <= 1 {
+            false
+        } else {
             self.index_in_queue < self.queue_order.len() - 1
         }
     }
 
     fn queue_has_previous(&self) -> bool {
-        if self.queue.len() <= 1 { false } else {
+        if self.queue.len() <= 1 {
+            false
+        } else {
             self.index_in_queue > 0
         }
     }
-    
-    pub fn get_playback_time(&self) -> usize{
+
+    pub fn get_playback_time(&self) -> usize {
         self.ticks_during_playing_state / 4
     }
 
@@ -581,9 +648,15 @@ impl App {
         let next_index = self.queue_order.get(self.index_in_queue).unwrap();
         self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
     }
-    
+
     pub fn play_queue_song(&mut self) -> AppResult<()> {
-        self.change_current_playing_to(self.queue.get(self.queue_list_state.selected().unwrap()).unwrap().clone().as_str());
+        self.change_current_playing_to(
+            self.queue
+                .get(self.queue_list_state.selected().unwrap())
+                .unwrap()
+                .clone()
+                .as_str(),
+        );
         self.index_in_queue = self.queue_list_state.selected().unwrap();
         self.play_current(false);
         Ok(())
@@ -594,10 +667,14 @@ impl App {
         self.queue_order.clear();
         self.now_playing.id.clear();
         self.index_in_queue = 0;
-        self.event_sender.as_ref().unwrap().send(Dbus(Clear)).unwrap();
+        self.event_sender
+            .as_ref()
+            .unwrap()
+            .send(Dbus(Clear))
+            .unwrap();
         Ok(())
     }
-    
+
     pub fn try_play_current(&mut self) -> bool {
         if !self.now_playing.id.is_empty() {
             return if self.player.player_status == PlayerStatus::Paused {
@@ -608,37 +685,43 @@ impl App {
                 true
             } else {
                 false
-            }
+            };
         }
         false
     }
 
     pub fn try_pause_current(&mut self) -> bool {
-        if !self.now_playing.id.is_empty()  && self.player.player_status == PlayerStatus::Playing{
+        if !self.now_playing.id.is_empty() && self.player.player_status == PlayerStatus::Playing {
             self.toggle_playing_status().unwrap();
-            return true
+            return true;
         }
         false
     }
-    
+
     pub fn stop_playback(&mut self) {
         self.player.stop();
         self.player.player_status = PlayerStatus::Stopped;
     }
-    
 
     fn play_current(&mut self, check_next_song: bool) {
         if check_next_song && self.next_is_in_player_queue {
             self.next_is_in_player_queue = false;
-        }
-        else {
-            self.player.play_song(self.server.get_song_url(self.now_playing.id.clone()).as_str());
+        } else {
+            self.player.play_song(
+                self.server
+                    .get_song_url(self.now_playing.id.clone())
+                    .as_str(),
+            );
             self.next_is_in_player_queue = false;
         }
-        self.event_sender.as_ref().unwrap().send(Dbus(Playing)).unwrap();
+        self.event_sender
+            .as_ref()
+            .unwrap()
+            .send(Dbus(Playing))
+            .unwrap();
         self.ticks_during_playing_state = 0;
     }
-    
+
     fn shuffle_queue_order_starting_at_current_index(&mut self) {
         let mut shuffled_vector = Vec::with_capacity(self.queue.len());
         self.queue_order.swap_remove(self.index_in_queue);
@@ -650,44 +733,55 @@ impl App {
         shuffled_vector.append(&mut self.queue_order);
         self.queue_order = shuffled_vector;
     }
-    
+
     fn change_current_playing_to(&mut self, new_id: &str) {
         self.now_playing.id = String::from(new_id);
         self.now_playing.duration = String::from(self.database.get_song(new_id).duration());
     }
-    
+
     pub async fn set_event_handler(&mut self, sender: UnboundedSender<Event>) -> AppResult<()> {
         self.event_sender = Some(sender);
         Ok(())
     }
-    
-    pub fn get_metada_for_current_song(&mut self) -> HashMap<String,String> {
+
+    pub fn get_metada_for_current_song(&mut self) -> HashMap<String, String> {
         let mut metadata = HashMap::new();
         let song = self.database.get_song(self.now_playing.id.as_str());
-        metadata.insert("title".to_string(),song.title().to_string());
-        metadata.insert("album".to_string(),song.album().to_string());
-        metadata.insert("artist".to_string(),song.artist().to_string());
-        metadata.insert("id".to_string(),song.id().to_string());
-        metadata.insert("length".to_string(),song.duration().to_string());
-        metadata.insert("cover".to_string(),self.server.get_song_art_url(song.id().to_string()));
-        
+        metadata.insert("title".to_string(), song.title().to_string());
+        metadata.insert("album".to_string(), song.album().to_string());
+        metadata.insert("artist".to_string(), song.artist().to_string());
+        metadata.insert("id".to_string(), song.id().to_string());
+        metadata.insert("length".to_string(), song.duration().to_string());
+        metadata.insert(
+            "cover".to_string(),
+            self.server.get_song_art_url(song.id().to_string()),
+        );
+
         metadata
     }
-    
+
     pub fn cycle_home_pane(&mut self) -> AppResult<()> {
         match self.home_pane {
-            HomePane::Top => { self.home_pane = HomePane::Bottom; }
-            HomePane::Bottom => { self.home_pane = HomePane::Top; }
+            HomePane::Top => {
+                self.home_pane = HomePane::Bottom;
+            }
+            HomePane::Bottom => {
+                self.home_pane = HomePane::Top;
+            }
         }
-        
+
         Ok(())
     }
 
     pub fn set_genre_filter(&mut self) -> AppResult<()> {
-        self.album_genre_filter = if self.popup_genre_list_state.selected().unwrap() == 0 { 
+        self.album_genre_filter = if self.popup_genre_list_state.selected().unwrap() == 0 {
             "any".to_string()
         } else {
-            self.database.genres().get(self.popup_genre_list_state.selected().unwrap() - 1).unwrap().clone()
+            self.database
+                .genres()
+                .get(self.popup_genre_list_state.selected().unwrap() - 1)
+                .unwrap()
+                .clone()
         };
         Ok(())
     }
@@ -713,35 +807,56 @@ impl App {
         };
         if self.album_genre_filter != "any" {
             for album_id in list {
-                if self.database.get_album(album_id).genres().contains(&self.album_genre_filter) {
+                if self
+                    .database
+                    .get_album(album_id)
+                    .genres()
+                    .contains(&self.album_genre_filter)
+                {
                     new_filtered_list.push(album_id.clone());
                 }
             }
+        } else {
+            new_filtered_list = list.clone()
         }
-        else { new_filtered_list = list.clone() }
         self.database.set_filtered_albums(new_filtered_list);
         Ok(())
     }
-    
+
     pub fn page_down(&mut self) -> AppResult<()> {
         if self.current_popup == Popup::None {
             match self.current_screen {
-                CurrentScreen::Home => {
-                    match self.home_pane {
-                        HomePane::Top => { self.home_top_state.select(Option::from(self.home_top_state.selected().unwrap() + constants::PAGE_SIZE)); }
-                        HomePane::Bottom => { self.home_bottom_state.select(Option::from(self.home_bottom_state.selected().unwrap() + constants::PAGE_SIZE)); }
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::Top => {
+                        self.home_top_state.select(Option::from(
+                            self.home_top_state.selected().unwrap() + constants::PAGE_SIZE,
+                        ));
                     }
+                    HomePane::Bottom => {
+                        self.home_bottom_state.select(Option::from(
+                            self.home_bottom_state.selected().unwrap() + constants::PAGE_SIZE,
+                        ));
+                    }
+                },
+                CurrentScreen::Albums => {
+                    self.album_state.select(Option::from(
+                        self.album_state.selected().unwrap() + constants::PAGE_SIZE,
+                    ));
                 }
-                CurrentScreen::Albums => { self.album_state.select(Option::from(self.album_state.selected().unwrap() + constants::PAGE_SIZE)); }
                 CurrentScreen::Playlists => {}
                 CurrentScreen::Artists => {}
-                CurrentScreen::Queue => { self.queue_list_state.select(Option::from(self.queue_list_state.selected().unwrap() + constants::PAGE_SIZE)) }
+                CurrentScreen::Queue => self.queue_list_state.select(Option::from(
+                    self.queue_list_state.selected().unwrap() + constants::PAGE_SIZE,
+                )),
             }
-        }
-        else { 
+        } else {
             match self.current_popup {
-                Popup::GenreFilter => {self.popup_genre_list_state.select(Option::from(self.popup_genre_list_state.selected().unwrap() + constants::PAGE_SIZE))}
-                Popup::AlbumInformation => {self.popup_list_state.select(Option::from(self.popup_list_state.selected().unwrap() + constants::PAGE_SIZE))}
+                Popup::GenreFilter => self.popup_genre_list_state.select(Option::from(
+                    self.popup_genre_list_state.selected().unwrap() + constants::PAGE_SIZE,
+                )),
+                Popup::AlbumInformation => self.popup_list_state.select(Option::from(
+                    self.popup_list_state.selected().unwrap() + constants::PAGE_SIZE,
+                )),
                 _ => {}
             }
         }
@@ -751,22 +866,55 @@ impl App {
     pub fn page_up(&mut self) -> AppResult<()> {
         if self.current_popup == Popup::None {
             match self.current_screen {
-                CurrentScreen::Home => {
-                    match self.home_pane {
-                        HomePane::Top => { self.home_top_state.select(Option::from(self.home_top_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE))); }
-                        HomePane::Bottom => { self.home_bottom_state.select(Option::from(self.home_bottom_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE))); }
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::Top => {
+                        self.home_top_state.select(Option::from(
+                            self.home_top_state
+                                .selected()
+                                .unwrap()
+                                .saturating_sub(constants::PAGE_SIZE),
+                        ));
                     }
+                    HomePane::Bottom => {
+                        self.home_bottom_state.select(Option::from(
+                            self.home_bottom_state
+                                .selected()
+                                .unwrap()
+                                .saturating_sub(constants::PAGE_SIZE),
+                        ));
+                    }
+                },
+                CurrentScreen::Albums => {
+                    self.album_state.select(Option::from(
+                        self.album_state
+                            .selected()
+                            .unwrap()
+                            .saturating_sub(constants::PAGE_SIZE),
+                    ));
                 }
-                CurrentScreen::Albums => { self.album_state.select(Option::from(self.album_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE))); }
                 CurrentScreen::Playlists => {}
                 CurrentScreen::Artists => {}
-                CurrentScreen::Queue => { self.queue_list_state.select(Option::from(self.queue_list_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE))) }
+                CurrentScreen::Queue => self.queue_list_state.select(Option::from(
+                    self.queue_list_state
+                        .selected()
+                        .unwrap()
+                        .saturating_sub(constants::PAGE_SIZE),
+                )),
             }
-        }
-        else {
+        } else {
             match self.current_popup {
-                Popup::GenreFilter => {self.popup_genre_list_state.select(Option::from(self.popup_genre_list_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE)))}
-                Popup::AlbumInformation => {self.popup_list_state.select(Option::from(self.popup_list_state.selected().unwrap().saturating_sub(constants::PAGE_SIZE)))}
+                Popup::GenreFilter => self.popup_genre_list_state.select(Option::from(
+                    self.popup_genre_list_state
+                        .selected()
+                        .unwrap()
+                        .saturating_sub(constants::PAGE_SIZE),
+                )),
+                Popup::AlbumInformation => self.popup_list_state.select(Option::from(
+                    self.popup_list_state
+                        .selected()
+                        .unwrap()
+                        .saturating_sub(constants::PAGE_SIZE),
+                )),
                 _ => {}
             }
         }

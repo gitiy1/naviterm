@@ -32,7 +32,7 @@ pub enum Event {
     Mouse(MouseEvent),
     /// Terminal resize.
     Resize(u16, u16),
-    Dbus(DbusEvent)
+    Dbus(DbusEvent),
 }
 
 /// Terminal event handler.

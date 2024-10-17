@@ -1,11 +1,13 @@
-use std::collections::HashMap;
-use log::debug;
-use tokio::sync::mpsc::UnboundedSender;
-use zbus::{interface, Connection, SignalContext};
-use zbus::zvariant::{Value, ObjectPath};
 use crate::app::AppResult;
+use crate::event::DbusEvent::{
+    Next, Pause, Play, PlayPause, Previous, SeekBackwards, SeekForward, Stop,
+};
 use crate::event::{DbusEvent, Event};
-use crate::event::DbusEvent::{Next, Pause, Play, PlayPause, Previous, SeekBackwards, SeekForward, Stop};
+use log::debug;
+use std::collections::HashMap;
+use tokio::sync::mpsc::UnboundedSender;
+use zbus::zvariant::{ObjectPath, Value};
+use zbus::{interface, Connection, SignalContext};
 
 struct MediaPlayer2 {
     can_quit: bool,
@@ -21,7 +23,6 @@ struct MediaPlayer2 {
 
 #[interface(name = "org.mpris.MediaPlayer2")]
 impl MediaPlayer2 {
-
     #[zbus(property)]
     async fn can_quit(&self) -> &bool {
         &self.can_quit
@@ -34,7 +35,9 @@ impl MediaPlayer2 {
 
     #[zbus(property)]
     async fn set_fullscreen(&mut self, fullscreen: bool) {
-        if self.can_set_fullscreen { self.fullscreen = fullscreen }
+        if self.can_set_fullscreen {
+            self.fullscreen = fullscreen
+        }
     }
 
     #[zbus(property)]
@@ -90,13 +93,12 @@ pub struct MediaPlayer2Player {
     shuffle: bool,
     playback_status: String,
     position: i64,
-    metadata: HashMap<String,String>,
+    metadata: HashMap<String, String>,
     sender: UnboundedSender<Event>,
 }
 
 #[interface(name = "org.mpris.MediaPlayer2.Player")]
 impl MediaPlayer2Player {
-
     #[zbus(property)]
     async fn can_control(&self) -> &bool {
         &self.can_control
@@ -169,23 +171,18 @@ impl MediaPlayer2Player {
         for field in &self.metadata {
             if field.0.starts_with("title") {
                 fields.insert("xesam:title".to_string(), Value::from(field.1));
-            }
-            else if field.0.starts_with("album") {
+            } else if field.0.starts_with("album") {
                 fields.insert("xesam:album".to_string(), Value::from(field.1));
-            }
-            else if field.0.starts_with("artist") {
+            } else if field.0.starts_with("artist") {
                 let artist_vector = vec![field.1];
                 fields.insert("xesam:artist".to_string(), Value::from(artist_vector));
-            }
-            else if field.0.starts_with("cover") {
+            } else if field.0.starts_with("cover") {
                 fields.insert("mpris:artUrl".to_string(), Value::from(field.1));
-            }
-            else if field.0.starts_with("length") {
+            } else if field.0.starts_with("length") {
                 let us_length = field.1.parse::<i64>().unwrap() * 1000000;
                 fields.insert("mpris:length".to_string(), Value::from(us_length));
-            }
-            else if field.0.starts_with("id") {
-                let str_path = format!("/org/node/mediaplayer/naviterm/track/{}",field.1 );
+            } else if field.0.starts_with("id") {
+                let str_path = format!("/org/node/mediaplayer/naviterm/track/{}", field.1);
                 let path = ObjectPath::try_from(str_path).unwrap();
                 fields.insert("mpris:trackid".to_string(), Value::from(path));
             }
@@ -230,40 +227,39 @@ impl MediaPlayer2Player {
         debug!("Seek request from dbus!\n");
         if offset > 0 {
             self.sender.send(Event::Dbus(SeekForward)).unwrap();
-        }
-        else {
+        } else {
             self.sender.send(Event::Dbus(SeekBackwards)).unwrap();
         }
     }
-
 }
 
 impl MediaPlayer2Player {
     pub fn set_playback_status(&mut self, new_status: String) {
         self.playback_status = new_status;
     }
-    
-    pub fn set_metadata(&mut self, new_metadata: HashMap<String,String>) {
+
+    pub fn set_metadata(&mut self, new_metadata: HashMap<String, String>) {
         self.metadata = new_metadata;
     }
 
     pub fn set_position(&mut self, new_position: i64) {
         self.position = new_position;
     }
-    
+
     pub fn update_shuffle(&mut self, new_shuffle_status: bool) {
         self.shuffle = new_shuffle_status;
     }
-
 }
 
 // Although we use `tokio` here, you can use any async runtime of choice.
 pub async fn set_up_mpris(sender: UnboundedSender<Event>) -> AppResult<Connection> {
     let connection = Connection::session().await?;
     // set up the object server
-    connection.object_server().at(
-        "/org/mpris/MediaPlayer2",
-        MediaPlayer2 {
+    connection
+        .object_server()
+        .at(
+            "/org/mpris/MediaPlayer2",
+            MediaPlayer2 {
                 can_quit: true,
                 fullscreen: false,
                 can_set_fullscreen: false,
@@ -273,11 +269,14 @@ pub async fn set_up_mpris(sender: UnboundedSender<Event>) -> AppResult<Connectio
                 desktop_entry: String::from("/usr/share/applications/naviterm.desktop"),
                 supported_mime_types: vec!["audio/mpeg".to_string(), "application/ogg".to_string()],
                 supported_uri_schemes: vec!["file".to_string()],
-        },
-        ).await?;
-    connection.object_server().at(
-        "/org/mpris/MediaPlayer2",
-        MediaPlayer2Player {
+            },
+        )
+        .await?;
+    connection
+        .object_server()
+        .at(
+            "/org/mpris/MediaPlayer2",
+            MediaPlayer2Player {
                 can_play: true,
                 can_pause: true,
                 can_control: true,
@@ -285,16 +284,16 @@ pub async fn set_up_mpris(sender: UnboundedSender<Event>) -> AppResult<Connectio
                 can_go_previous: true,
                 shuffle: false,
                 position: 0,
-                metadata:HashMap::new(),
+                metadata: HashMap::new(),
                 playback_status: String::from("Stopped"),
                 sender,
-        }
-    ).await?;
+            },
+        )
+        .await?;
     // before requesting the name
     connection
         .request_name("org.mpris.MediaPlayer2.naviterm")
         .await?;
 
     Ok(connection)
-
 }

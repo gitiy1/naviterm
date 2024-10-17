@@ -1,3 +1,5 @@
+use crate::player::parser::{parse_json_data, parse_json_event, parse_json_success};
+use log::{debug, error};
 use num_traits::Num;
 use std::f64;
 use std::io::{Read, Write};
@@ -5,10 +7,8 @@ use std::os::unix::net::UnixStream;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
-use log::{debug, error};
 use tokio::io;
-use tokio::net::{UnixStream as OtherUnixStream};
-use crate::player::parser::{parse_json_event, parse_json_data, parse_json_success};
+use tokio::net::UnixStream as OtherUnixStream;
 
 pub enum IpcEvent {
     FileLoaded,
@@ -16,7 +16,7 @@ pub enum IpcEvent {
     Seek,
     Idle,
     Error(String),
-    Unrecognized(String)
+    Unrecognized(String),
 }
 
 #[derive(Default)]
@@ -28,7 +28,8 @@ pub struct Ipc {
 
 impl Ipc {
     pub fn initialize_stream(&mut self) {
-        self.stream = Some(UnixStream::connect("/tmp/naviterm_mpv").expect("Cannot create ipc stream"));
+        self.stream =
+            Some(UnixStream::connect("/tmp/naviterm_mpv").expect("Cannot create ipc stream"));
     }
 
     pub fn load_file(&mut self, file_url: &str) {
@@ -37,7 +38,8 @@ impl Ipc {
     }
 
     pub fn load_file_next(&mut self, file_url: &str) {
-        let msg = r#"{"command":["loadfile", ""#.to_owned() + file_url + r#"", "insert-next"]}"# + "\n";
+        let msg =
+            r#"{"command":["loadfile", ""#.to_owned() + file_url + r#"", "insert-next"]}"# + "\n";
         self.send_ipc_command(msg, false);
     }
 
@@ -58,8 +60,12 @@ impl Ipc {
     }
 
     pub fn seek_percentage(&mut self, percentage: &str) {
-        let msg = "{\"command\":[\"seek\",\"".to_owned() + percentage + "\",\"absolute-percent\"]}\n";
-        debug!("Sending command to seek absolute percent: {}%\n", percentage);
+        let msg =
+            "{\"command\":[\"seek\",\"".to_owned() + percentage + "\",\"absolute-percent\"]}\n";
+        debug!(
+            "Sending command to seek absolute percent: {}%\n",
+            percentage
+        );
         self.send_ipc_command(msg, false);
     }
 
@@ -72,10 +78,8 @@ impl Ipc {
         let msg = String::from("{\"command\":[\"get_property_string\",\"playback-time\"]}\n");
         debug!("Sending command to get playback-time\n");
         self.send_ipc_command(msg, true);
-        match f64::from_str_radix( self.parsed_value.as_str(),10) {
-            Ok(parsed_value) => {
-                parsed_value
-            }
+        match f64::from_str_radix(self.parsed_value.as_str(), 10) {
+            Ok(parsed_value) => parsed_value,
             Err(e) => {
                 error!("Error while parsing response from mpv: {}\n", e);
                 -1.0
@@ -84,7 +88,6 @@ impl Ipc {
     }
 
     pub async fn poll_events(&mut self) {
-
         let events = self.events.clone();
 
         tokio::spawn(async move {
@@ -139,29 +142,27 @@ impl Ipc {
                         Some(response) => {
                             if parse_json_success(response) {
                                 self.parsed_value = parse_json_data(buf_string.as_str());
-                            }
-                            else {
+                            } else {
                                 error!("Error response from server!\n")
                             }
                         }
                     }
                 }
             }
-            Err(e) => error!("Failed to read from stream: {}", e), }
+            Err(e) => error!("Failed to read from stream: {}", e),
+        }
     }
 
     fn send_ipc_command(&mut self, msg: String, parse_response_data: bool) {
         match self.stream.as_ref() {
-            Some(mut stream) => {
-                match stream.write_all(msg.as_bytes()) {
-                    Ok(_) => {
-                        sleep(Duration::from_millis(5));
-                        self.read_stream_response(parse_response_data);
-                    }
-                    Err(e) => error!("Failed to write to stream: {}", e), }
-            }
-            None => error!("Stream to MPV has not been initialized")
+            Some(mut stream) => match stream.write_all(msg.as_bytes()) {
+                Ok(_) => {
+                    sleep(Duration::from_millis(5));
+                    self.read_stream_response(parse_response_data);
+                }
+                Err(e) => error!("Failed to write to stream: {}", e),
+            },
+            None => error!("Stream to MPV has not been initialized"),
         }
     }
 }
-

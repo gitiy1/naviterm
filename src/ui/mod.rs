@@ -1,10 +1,10 @@
-pub mod interface;
-mod tab_home;
-mod popup_connection_test;
-mod utils;
-mod popup_album_info;
-mod popup_add_to;
-mod tab_queue;
 mod footer_now_playing;
-mod tab_albums;
+pub mod interface;
+mod popup_add_to;
+mod popup_album_info;
+mod popup_connection_test;
 mod popup_genre_filter;
+mod tab_albums;
+mod tab_home;
+mod tab_queue;
+mod utils;

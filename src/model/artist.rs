@@ -1,4 +1,2 @@
-#[derive(Debug,Default)]
-pub struct Artist {
-    
-}
+#[derive(Debug, Default)]
+pub struct Artist {}

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-#[derive(Serialize, Deserialize, Debug,Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Song {
     id: String,
     track: String,
@@ -16,7 +16,7 @@ pub struct Song {
     album_peak: String,
     track_gain: String,
     track_peak: String,
-    bit_rate: String
+    bit_rate: String,
 }
 
 impl Song {

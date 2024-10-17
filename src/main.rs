@@ -1,29 +1,29 @@
-use naviterm::app::{App, AppResult};
-use naviterm::event::{Event, EventHandler};
-use naviterm::handler::{handle_dbus_events, handle_key_events};
-use naviterm::tui::Tui;
-use std::io;
-use ratatui::backend::CrosstermBackend;
-use ratatui::Terminal;
 use config::{Config, ConfigError};
+use log::{debug, error, info, LevelFilter};
 use log4rs::append::file::FileAppender;
-use log4rs::Config as log4rsConfig;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
-use log::{debug, error, info, LevelFilter};
+use log4rs::Config as log4rsConfig;
+use naviterm::app::{App, AppResult};
 use naviterm::dbus;
+use naviterm::event::{Event, EventHandler};
+use naviterm::handler::{handle_dbus_events, handle_key_events};
+use naviterm::music_database::MusicDatabase;
+use naviterm::tui::Tui;
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
 use serde::{Deserialize, Serialize};
-use std::fs::{copy, File, remove_file};
+use std::fs::{copy, remove_file, File};
+use std::io;
 use std::io::{Read, Write};
 use std::path::Path;
-use naviterm::music_database::MusicDatabase;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
     //Load config
     let home_dir = dirs::home_dir().unwrap();
     let xdg_conf = home_dir.to_string_lossy().to_string() + "/.config/naviterm/";
-    let config_file = xdg_conf.clone()  + "config.ini";
+    let config_file = xdg_conf.clone() + "config.ini";
     let database_file = xdg_conf.clone() + "database.bin";
     let settings = Config::builder()
         .add_source(config::File::with_name(config_file.as_str()))
@@ -31,26 +31,22 @@ async fn main() -> AppResult<()> {
         .build()
         .unwrap();
 
-    let debug_level: Result<String,ConfigError> = settings.get("debug");
+    let debug_level: Result<String, ConfigError> = settings.get("debug");
     let level: LevelFilter = match debug_level {
         Ok(level) => match level.as_str() {
-            "DEBUG" => {
-                LevelFilter::Debug
-            }
-            _ => {
-                LevelFilter::Error
-            }
+            "DEBUG" => LevelFilter::Debug,
+            _ => LevelFilter::Error,
         },
-        Err(_) => {
-            LevelFilter::Error
-        }
+        Err(_) => LevelFilter::Error,
     };
     let file_path = "/tmp/foo.log";
 
     // Logging to log file.
     let logfile = FileAppender::builder()
         // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
-        .encoder(Box::new(PatternEncoder::new("{h({d(%+)(utc)} [{f}:{L}] {l:<6} {m})}")))
+        .encoder(Box::new(PatternEncoder::new(
+            "{h({d(%+)(utc)} [{f}:{L}] {l:<6} {m})}",
+        )))
         .build(file_path)
         .unwrap();
 
@@ -61,7 +57,7 @@ async fn main() -> AppResult<()> {
         .build(Root::builder().appender("logfile").build(level))
         .unwrap();
     let _handle = log4rs::init_config(config);
-    
+
     // Create an application.
     let mut app = App::new();
     app.set_config(settings)?;
@@ -87,7 +83,8 @@ async fn main() -> AppResult<()> {
 
     let iface_ref = dbus_connection
         .object_server()
-        .interface::<_, dbus::MediaPlayer2Player>("/org/mpris/MediaPlayer2").await?;
+        .interface::<_, dbus::MediaPlayer2Player>("/org/mpris/MediaPlayer2")
+        .await?;
 
     // Start the main loop.
     while app.running {
@@ -99,7 +96,7 @@ async fn main() -> AppResult<()> {
             Event::Key(key_event) => handle_key_events(key_event, &mut app, &iface_ref).await?,
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
-            Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, &iface_ref).await?
+            Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, &iface_ref).await?,
         }
     }
 
@@ -108,7 +105,7 @@ async fn main() -> AppResult<()> {
     // Save music database if it does not exist
     match save_to_disk(&app.database, database_file.as_str()) {
         Ok(..) => info!("Database saved successfully!\n"),
-        Err(e) => error!("Error saving database: {}\n", e.to_string())
+        Err(e) => error!("Error saving database: {}\n", e.to_string()),
     }
     Ok(())
 }
@@ -117,7 +114,7 @@ fn save_to_disk<T: Serialize>(data: &T, filename: &str) -> Result<(), Box<dyn st
     // Check if the file exists
     if Path::new(filename).exists() {
         debug!("Database already exists in disk, backing up before saving\n");
-        copy(filename,"/tmp/database_back.bin")?;
+        copy(filename, "/tmp/database_back.bin")?;
         remove_file(filename)?;
     }
     // Serialize the struct into a byte array

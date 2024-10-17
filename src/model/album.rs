@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug,Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Album {
     id: String,
     name: String,
@@ -10,7 +10,7 @@ pub struct Album {
     artist: String,
     genres: Vec<String>,
     song_count: String,
-    songs: Vec<String>
+    songs: Vec<String>,
 }
 
 impl Album {
@@ -26,8 +26,12 @@ impl Album {
         &self.cover_art
     }
 
-    pub fn duration(&self) -> &str { &self.duration }
-    pub fn play_count(&self) -> &str { &self.play_count }
+    pub fn duration(&self) -> &str {
+        &self.duration
+    }
+    pub fn play_count(&self) -> &str {
+        &self.play_count
+    }
 
     pub fn artist(&self) -> &str {
         &self.artist
@@ -49,8 +53,12 @@ impl Album {
         self.cover_art = cover_art;
     }
 
-    pub fn set_duration(&mut self, duration: String) { self.duration = duration; }
-    pub fn set_play_count(&mut self, play_count: String) { self.play_count = play_count; }
+    pub fn set_duration(&mut self, duration: String) {
+        self.duration = duration;
+    }
+    pub fn set_play_count(&mut self, play_count: String) {
+        self.play_count = play_count;
+    }
 
     pub fn set_artist(&mut self, artist: String) {
         self.artist = artist;
@@ -60,12 +68,18 @@ impl Album {
         self.song_count = song_count;
     }
 
-    pub fn genres(&self) -> &Vec<String> { &self.genres }
+    pub fn genres(&self) -> &Vec<String> {
+        &self.genres
+    }
 
-    pub fn set_genres(&mut self, genres: Vec<String>) { self.genres = genres; }
-    pub fn songs(&self) -> &Vec<String> { &self.songs }
+    pub fn set_genres(&mut self, genres: Vec<String>) {
+        self.genres = genres;
+    }
+    pub fn songs(&self) -> &Vec<String> {
+        &self.songs
+    }
 
-    pub fn set_songs(&mut self, songs: Vec<String>) { self.songs = songs; }
+    pub fn set_songs(&mut self, songs: Vec<String>) {
+        self.songs = songs;
+    }
 }
-
-

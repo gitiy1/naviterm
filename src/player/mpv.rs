@@ -21,11 +21,15 @@ impl Default for Mpv {
     fn default() -> Self {
         Self {
             mpv_process: Command::new("mpv")
-                .arg("--no-video").arg("--idle").arg("--input-ipc-server=".to_owned() + MPV_SOCKET).arg("--prefetch-playlist=yes")
+                .arg("--no-video")
+                .arg("--idle")
+                .arg("--input-ipc-server=".to_owned() + MPV_SOCKET)
+                .arg("--prefetch-playlist=yes")
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
-                .spawn().unwrap(),
+                .spawn()
+                .unwrap(),
             player_status: PlayerStatus::Stopped,
             ipc: Ipc::default(),
         }
@@ -39,7 +43,9 @@ impl Mpv {
 
     pub fn quit_player(&mut self) {
         self.ipc.quit();
-        self.mpv_process.wait().expect("Could not wait mpv to finish");
+        self.mpv_process
+            .wait()
+            .expect("Could not wait mpv to finish");
     }
 
     pub fn play_song(&mut self, song_url: &str) {
@@ -76,7 +82,9 @@ impl Mpv {
         self.ipc.seek("-10")
     }
 
-    pub fn set_playback_percentage(&mut self, percentage: &str) { self.ipc.seek_percentage(percentage); }
+    pub fn set_playback_percentage(&mut self, percentage: &str) {
+        self.ipc.seek_percentage(percentage);
+    }
 
     pub fn player_status(&self) -> &PlayerStatus {
         &self.player_status

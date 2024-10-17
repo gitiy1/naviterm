@@ -26,42 +26,40 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 pub fn duration_to_hhmmss(duration: &str) -> String {
     let u_duration = duration.parse::<usize>().unwrap();
     let hhmmss;
-    
-    if u_duration > 3600 { 
+
+    if u_duration > 3600 {
         let hours = u_duration / 3600;
-        let minutes = (u_duration - 3600*hours) / 60;
-        let seconds = (u_duration - 3600*hours) % 60;
+        let minutes = (u_duration - 3600 * hours) / 60;
+        let seconds = (u_duration - 3600 * hours) % 60;
         if minutes < 10 && seconds < 10 {
             hhmmss = format!("{}:0{}:0{}", hours, minutes, seconds);
-        }
-        else if minutes < 10 {
+        } else if minutes < 10 {
             hhmmss = format!("{}:0{}:{}", hours, minutes, seconds);
-        }
-        else if seconds < 10 {
+        } else if seconds < 10 {
             hhmmss = format!("{}:{}:0{}", hours, minutes, seconds);
-        }
-        else {
+        } else {
             hhmmss = format!("{}:{}:{}", hours, minutes, seconds);
         }
-    }
-    else {
+    } else {
         let minutes = u_duration / 60;
         let seconds = u_duration % 60;
         if seconds < 10 {
             hhmmss = format!("{}:0{}", minutes, seconds);
-        }
-        else {
+        } else {
             hhmmss = format!("{}:{}", minutes, seconds);
         }
     }
-    
+
     hhmmss
 }
 
 pub fn ellipse_line(line: &str, max_width: usize) -> String {
-    return if line.is_empty() { String::new() } 
-    else if line.graphemes(true).count() > max_width {
+    return if line.is_empty() {
+        String::new()
+    } else if line.graphemes(true).count() > max_width {
         let clipped_line: String = line.graphemes(true).take(max_width - 4).collect();
         clipped_line + "..."
-    } else { String::from(line) }
+    } else {
+        String::from(line)
+    };
 }

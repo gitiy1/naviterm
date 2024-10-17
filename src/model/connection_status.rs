@@ -1,9 +1,9 @@
-#[derive(Debug,Default)]
+#[derive(Debug, Default)]
 pub struct ConnectionStatus {
     status: String,
     server_version: String,
     error_code: String,
-    error_message: String
+    error_message: String,
 }
 
 impl ConnectionStatus {
@@ -39,4 +39,3 @@ impl ConnectionStatus {
         self.error_message = error_message;
     }
 }
-
