@@ -1,21 +1,24 @@
+use ratatui::layout::Constraint::{Length, Min, Percentage};
+use ratatui::layout::{Layout, Rect};
+use ratatui::prelude::Line;
+use ratatui::style::Color::Yellow;
+use ratatui::style::{Modifier, Style, Stylize};
+use ratatui::text::Span;
+use ratatui::widgets::Tabs;
+use ratatui::{symbols, Frame};
+
 use crate::app::{App, CurrentScreen, Popup};
 use crate::ui::footer_now_playing::draw_footer;
 use crate::ui::{
     popup_add_to, popup_album_info, popup_connection_test, popup_genre_filter, tab_albums,
     tab_home, tab_queue,
 };
-use ratatui::layout::Constraint::{Length, Min};
-use ratatui::layout::{Layout, Rect};
-use ratatui::prelude::Line;
-use ratatui::style::{Style, Stylize};
-use ratatui::widgets::{Block, Paragraph, Tabs};
-use ratatui::{symbols, Frame};
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
     let vertical = Layout::vertical([Length(1), Min(0), Length(4)]);
     let [header_area, inner_area, footer_area] = vertical.areas(frame.size());
-    let horizontal = Layout::horizontal([Min(0), Length(20)]);
+    let horizontal = Layout::horizontal([Percentage(50), Percentage(50)]);
     let [tabs_area, title_area] = horizontal.areas(header_area);
 
     match app.current_screen {
@@ -43,14 +46,30 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         Popup::None => {}
     }
 
-    draw_title(title_area, frame);
+    draw_title(app, title_area, frame);
     draw_footer(app, footer_area, frame);
 }
 
-fn draw_title(title_area: Rect, frame: &mut Frame) {
+fn draw_title(app: &mut App, title_area: Rect, frame: &mut Frame) {
+    let horizontal = Layout::horizontal([Percentage(50),Percentage(50)]);
+    let [search_area, status_area] = horizontal.areas(title_area);
+    let search_line = if !app.search_string.is_empty() || app.searching {
+        Line::from(vec![
+            Span::from("Searching: "),
+            Span::from(app.search_string.clone())
+                .style(Style::default().fg(Yellow).add_modifier(Modifier::ITALIC)),
+        ])
+    } else {
+        Line::from("")
+    };
+    let status_line = Line::from("naviterm");
     frame.render_widget(
-        Paragraph::new(Line::from("naviterm")).block(Block::default()),
-        title_area,
+        search_line,
+        search_area,
+    );
+    frame.render_widget(
+        status_line,
+        status_area,
     );
 }
 

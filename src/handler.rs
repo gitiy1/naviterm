@@ -12,6 +12,27 @@ pub async fn handle_key_events(
     app: &mut App,
     iface_ref: &InterfaceRef<MediaPlayer2Player>,
 ) -> AppResult<()> {
+    if app.searching {
+        match key_event.code {
+            KeyCode::Backspace => {
+                if !app.search_string.is_empty() {
+                    app.search_string.remove(app.search_string.len() - 1);
+                }
+            }
+            KeyCode::Enter => {
+                app.searching = false;
+            }
+            KeyCode::Char(c) => {
+                app.search_string.push(c);
+            }
+            KeyCode::Esc => {
+                app.searching = false;
+                app.search_string = "".to_string();
+            }
+            _ => {}
+        }
+        return Ok(());
+    }
     if app.current_popup == Popup::None {
         match app.current_screen {
             CurrentScreen::Home => match key_event.code {
@@ -135,12 +156,13 @@ pub async fn handle_key_events(
             },
         }
         // Exit application no matter the current_screen
-        // Exit application on `ESC` or `q` or  `<C-c>`
-        if key_event.code == KeyCode::Esc
-            || key_event.code == KeyCode::Char('q')
+        // Exit application on `q` or  `<C-c>`
+        if key_event.code == KeyCode::Char('q')
             || key_event.code == KeyCode::Char('c') && key_event.modifiers == KeyModifiers::CONTROL
         {
             app.quit();
+        } else if key_event.code == KeyCode::Char('/') {
+            app.searching = true;
         }
     } else {
         match app.current_popup {

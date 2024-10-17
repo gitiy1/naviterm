@@ -82,7 +82,7 @@ pub struct App {
     pub album_year_filter: String,
     pub album_sorting_mode: String,
     pub album_sorting_direction: String,
-    pub recent_list_complete: bool,
+    pub search_string: String,
     pub searching: bool,
 }
 
@@ -130,8 +130,8 @@ impl Default for App {
             album_year_filter: String::from("any"),
             album_sorting_mode: String::from("alphabetically"),
             album_sorting_direction: String::from("descending"),
-            recent_list_complete: false,
             searching: false,
+            search_string: String::from(""),
         }
     }
 }
