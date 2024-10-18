@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::error;
-
 use crate::constants;
 use crate::event::DbusEvent::{Clear, Playing};
 use crate::event::Event;
@@ -14,6 +11,8 @@ use log::{debug, info};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use ratatui::widgets::ListState;
+use std::collections::HashMap;
+use std::error;
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum with applications screens
@@ -83,7 +82,10 @@ pub struct App {
     pub album_sorting_mode: String,
     pub album_sorting_direction: String,
     pub search_string: String,
-    pub searching: bool,
+    pub getting_search_string: bool,
+    pub index_in_search: usize,
+    pub move_to_next_in_search: bool,
+    pub search_results_indexes: Vec<usize>,
 }
 
 #[derive(Default, Debug)]
@@ -130,8 +132,11 @@ impl Default for App {
             album_year_filter: String::from("any"),
             album_sorting_mode: String::from("alphabetically"),
             album_sorting_direction: String::from("descending"),
-            searching: false,
+            getting_search_string: false,
+            index_in_search: usize::MAX,
+            move_to_next_in_search: false,
             search_string: String::from(""),
+            search_results_indexes: vec![],
         }
     }
 }
@@ -918,6 +923,49 @@ impl App {
                 _ => {}
             }
         }
+        Ok(())
+    }
+
+    pub fn search_in_current_list(&mut self) -> AppResult<()> {
+        let list_to_be_searched = match self.current_screen {
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::Top => self.database.recent_albums(),
+                HomePane::Bottom => self.database.most_listened_albums(),
+            },
+            CurrentScreen::Albums => self.database.filtered_albums(),
+            CurrentScreen::Queue => &self.queue,
+            _ => return Ok(()),
+        };
+
+        for (index, id) in list_to_be_searched.iter().enumerate() {
+            let album = self.database.get_album(id.as_str());
+            if album.name().contains(self.search_string.as_str()) {
+                self.search_results_indexes.push(index);
+            }
+        }
+
+        Ok(())
+    }
+    pub fn go_next_in_search(&mut self) -> AppResult<()> {
+        if self.search_results_indexes.is_empty() {
+            return Ok(());
+        }
+        if self.index_in_search == usize::MAX
+            || self.index_in_search >= self.search_results_indexes.len() - 1
+        {
+            self.index_in_search = 0;
+        } else {
+            self.index_in_search += 1;
+        }
+        self.move_to_next_in_search = true;
+        Ok(())
+    }
+
+    pub fn clear_search(&mut self) -> AppResult<()> {
+        self.search_string = "".to_string();
+        self.search_results_indexes.clear();
+        self.index_in_search = usize::MAX;
+
         Ok(())
     }
 }

@@ -12,7 +12,7 @@ pub async fn handle_key_events(
     app: &mut App,
     iface_ref: &InterfaceRef<MediaPlayer2Player>,
 ) -> AppResult<()> {
-    if app.searching {
+    if app.getting_search_string {
         match key_event.code {
             KeyCode::Backspace => {
                 if !app.search_string.is_empty() {
@@ -20,14 +20,16 @@ pub async fn handle_key_events(
                 }
             }
             KeyCode::Enter => {
-                app.searching = false;
+                app.getting_search_string = false;
+                app.search_in_current_list()?;
+                app.go_next_in_search()?;
             }
             KeyCode::Char(c) => {
                 app.search_string.push(c);
             }
             KeyCode::Esc => {
-                app.searching = false;
-                app.search_string = "".to_string();
+                app.getting_search_string = false;
+                app.clear_search()?;
             }
             _ => {}
         }
@@ -37,9 +39,11 @@ pub async fn handle_key_events(
         match app.current_screen {
             CurrentScreen::Home => match key_event.code {
                 KeyCode::Char('2') => {
+                    app.clear_search()?;
                     app.current_screen = CurrentScreen::Albums;
                 }
                 KeyCode::Char('5') => {
+                    app.clear_search()?;
                     app.current_screen = CurrentScreen::Queue;
                 }
                 KeyCode::F(1) => {
@@ -77,9 +81,11 @@ pub async fn handle_key_events(
             },
             CurrentScreen::Albums => match key_event.code {
                 KeyCode::Char('1') => {
+                    app.clear_search()?;
                     app.current_screen = CurrentScreen::Home;
                 }
                 KeyCode::Char('5') => {
+                    app.clear_search()?;
                     app.current_screen = CurrentScreen::Queue;
                 }
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
@@ -98,6 +104,9 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Char('e') => {
                     app.current_popup = Popup::GenreFilter;
+                }
+                KeyCode::Char('n') => {
+                    app.go_next_in_search()?;
                 }
                 KeyCode::Char('m') => {
                     app.album_sorting_mode = if app.album_sorting_mode == "alphabetically" {
@@ -124,9 +133,11 @@ pub async fn handle_key_events(
             CurrentScreen::Artists => {}
             CurrentScreen::Queue => match key_event.code {
                 KeyCode::Char('1') => {
+                    app.clear_search()?;
                     app.current_screen = CurrentScreen::Home;
                 }
                 KeyCode::Char('2') => {
+                    app.clear_search()?;
                     app.current_screen = CurrentScreen::Albums;
                 }
                 KeyCode::Char('l') => app.play_next()?,
@@ -162,7 +173,7 @@ pub async fn handle_key_events(
         {
             app.quit();
         } else if key_event.code == KeyCode::Char('/') {
-            app.searching = true;
+            app.getting_search_string = true;
         }
     } else {
         match app.current_popup {
@@ -254,6 +265,9 @@ pub async fn handle_key_events(
     };
     if key_event.code == KeyCode::Left {
         handle_seek_backwards(app, iface_ref).await?
+    };
+    if key_event.code == KeyCode::Esc {
+        app.clear_search()?;
     };
     Ok(())
 }

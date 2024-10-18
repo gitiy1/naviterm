@@ -1,7 +1,7 @@
 use ratatui::layout::Constraint::{Length, Min, Percentage};
 use ratatui::layout::{Layout, Rect};
 use ratatui::prelude::Line;
-use ratatui::style::Color::Yellow;
+use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::text::Span;
 use ratatui::widgets::Tabs;
@@ -51,26 +51,38 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 }
 
 fn draw_title(app: &mut App, title_area: Rect, frame: &mut Frame) {
-    let horizontal = Layout::horizontal([Percentage(50),Percentage(50)]);
+    let horizontal = Layout::horizontal([Percentage(50), Percentage(50)]);
     let [search_area, status_area] = horizontal.areas(title_area);
-    let search_line = if !app.search_string.is_empty() || app.searching {
-        Line::from(vec![
-            Span::from("Searching: "),
+    let mut search_line: Vec<Span> = vec![];
+    if !app.search_string.is_empty() || app.getting_search_string {
+        search_line.push(Span::from("Searching: "));
+        search_line.push(
             Span::from(app.search_string.clone())
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::ITALIC)),
-        ])
-    } else {
-        Line::from("")
-    };
+        );
+    }
+    if app.index_in_search != usize::MAX {
+        search_line.push(
+            Span::from(format!(
+                " ({}/{})",
+                app.index_in_search + 1,
+                app.search_results_indexes.len()
+            ))
+            .style(Style::default().fg(Gray).add_modifier(Modifier::ITALIC)),
+        );
+    }
+    if !app.search_string.is_empty()
+        && !app.getting_search_string
+        && app.search_results_indexes.is_empty()
+    {
+        search_line.push(
+            Span::from(" (Not found)")
+                .style(Style::default().fg(Gray).add_modifier(Modifier::ITALIC)),
+        );
+    }
     let status_line = Line::from("naviterm");
-    frame.render_widget(
-        search_line,
-        search_area,
-    );
-    frame.render_widget(
-        status_line,
-        status_area,
-    );
+    frame.render_widget(Line::from(search_line), search_area);
+    frame.render_widget(status_line, status_area);
 }
 
 fn draw_tabs(index: usize, header_area: Rect, frame: &mut Frame) {
