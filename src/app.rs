@@ -210,8 +210,9 @@ impl App {
     }
 
     pub async fn update_recent_albums(&mut self) -> AppResult<()> {
-        self.database
-            .set_recent_albums(self.server.get_recent_albums().await?);
+        let recents = self.server.get_recent_albums().await?;
+        self.get_complete_albums_and_populate_db(&recents).await?;
+        self.database.set_recent_albums(recents);
         Ok(())
     }
 
