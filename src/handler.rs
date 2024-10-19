@@ -18,6 +18,11 @@ pub async fn handle_key_events(
                 if !app.search_string.is_empty() {
                     app.search_string.remove(app.search_string.len() - 1);
                 }
+                app.clear_search_results()?;
+                if app.search_string.len() > 2 {
+                    app.search_in_current_list()?;
+                    app.go_next_in_search()?;
+                }
             }
             KeyCode::Enter => {
                 app.getting_search_string = false;
@@ -26,6 +31,11 @@ pub async fn handle_key_events(
             }
             KeyCode::Char(c) => {
                 app.search_string.push(c);
+                if app.search_string.len() > 2 {
+                    app.clear_search_results()?;
+                    app.search_in_current_list()?;
+                    app.go_next_in_search()?;
+                }
             }
             KeyCode::Esc => {
                 app.getting_search_string = false;

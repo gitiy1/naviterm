@@ -984,4 +984,11 @@ impl App {
 
         Ok(())
     }
+
+    pub fn clear_search_results(&mut self) -> AppResult<()> {
+        self.search_results_indexes.clear();
+        self.index_in_search = usize::MAX;
+
+        Ok(())
+    }
 }
