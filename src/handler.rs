@@ -108,12 +108,16 @@ pub async fn handle_key_events(
                 KeyCode::Char('n') => {
                     app.go_next_in_search()?;
                 }
+                KeyCode::Char('N') => {
+                    app.go_previous_in_search()?;
+                }
                 KeyCode::Char('m') => {
                     app.album_sorting_mode = if app.album_sorting_mode == "alphabetically" {
                         "frequent".to_string()
                     } else {
                         "alphabetically".to_string()
                     };
+                    app.clear_search()?;
                     app.album_state.select_first();
                     app.process_filtered_album_list().await?;
                 }
@@ -233,6 +237,7 @@ pub async fn handle_key_events(
                     app.set_genre_filter()?;
                     app.process_filtered_album_list().await?;
                     app.current_popup = Popup::None;
+                    app.clear_search()?;
                 }
                 KeyCode::Char('d') => {
                     if key_event.modifiers == KeyModifiers::CONTROL {

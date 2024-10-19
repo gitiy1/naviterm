@@ -952,11 +952,26 @@ impl App {
             return Ok(());
         }
         if self.index_in_search == usize::MAX
-            || self.index_in_search >= self.search_results_indexes.len() - 1
+            || self.index_in_search == self.search_results_indexes.len() - 1
         {
             self.index_in_search = 0;
         } else {
             self.index_in_search += 1;
+        }
+        self.move_to_next_in_search = true;
+        Ok(())
+    }
+
+    pub fn go_previous_in_search(&mut self) -> AppResult<()> {
+        if self.search_results_indexes.is_empty() {
+            return Ok(());
+        }
+        if self.index_in_search == usize::MAX
+            || self.index_in_search == 0
+        {
+            self.index_in_search = self.search_results_indexes.len() - 1;
+        } else {
+            self.index_in_search -= 1;
         }
         self.move_to_next_in_search = true;
         Ok(())
