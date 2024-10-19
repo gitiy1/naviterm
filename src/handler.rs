@@ -26,8 +26,6 @@ pub async fn handle_key_events(
             }
             KeyCode::Enter => {
                 app.getting_search_string = false;
-                app.search_in_current_list()?;
-                app.go_next_in_search()?;
             }
             KeyCode::Char(c) => {
                 app.search_string.push(c);

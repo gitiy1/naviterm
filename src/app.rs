@@ -948,12 +948,20 @@ impl App {
         Ok(())
     }
     pub fn go_next_in_search(&mut self) -> AppResult<()> {
+        let list_selected_state = match self.current_screen {
+            CurrentScreen::Albums => { self.album_state.selected().unwrap() }
+            _ => { 0 }
+        };
         if self.search_results_indexes.is_empty() {
             return Ok(());
         }
         if self.index_in_search == usize::MAX
-            || self.index_in_search == self.search_results_indexes.len() - 1
         {
+            self.index_in_search = 0;
+            while self.search_results_indexes[self.index_in_search] < list_selected_state {
+                self.index_in_search += 1;
+            }
+        } else if self.index_in_search == self.search_results_indexes.len() - 1 {
             self.index_in_search = 0;
         } else {
             self.index_in_search += 1;
