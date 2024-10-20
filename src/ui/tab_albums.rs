@@ -95,24 +95,29 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let mut album_vector = Vec::new();
     for (index, album_id) in list.iter().enumerate() {
         let album = app.database.get_album(album_id);
+        let album_name_to_search = if app.upper_case_search {
+            album.name().to_string()
+        } else {
+            album.name().to_lowercase()
+        };
         let mut album_first_line_vector: Vec<Span> = vec![];
         let mut album_second_line_vector: Vec<Span> = vec![];
         if !app.search_results_indexes.is_empty()
             && index == *app.search_results_indexes.get(app.index_in_search).unwrap()
         {
-            let match_indices:Vec<_> = album.name().match_indices(app.search_string.as_str()).collect();
-            let (first_index,first_match) = match_indices[0];
+            let match_indices: Vec<_> = album_name_to_search
+                .match_indices(app.search_string.as_str())
+                .collect();
+            let (first_index, first_match) = match_indices[0];
             let first_slice = &album.name()[0..first_index];
-            let last_slice = &album.name()[first_index+first_match.len()..];
+            let matched_slice = &album.name()[first_index..first_index + first_match.len()];
+            let last_slice = &album.name()[first_index + first_match.len()..];
             album_first_line_vector.push(
-                Span::from(first_slice).style(
-                    Style::default()
-                        .fg(Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
+                Span::from(first_slice)
+                    .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
             );
             album_first_line_vector.push(
-                Span::from(first_match).style(
+                Span::from(matched_slice).style(
                     Style::default()
                         .fg(Black)
                         .bg(Yellow)
@@ -120,11 +125,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 ),
             );
             album_first_line_vector.push(
-                Span::from(last_slice).style(
-                    Style::default()
-                        .fg(Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
+                Span::from(last_slice)
+                    .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
             );
         } else {
             album_first_line_vector.push(

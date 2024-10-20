@@ -85,6 +85,7 @@ pub struct App {
     pub getting_search_string: bool,
     pub index_in_search: usize,
     pub move_to_next_in_search: bool,
+    pub upper_case_search: bool,
     pub search_results_indexes: Vec<usize>,
 }
 
@@ -135,6 +136,7 @@ impl Default for App {
             getting_search_string: false,
             index_in_search: usize::MAX,
             move_to_next_in_search: false,
+            upper_case_search: false,
             search_string: String::from(""),
             search_results_indexes: vec![],
         }
@@ -938,9 +940,22 @@ impl App {
             _ => return Ok(()),
         };
 
+        self.upper_case_search = false;
+        for char in self.search_string.chars() {
+            self.upper_case_search = char.is_uppercase();
+            if self.upper_case_search {
+                break;
+            }
+        }
+
         for (index, id) in list_to_be_searched.iter().enumerate() {
             let album = self.database.get_album(id.as_str());
-            if album.name().contains(self.search_string.as_str()) {
+            let album_name_to_search = if self.upper_case_search {
+                album.name().to_string()
+            } else {
+                album.name().to_lowercase()
+            };
+            if album_name_to_search.contains(self.search_string.as_str()) {
                 self.search_results_indexes.push(index);
             }
         }
@@ -949,14 +964,13 @@ impl App {
     }
     pub fn go_next_in_search(&mut self) -> AppResult<()> {
         let list_selected_state = match self.current_screen {
-            CurrentScreen::Albums => { self.album_state.selected().unwrap() }
-            _ => { 0 }
+            CurrentScreen::Albums => self.album_state.selected().unwrap(),
+            _ => 0,
         };
         if self.search_results_indexes.is_empty() {
             return Ok(());
         }
-        if self.index_in_search == usize::MAX
-        {
+        if self.index_in_search == usize::MAX {
             self.index_in_search = 0;
             while self.search_results_indexes[self.index_in_search] < list_selected_state {
                 self.index_in_search += 1;
@@ -974,9 +988,7 @@ impl App {
         if self.search_results_indexes.is_empty() {
             return Ok(());
         }
-        if self.index_in_search == usize::MAX
-            || self.index_in_search == 0
-        {
+        if self.index_in_search == usize::MAX || self.index_in_search == 0 {
             self.index_in_search = self.search_results_indexes.len() - 1;
         } else {
             self.index_in_search -= 1;
@@ -989,6 +1001,7 @@ impl App {
         self.search_string = "".to_string();
         self.search_results_indexes.clear();
         self.index_in_search = usize::MAX;
+        self.move_to_next_in_search = false;
 
         Ok(())
     }
