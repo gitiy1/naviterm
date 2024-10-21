@@ -617,6 +617,11 @@ impl App {
                     if self.player.player_status == PlayerStatus::Playing && !self.queue_has_next()
                     {
                         self.player.player_status = PlayerStatus::Stopped;
+                        self.event_sender
+                            .as_ref()
+                            .unwrap()
+                            .send(Dbus(Clear))
+                            .unwrap();
                     }
                 }
                 IpcEvent::Error(_) => {}
