@@ -4,6 +4,7 @@ use crate::model::connection_status::ConnectionStatus;
 use crate::model::song::Song;
 use encoding::all::ISO_8859_1;
 use encoding::{EncoderTrap, Encoding};
+use crate::model::playlist::Playlist;
 
 pub struct Parser {}
 
@@ -285,5 +286,46 @@ impl Parser {
         }
 
         song_list
+    }
+
+    pub fn parse_playlist_list(response: String) -> AppResult<Vec<Playlist>> {
+        let mut playlist_list: Vec<Playlist> = vec![]; 
+        let root: minidom::Element = response.parse().unwrap();
+
+        let playlists = root.get_child("playlists", Self::NAMESPACE).unwrap();
+        
+        for playlist in playlists.children() {
+            let mut new_playlist: Playlist = Playlist::default();
+            for attribute in playlist.attrs() {
+                match attribute.0 {
+                    "id" => new_playlist.set_id(attribute.1.to_string()),
+                    "name" => new_playlist.set_name(attribute.1.to_string()),
+                    "songCount" => new_playlist.set_song_count(attribute.1.to_string()),
+                    "duration" => new_playlist.set_duration(attribute.1.to_string()),
+                    _ => {}
+                }
+            }
+            playlist_list.push(new_playlist);
+        }
+        
+        Ok(playlist_list)
+    }
+
+    pub fn parse_playlist(response: String) -> AppResult<Vec<String>> {
+        let mut playlists_songs: Vec<String> = vec![];
+        let root: minidom::Element = response.parse().unwrap();
+
+        let list = root.get_child("playlist", Self::NAMESPACE).unwrap();
+        for album in list.children() {
+            let mut song_id = String::new();
+            for attribute in album.attrs() {
+                match attribute.0 {
+                    "id" => song_id = attribute.1.to_string(),
+                    &_ => {}
+                }
+            }
+            playlists_songs.push(song_id);
+        }
+        Ok(playlists_songs)
     }
 }

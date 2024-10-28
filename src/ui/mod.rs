@@ -6,5 +6,6 @@ mod popup_connection_test;
 mod popup_genre_filter;
 mod tab_albums;
 mod tab_home;
+mod tab_playlists;
 mod tab_queue;
 mod utils;

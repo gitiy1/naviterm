@@ -50,6 +50,10 @@ pub async fn handle_key_events(
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Albums;
                 }
+                KeyCode::Char('3') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Playlists;
+                }
                 KeyCode::Char('5') => {
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Queue;
@@ -91,6 +95,10 @@ pub async fn handle_key_events(
                 KeyCode::Char('1') => {
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Home;
+                }
+                KeyCode::Char('3') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Playlists;
                 }
                 KeyCode::Char('5') => {
                     app.clear_search()?;
@@ -141,7 +149,23 @@ pub async fn handle_key_events(
                 }
                 _ => {}
             },
-            CurrentScreen::Playlists => {}
+            CurrentScreen::Playlists => match key_event.code {
+                KeyCode::Char('1') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Home;
+                }
+                KeyCode::Char('2') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Albums;
+                }
+                KeyCode::Char('5') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Queue;
+                }
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
+                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
+                _ => {}
+            },
             CurrentScreen::Artists => {}
             CurrentScreen::Queue => match key_event.code {
                 KeyCode::Char('1') => {
@@ -152,10 +176,14 @@ pub async fn handle_key_events(
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Albums;
                 }
+                KeyCode::Char('3') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Playlists;
+                }
                 KeyCode::Char('l') => app.play_next()?,
                 KeyCode::Char('h') => app.play_previous()?,
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_queue()?,
-                KeyCode::Char('k') | KeyCode::Up => app.select_previous_queue()?,
+                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
+                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
                 KeyCode::Char('c') => {
                     if key_event.modifiers != KeyModifiers::CONTROL {
                         handle_stop_playback(app, iface_ref).await?;

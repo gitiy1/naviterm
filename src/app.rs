@@ -68,6 +68,7 @@ pub struct App {
     pub popup_list_state: ListState,
     pub popup_genre_list_state: ListState,
     pub album_state: ListState,
+    pub playlist_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
     pub queue_order: Vec<usize>,
@@ -118,6 +119,7 @@ impl Default for App {
             home_bottom_state: ListState::default(),
             queue_list_state: ListState::default(),
             popup_list_state: ListState::default(),
+            playlist_state: ListState::default(),
             popup_genre_list_state: ListState::default(),
             album_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
@@ -205,6 +207,8 @@ impl App {
         self.database
             .set_alphabetical_albums(alphabetical_albums_list);
         self.update_most_listened_albums().await?;
+        self.database
+            .set_playlists(self.server.get_playlists().await?);
         let mut genres = self.server.get_genres().await?;
         genres.sort();
         self.database.set_genres(genres);
@@ -224,6 +228,12 @@ impl App {
                 .get_album_list_complete(SubsonicOperation::GetAlbumListMostListened)
                 .await?,
         );
+        Ok(())
+    }
+
+    pub async fn update_playlists(&mut self) -> AppResult<()> {
+        self.database
+            .set_playlists(self.server.get_playlists().await?);
         Ok(())
     }
 
@@ -310,9 +320,13 @@ impl App {
             CurrentScreen::Albums => {
                 self.album_state.select_next();
             }
-            CurrentScreen::Playlists => {}
+            CurrentScreen::Playlists => {
+                self.playlist_state.select_next();
+            }
             CurrentScreen::Artists => {}
-            CurrentScreen::Queue => {}
+            CurrentScreen::Queue => {
+                self.queue_list_state.select_next();
+            }
         }
 
         Ok(())
@@ -329,9 +343,13 @@ impl App {
                 }
             },
             CurrentScreen::Albums => self.album_state.select_previous(),
-            CurrentScreen::Playlists => {}
+            CurrentScreen::Playlists => {
+                self.playlist_state.select_previous();
+            }
             CurrentScreen::Artists => {}
-            CurrentScreen::Queue => {}
+            CurrentScreen::Queue => {
+                self.queue_list_state.select_previous();
+            }
         }
         Ok(())
     }
@@ -363,16 +381,6 @@ impl App {
                 unreachable!()
             }
         }
-        Ok(())
-    }
-
-    pub fn select_next_queue(&mut self) -> AppResult<()> {
-        self.queue_list_state.select_next();
-        Ok(())
-    }
-
-    pub fn select_previous_queue(&mut self) -> AppResult<()> {
-        self.queue_list_state.select_previous();
         Ok(())
     }
 

@@ -2,6 +2,7 @@ use crate::model::album::Album;
 use crate::model::song::Song;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::model::playlist::Playlist;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct MusicDatabase {
@@ -12,6 +13,7 @@ pub struct MusicDatabase {
     genres: Vec<String>,
     albums: HashMap<String, Album>,
     songs: HashMap<String, Song>,
+    playlists: Vec<Playlist>,
 }
 
 impl MusicDatabase {
@@ -97,5 +99,13 @@ impl MusicDatabase {
 
     pub fn set_genres(&mut self, genres: Vec<String>) {
         self.genres = genres;
+    }
+
+    pub fn playlists(&self) -> &Vec<Playlist> {
+        &self.playlists
+    }
+
+    pub fn set_playlists(&mut self, playlists: Vec<Playlist>) {
+        self.playlists = playlists;
     }
 }

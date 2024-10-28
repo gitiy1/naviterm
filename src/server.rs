@@ -1,15 +1,16 @@
+use crate::app::AppResult;
+use crate::model::album::Album;
+use crate::model::playlist::Playlist;
+use crate::model::song::Song;
+use crate::parser::Parser;
 use chrono;
+use log::debug;
 use md5;
 use rand::distributions::{Alphanumeric, DistString};
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
 use reqwest::Client;
 use std::fmt::Display;
 use std::vec;
-
-use crate::app::AppResult;
-use crate::model::album::Album;
-use crate::model::song::Song;
-use crate::parser::Parser;
 
 #[derive(Clone, Copy)]
 pub enum SubsonicOperation {
@@ -20,6 +21,8 @@ pub enum SubsonicOperation {
     GetAlbumListAlphabetical,
     GetAlbumListByGenre,
     GetAlbumListByGenreAndMostListened,
+    GetPlaylistList,
+    GetPlaylist,
     GetAlbum,
     DownloadSong,
     GetCoverArt,
@@ -30,6 +33,7 @@ enum SubsonicParameter {
     None,
     AlbumId(String),
     SongId(String),
+    PlaylistId(String),
     Genre(String),
     Size(usize),
     Offset(usize),
@@ -44,6 +48,7 @@ impl Display for SubsonicParameter {
             SubsonicParameter::None => "None".to_string(),
             SubsonicParameter::Size(val) => val.to_string(),
             SubsonicParameter::Offset(val) => val.to_string(),
+            SubsonicParameter::PlaylistId(val) => val.to_string(),
         };
         write!(f, "{}", str)
     }
@@ -128,6 +133,33 @@ impl Server {
         let genres_list = Parser::parse_genres_list(response_text).unwrap();
 
         Ok(genres_list)
+    }
+
+    pub async fn get_playlists(&mut self) -> AppResult<Vec<Playlist>> {
+        let url = self.build_url(
+            SubsonicOperation::GetPlaylistList,
+            vec![SubsonicParameter::None],
+        );
+        let response_text = self.make_request_text(url).await.unwrap();
+
+        let mut playlist_list = Parser::parse_playlist_list(response_text).unwrap();
+        for playlist in playlist_list.as_mut_slice() {
+            playlist.set_song_list(self.get_playlist(playlist.id()).await.unwrap())
+        }
+
+        Ok(playlist_list)
+    }
+
+    pub async fn get_playlist(&mut self, playlist_id: &str) -> AppResult<Vec<String>> {
+        let url = self.build_url(
+            SubsonicOperation::GetPlaylist,
+            vec![SubsonicParameter::PlaylistId(String::from(playlist_id))],
+        );
+        let response_text = self.make_request_text(url).await.unwrap();
+
+        let playlist_list = Parser::parse_playlist(response_text).unwrap();
+
+        Ok(playlist_list)
     }
 
     pub async fn get_recent_albums(&mut self) -> AppResult<Vec<String>> {
@@ -282,6 +314,7 @@ impl Server {
             Ok(success_response) => match success_response.status() {
                 reqwest::StatusCode::OK => {
                     response_text = success_response.text().await.unwrap();
+                    debug!("Response from server: {}\n", response_text)
                 }
                 reqwest::StatusCode::UNAUTHORIZED => {
                     println!("Need to grab a new token");
@@ -391,6 +424,20 @@ impl Server {
                     "{}/navidrome/rest/getGenres.view?\
                 u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, self.user, self.token, self.salt
+                )
+            }
+            SubsonicOperation::GetPlaylistList => {
+                format!(
+                    "{}/navidrome/rest/getPlaylists.view?\
+                u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address, self.user, self.token, self.salt
+                )
+            }
+            SubsonicOperation::GetPlaylist => {
+                format!(
+                    "{}/navidrome/rest/getPlaylist.view?id={}&\
+                u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
         };
