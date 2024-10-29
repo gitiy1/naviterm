@@ -69,6 +69,7 @@ pub struct App {
     pub popup_genre_list_state: ListState,
     pub album_state: ListState,
     pub playlist_state: ListState,
+    pub playlist_selected_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
     pub queue_order: Vec<usize>,
@@ -120,6 +121,7 @@ impl Default for App {
             queue_list_state: ListState::default(),
             popup_list_state: ListState::default(),
             playlist_state: ListState::default(),
+            playlist_selected_state: ListState::default(),
             popup_genre_list_state: ListState::default(),
             album_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
@@ -393,7 +395,6 @@ impl App {
                 self.queue.push(self.item_to_be_added.id.clone());
                 self.queue_order.push(self.queue.len() - 1);
                 self.change_current_playing_to(self.item_to_be_added.id.clone().as_str());
-                self.play_current(false);
             }
             MediaType::Album => {
                 self.queue.clear();
@@ -414,10 +415,27 @@ impl App {
                     self.shuffle_queue_order_starting_at_current_index()
                 }
                 self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
-                self.play_current(false);
             }
-            MediaType::Playlist => {}
+            MediaType::Playlist => {
+                self.queue.clear();
+                self.queue_order.clear();
+                for song_id in self
+                    .database
+                    .playlists()
+                    .get(self.playlist_state.selected().unwrap())
+                    .unwrap()
+                    .song_list()
+                {
+                    self.queue.push(song_id.clone());
+                }
+                self.queue_order = (0..self.queue.len()).collect();
+                if self.random_playback {
+                    self.shuffle_queue_order_starting_at_current_index()
+                }
+                self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
+            }
         }
+        self.play_current(false);
         Ok(())
     }
 
@@ -454,7 +472,19 @@ impl App {
                     index_to_insert_to += 1;
                 }
             }
-            MediaType::Playlist => {}
+            MediaType::Playlist => {
+                for song_id in self
+                    .database
+                    .playlists()
+                    .get(self.playlist_state.selected().unwrap())
+                    .unwrap()
+                    .song_list()
+                {
+                    self.queue.insert(index_to_insert_to, song_id.clone());
+                    self.queue_order.push(self.queue.len() - 1);
+                    index_to_insert_to += 1;
+                }
+            }
         }
         if was_empty {
             self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
@@ -483,7 +513,18 @@ impl App {
                     self.queue_order.push(self.queue.len() - 1);
                 }
             }
-            MediaType::Playlist => {}
+            MediaType::Playlist => {
+                for song_id in self
+                    .database
+                    .playlists()
+                    .get(self.playlist_state.selected().unwrap())
+                    .unwrap()
+                    .song_list()
+                {
+                    self.queue.push(song_id.clone());
+                    self.queue_order.push(self.queue.len() - 1);
+                }
+            }
         }
         if was_empty {
             self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
@@ -509,7 +550,8 @@ impl App {
                 self.database.filtered_albums()
             }
             _ => {
-                panic!("Should not reach")
+                selected_album_index = 0;
+                self.database.filtered_albums()
             }
         };
 
@@ -537,7 +579,16 @@ impl App {
                     .to_string();
                 self.item_to_be_added.media_type = MediaType::Album;
             }
-            MediaType::Playlist => {}
+            MediaType::Playlist => {
+                let selected_playlist = self
+                    .database
+                    .playlists()
+                    .get(self.playlist_state.selected().unwrap())
+                    .unwrap();
+                self.item_to_be_added.name = selected_playlist.name().to_string();
+                self.item_to_be_added.id = selected_playlist.id().to_string();
+                self.item_to_be_added.media_type = MediaType::Playlist;
+            }
         }
         Ok(())
     }

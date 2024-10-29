@@ -1,44 +1,88 @@
 use crate::app::{App, AppResult};
 use crate::ui::utils::duration_to_hhmmss;
-use ratatui::layout::Rect;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
-use ratatui::style::{Modifier, Style, Stylize};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
 use ratatui::Frame;
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
-    let block = Block::bordered().border_type(Rounded);
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
+        .split(area);
 
     if app.database.playlists().is_empty() {
         frame.render_widget(
             Paragraph::new(Line::from("No playlists..."))
-                .block(Block::default())
-                .block(block),
+                .block(Block::bordered().border_type(Rounded)),
             area,
         );
     } else {
-        let items = app
+        let playlists = app
             .database
             .playlists()
             .iter()
             .enumerate()
-            .map(|(i, playlist)| {
+            .map(|(_i, playlist)| {
                 let playlist_item = Text::from(vec![Line::from(vec![Span {
                     content: playlist.name().into(),
                     style: Style::default().fg(Yellow),
                 }])]);
                 ListItem::from(playlist_item)
             });
-        let list = List::new(items)
-            .block(block)
+        let list = List::new(playlists)
+            .block(Block::bordered().border_type(Rounded))
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
         if app.playlist_state.selected().is_none() {
             app.playlist_state.select_first()
         }
-        frame.render_stateful_widget(list, area, &mut app.playlist_state);
+
+        frame.render_stateful_widget(list, chunks[0], &mut app.playlist_state);
+
+        let song_items = app
+            .database
+            .playlists()
+            .get(app.playlist_state.selected().unwrap())
+            .unwrap()
+            .song_list()
+            .iter()
+            .enumerate()
+            .map(|(_i, song_id)| {
+                let song = app.database.get_song(song_id);
+                let song_item = Text::from(vec![Line::from(vec![
+                    Span {
+                        content: song.title().into(),
+                        style: Style::default().fg(Yellow),
+                    },
+                    Span {
+                        content: " (".into(),
+                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                    },
+                    Span {
+                        content: duration_to_hhmmss(song.duration()).into(),
+                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                    },
+                    Span {
+                        content: ")".into(),
+                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                    },
+                ])]);
+                ListItem::from(song_item)
+            });
+        let list = List::new(song_items)
+            .block(Block::bordered().border_type(Rounded))
+            .highlight_symbol("-> ")
+            .highlight_spacing(HighlightSpacing::Always);
+
+        if app.playlist_selected_state.selected().is_none() {
+            app.playlist_selected_state.select_first()
+        }
+
+        frame.render_stateful_widget(list, chunks[1], &mut app.playlist_selected_state);
     }
 
     Ok(())

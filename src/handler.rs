@@ -162,6 +162,14 @@ pub async fn handle_key_events(
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Queue;
                 }
+                KeyCode::Char('a') => {
+                    app.current_popup = Popup::AddTo;
+                    app.set_item_to_be_added(MediaType::Playlist)?;
+                }
+                KeyCode::Enter => {
+                    app.set_item_to_be_added(MediaType::Playlist)?;
+                    app.add_queue_immediately().await?;
+                }
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
                 _ => {}
