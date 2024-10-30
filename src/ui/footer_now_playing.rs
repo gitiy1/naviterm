@@ -25,6 +25,19 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
                 style: Style::default(),
             },
             Span {
+                content: "/".into(),
+                style: Style::default(),
+            },
+            Span {
+                content: duration_to_hhmmss(
+                    app.database
+                        .get_song(app.now_playing.id.as_str())
+                        .duration(),
+                )
+                .into(),
+                style: Style::default(),
+            },
+            Span {
                 content: "] ".into(),
                 style: Style::default(),
             },

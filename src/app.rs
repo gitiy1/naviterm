@@ -242,7 +242,12 @@ impl App {
     async fn get_complete_albums_and_populate_db(&mut self, list: &[String]) -> AppResult<()> {
         let list_length = list.len();
         for (i, album_id) in list.iter().enumerate() {
-            debug!("Fetching album ({}/{}): {}%\n", i, list_length, album_id);
+            debug!(
+                "Fetching album ({}/{}): {}%\n",
+                i + 1,
+                list_length,
+                album_id
+            );
             if !self.database.contains_album(album_id)
                 || !self.database.contains_complete_album(album_id)
             {
@@ -253,11 +258,15 @@ impl App {
                     }
                 }
                 if !self.database.contains_album(album_id) {
+                    debug!("Album {} not in database, inserting\n", album.name());
                     self.database.insert_album(album_id.to_string(), album);
                 } else if !self.database.contains_complete_album(album_id) {
+                    debug!("Album {} was not complete, updating\n", album.name());
                     self.database.delete_album(album_id.to_string());
                     self.database.insert_album(album_id.to_string(), album);
                 }
+            } else {
+                debug!("Album {} already in database\n", album_id);
             }
         }
         Ok(())

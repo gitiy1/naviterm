@@ -65,7 +65,10 @@ async fn main() -> AppResult<()> {
     app.test_connection().await?;
     // Try to load database
     match load_from_disk::<MusicDatabase>(database_file.as_str()) {
-        Ok(loaded_data) => app.database = loaded_data,
+        Ok(loaded_data) => {
+            app.database = loaded_data;
+            info!("Loaded database from file!\n");
+        }
         Err(_e) => app.populate_db().await?,
     }
     app.update_recent_albums().await?;
