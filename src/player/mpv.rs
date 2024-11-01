@@ -1,8 +1,11 @@
 use std::process::{Child, Command, Stdio};
 
-use crate::player::ipc::Ipc;
+use log::debug;
+
+use crate::{app::AppResult, player::ipc::Ipc};
 
 pub const MPV_SOCKET: &str = "/tmp/naviterm_mpv";
+pub const MPV_LOG: &str = "/tmp/naviterm_mpv.log";
 
 #[derive(Debug, PartialEq)]
 pub enum PlayerStatus {
@@ -25,6 +28,7 @@ impl Default for Mpv {
                 .arg("--idle")
                 .arg("--input-ipc-server=".to_owned() + MPV_SOCKET)
                 .arg("--prefetch-playlist=yes")
+                .arg("--log-file=".to_owned() + MPV_LOG)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -37,12 +41,14 @@ impl Default for Mpv {
 }
 
 impl Mpv {
-    pub fn initialize(&mut self) {
-        self.ipc.initialize_stream();
+    pub fn initialize(&mut self) -> AppResult<()> {
+        self.ipc.initialize_stream()?;
+        Ok(())
     }
 
     pub fn quit_player(&mut self) {
         self.ipc.quit();
+        debug!("Message to quit sent, waiting for mpv to exit\n");
         self.mpv_process
             .wait()
             .expect("Could not wait mpv to finish");

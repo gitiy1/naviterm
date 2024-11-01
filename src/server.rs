@@ -4,7 +4,7 @@ use crate::model::playlist::Playlist;
 use crate::model::song::Song;
 use crate::parser::Parser;
 use chrono;
-use log::debug;
+use log::{debug, error};
 use md5;
 use rand::distributions::{Alphanumeric, DistString};
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
@@ -317,7 +317,7 @@ impl Server {
                     debug!("Response from server: {}\n", response_text)
                 }
                 reqwest::StatusCode::UNAUTHORIZED => {
-                    println!("Need to grab a new token");
+                    println!("Need to grab a new token\n");
                     //TODO
                 }
                 _ => {
@@ -325,7 +325,9 @@ impl Server {
                     //TODO
                 }
             },
-            Err(error) => panic!("Error while doing request: {:?}", error), //TODO
+            Err(error) => {
+                error!("Error while doing request: {:?}\n", error)
+            }
         };
         Ok(response_text)
     }

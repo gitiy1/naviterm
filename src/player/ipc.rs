@@ -1,3 +1,4 @@
+use crate::app::AppResult;
 use crate::player::parser::{parse_json_data, parse_json_event, parse_json_success};
 use log::{debug, error};
 use num_traits::Num;
@@ -27,9 +28,9 @@ pub struct Ipc {
 }
 
 impl Ipc {
-    pub fn initialize_stream(&mut self) {
-        self.stream =
-            Some(UnixStream::connect("/tmp/naviterm_mpv").expect("Cannot create ipc stream"));
+    pub fn initialize_stream(&mut self) -> AppResult<()> {
+        self.stream = Some(UnixStream::connect("/tmp/naviterm_mpv")?);
+        Ok(())
     }
 
     pub fn load_file(&mut self, file_url: &str) {
@@ -154,6 +155,10 @@ impl Ipc {
     }
 
     fn send_ipc_command(&mut self, msg: String, parse_response_data: bool) {
+        debug!(
+            "Sending message: {}, parse_response:{}\n",
+            msg, parse_response_data
+        );
         match self.stream.as_ref() {
             Some(mut stream) => match stream.write_all(msg.as_bytes()) {
                 Ok(_) => {

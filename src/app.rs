@@ -7,12 +7,14 @@ use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
 use crate::server::{Server, SubsonicOperation};
 use config::Config;
-use log::{debug, info};
+use log::{debug, info, warn};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use ratatui::widgets::ListState;
 use std::collections::HashMap;
 use std::error;
+use std::thread::sleep;
+use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum with applications screens
@@ -23,6 +25,12 @@ pub enum CurrentScreen {
     Playlists,
     Artists,
     Queue,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AppMode {
+    Online,
+    Offline,
 }
 
 pub enum HomePane {
@@ -55,6 +63,7 @@ pub type AppResult<T> = Result<T, Box<dyn error::Error>>;
 pub struct App {
     /// Is the application running?
     pub running: bool,
+    pub mode: AppMode,
     pub current_screen: CurrentScreen,
     pub home_pane: HomePane,
     pub current_popup: Popup,
@@ -109,6 +118,7 @@ impl Default for App {
     fn default() -> Self {
         Self {
             running: true,
+            mode: AppMode::Online,
             current_screen: CurrentScreen::Home,
             home_pane: HomePane::Top,
             current_popup: Popup::None,
@@ -274,8 +284,14 @@ impl App {
 
     pub fn initialize_player_stream(&mut self) -> AppResult<()> {
         // TODO Try to capture connection error and retry, to give mpv time to initialize
-        self.player.initialize();
-        Ok(())
+        match self.player.initialize() {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                warn!("Could not initialize ipc stream, retrying...");
+                sleep(Duration::from_millis(50));
+                self.player.initialize()
+            }
+        }
     }
 
     pub async fn poll_player_events(&mut self) -> AppResult<()> {

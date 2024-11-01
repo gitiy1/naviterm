@@ -1,10 +1,11 @@
 use config::{Config, ConfigError};
-use log::{debug, error, info, LevelFilter};
+use core::panic;
+use log::{debug, error, info, warn, LevelFilter};
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::Config as log4rsConfig;
-use naviterm::app::{App, AppResult};
+use naviterm::app::{App, AppMode, AppResult};
 use naviterm::dbus;
 use naviterm::event::{Event, EventHandler};
 use naviterm::handler::{handle_dbus_events, handle_key_events};
@@ -39,7 +40,17 @@ async fn main() -> AppResult<()> {
         },
         Err(_) => LevelFilter::Error,
     };
-    let file_path = "/tmp/foo.log";
+    let app_mode: Result<String, ConfigError> = settings.get("mode");
+    let mode: AppMode = match app_mode {
+        Ok(mode) => match mode.as_str() {
+            "OFFLINE" => AppMode::Offline,
+            _ => AppMode::Online,
+        },
+        Err(_) => AppMode::Online,
+    };
+
+    // Set the logging path
+    let file_path = "/tmp/naviterm.log";
 
     // Logging to log file.
     let logfile = FileAppender::builder()
@@ -60,20 +71,43 @@ async fn main() -> AppResult<()> {
 
     // Create an application.
     let mut app = App::new();
+    app.mode = mode;
     app.set_config(settings)?;
     app.renew_credentials()?;
-    app.test_connection().await?;
+    if app.mode != AppMode::Offline {
+        match app.test_connection().await {
+            Ok(_) => info!("Connected to server successfully!\n"),
+            Err(_) => {
+                app.mode = AppMode::Offline;
+                info!("Could not connect to server, starting offline!\n")
+            }
+        }
+    }
     // Try to load database
     match load_from_disk::<MusicDatabase>(database_file.as_str()) {
         Ok(loaded_data) => {
             app.database = loaded_data;
             info!("Loaded database from file!\n");
         }
-        Err(_e) => app.populate_db().await?,
+        Err(_e) => {
+            if app.mode == AppMode::Offline {
+                warn!("Did not load database and starting offline!\n")
+            } else {
+                app.populate_db().await?;
+                app.update_recent_albums().await?;
+                app.process_filtered_album_list().await?;
+            }
+        }
     }
-    app.update_recent_albums().await?;
-    app.process_filtered_album_list().await?;
-    app.initialize_player_stream()?;
+    match app.initialize_player_stream() {
+        Ok(_) => {
+            debug!("Initialized ipc stream!\n")
+        }
+        Err(e) => {
+            error!("Could not initialize ipc stream: {}", e);
+            panic!("Could not initialize ipc stream: {}", e);
+        }
+    }
     app.poll_player_events().await?;
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stderr());

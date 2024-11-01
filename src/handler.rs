@@ -3,6 +3,7 @@ use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
 use crate::player::mpv::PlayerStatus;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use log::debug;
 use std::collections::HashMap;
 use zbus::InterfaceRef;
 
@@ -219,6 +220,7 @@ pub async fn handle_key_events(
         if key_event.code == KeyCode::Char('q')
             || key_event.code == KeyCode::Char('c') && key_event.modifiers == KeyModifiers::CONTROL
         {
+            debug!("Starting app shutdown\n");
             app.quit();
         } else if key_event.code == KeyCode::Char('/') {
             app.getting_search_string = true;
