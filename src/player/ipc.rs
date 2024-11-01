@@ -15,6 +15,7 @@ pub enum IpcEvent {
     FileLoaded,
     Eof(String),
     Seek,
+    PlaybackRestart,
     Idle,
     Error(String),
     Unrecognized(String),
@@ -56,17 +57,14 @@ impl Ipc {
 
     pub fn seek(&mut self, amount: &str) {
         let msg = "{\"command\":[\"seek\",\"".to_owned() + amount + "\"]}\n";
-        debug!("Sending command to seek\n");
+        debug!("Sending command to seek");
         self.send_ipc_command(msg, false);
     }
 
     pub fn seek_percentage(&mut self, percentage: &str) {
         let msg =
             "{\"command\":[\"seek\",\"".to_owned() + percentage + "\",\"absolute-percent\"]}\n";
-        debug!(
-            "Sending command to seek absolute percent: {}%\n",
-            percentage
-        );
+        debug!("Sending command to seek absolute percent: {}%", percentage);
         self.send_ipc_command(msg, false);
     }
 
@@ -77,12 +75,12 @@ impl Ipc {
 
     pub fn get_playback_time(&mut self) -> f64 {
         let msg = String::from("{\"command\":[\"get_property_string\",\"playback-time\"]}\n");
-        debug!("Sending command to get playback-time\n");
+        debug!("Sending command to get playback-time");
         self.send_ipc_command(msg, true);
         match f64::from_str_radix(self.parsed_value.as_str(), 10) {
             Ok(parsed_value) => parsed_value,
             Err(e) => {
-                error!("Error while parsing response from mpv: {}\n", e);
+                error!("Error while parsing response from mpv: {}", e);
                 -1.0
             }
         }
@@ -134,17 +132,17 @@ impl Ipc {
                 let buf_string = String::from_utf8(buf[0..n].to_vec()).unwrap();
                 debug!("Response from stream: {}", buf_string);
                 if parse_response_data {
-                    debug!("Parsing data\n");
+                    debug!("Parsing data");
                     let response = buf_string.split("\n").next();
                     match response {
                         None => {
-                            error!("Could not read response from server!\n")
+                            error!("Could not read response from server!")
                         }
                         Some(response) => {
                             if parse_json_success(response) {
                                 self.parsed_value = parse_json_data(buf_string.as_str());
                             } else {
-                                error!("Error response from server!\n")
+                                error!("Error response from server!")
                             }
                         }
                     }
@@ -156,7 +154,7 @@ impl Ipc {
 
     fn send_ipc_command(&mut self, msg: String, parse_response_data: bool) {
         debug!(
-            "Sending message: {}, parse_response:{}\n",
+            "Sending message: {}, parse_response:{}",
             msg, parse_response_data
         );
         match self.stream.as_ref() {

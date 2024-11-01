@@ -1,6 +1,6 @@
 use config::{Config, ConfigError};
 use core::panic;
-use log::{debug, error, info, warn, LevelFilter};
+use log::{debug, error, info, LevelFilter};
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
@@ -56,7 +56,7 @@ async fn main() -> AppResult<()> {
     let logfile = FileAppender::builder()
         // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
         .encoder(Box::new(PatternEncoder::new(
-            "{h({d(%+)(utc)} [{f}:{L}] {l:<6} {m})}",
+            "{h({d(%+)(utc)} [{f}:{L}] {l:<6} {m})}{n}",
         )))
         .build(file_path)
         .unwrap();
@@ -76,38 +76,42 @@ async fn main() -> AppResult<()> {
     app.renew_credentials()?;
     if app.mode != AppMode::Offline {
         match app.test_connection().await {
-            Ok(_) => info!("Connected to server successfully!\n"),
+            Ok(_) => info!("Connected to server successfully!"),
             Err(_) => {
                 app.mode = AppMode::Offline;
-                info!("Could not connect to server, starting offline!\n")
+                info!("Could not connect to server, starting offline!")
             }
         }
     }
+
     // Try to load database
     match load_from_disk::<MusicDatabase>(database_file.as_str()) {
         Ok(loaded_data) => {
             app.database = loaded_data;
-            info!("Loaded database from file!\n");
+            info!("Loaded database from file!");
         }
-        Err(_e) => {
-            if app.mode == AppMode::Offline {
-                warn!("Did not load database and starting offline!\n")
-            } else {
-                app.populate_db().await?;
-                app.update_recent_albums().await?;
-                app.process_filtered_album_list().await?;
-            }
+        Err(e) => {
+            error! {"Error loading database file: {}", e};
         }
     }
+
+    // Refresh database
+    if app.mode == AppMode::Online {
+        app.populate_db().await?;
+        app.process_filtered_album_list().await?;
+    }
+
+    // Initialize ipc stream
     match app.initialize_player_stream() {
         Ok(_) => {
-            debug!("Initialized ipc stream!\n")
+            debug!("Initialized ipc stream!")
         }
         Err(e) => {
             error!("Could not initialize ipc stream: {}", e);
             panic!("Could not initialize ipc stream: {}", e);
         }
     }
+
     app.poll_player_events().await?;
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stderr());
@@ -141,8 +145,8 @@ async fn main() -> AppResult<()> {
     tui.exit()?;
     // Save music database if it does not exist
     match save_to_disk(&app.database, database_file.as_str()) {
-        Ok(..) => info!("Database saved successfully!\n"),
-        Err(e) => error!("Error saving database: {}\n", e.to_string()),
+        Ok(..) => info!("Database saved successfully!"),
+        Err(e) => error!("Error saving database: {}", e.to_string()),
     }
     Ok(())
 }
@@ -150,7 +154,7 @@ async fn main() -> AppResult<()> {
 fn save_to_disk<T: Serialize>(data: &T, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Check if the file exists
     if Path::new(filename).exists() {
-        debug!("Database already exists in disk, backing up before saving\n");
+        debug!("Database already exists in disk, backing up before saving");
         copy(filename, "/tmp/database_back.bin")?;
         remove_file(filename)?;
     }

@@ -8,6 +8,7 @@ pub fn parse_json_event(event: String) -> Vec<IpcEvent> {
             let json_event = parsed_json.unwrap();
             match json_event["event"].as_str().unwrap() {
                 "seek" => events.push(IpcEvent::Seek),
+                "playback-restar" => events.push(IpcEvent::PlaybackRestart),
                 "file-loaded" => events.push(IpcEvent::FileLoaded),
                 "end-file" => {
                     let reason = json_event["reason"].to_string();

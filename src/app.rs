@@ -208,7 +208,19 @@ impl App {
     }
 
     pub async fn populate_db(&mut self) -> AppResult<()> {
-        info!("Starting database population...\n");
+        info!("Starting database population...");
+        self.update_alphabetical_albums().await?;
+        self.update_recent_albums().await?;
+        self.update_most_listened_albums().await?;
+        self.database
+            .set_playlists(self.server.get_playlists().await?);
+        let mut genres = self.server.get_genres().await?;
+        genres.sort();
+        self.database.set_genres(genres);
+        Ok(())
+    }
+
+    pub async fn update_alphabetical_albums(&mut self) -> AppResult<()> {
         let alphabetical_albums_list = self
             .server
             .get_album_list_complete(SubsonicOperation::GetAlbumListAlphabetical)
@@ -218,12 +230,6 @@ impl App {
             .await?;
         self.database
             .set_alphabetical_albums(alphabetical_albums_list);
-        self.update_most_listened_albums().await?;
-        self.database
-            .set_playlists(self.server.get_playlists().await?);
-        let mut genres = self.server.get_genres().await?;
-        genres.sort();
-        self.database.set_genres(genres);
         Ok(())
     }
 
@@ -252,12 +258,7 @@ impl App {
     async fn get_complete_albums_and_populate_db(&mut self, list: &[String]) -> AppResult<()> {
         let list_length = list.len();
         for (i, album_id) in list.iter().enumerate() {
-            debug!(
-                "Fetching album ({}/{}): {}%\n",
-                i + 1,
-                list_length,
-                album_id
-            );
+            debug!("Fetching album ({}/{}): {}%", i + 1, list_length, album_id);
             if !self.database.contains_album(album_id)
                 || !self.database.contains_complete_album(album_id)
             {
@@ -268,15 +269,15 @@ impl App {
                     }
                 }
                 if !self.database.contains_album(album_id) {
-                    debug!("Album {} not in database, inserting\n", album.name());
+                    debug!("Album {} not in database, inserting", album.name());
                     self.database.insert_album(album_id.to_string(), album);
                 } else if !self.database.contains_complete_album(album_id) {
-                    debug!("Album {} was not complete, updating\n", album.name());
+                    debug!("Album {} was not complete, updating", album.name());
                     self.database.delete_album(album_id.to_string());
                     self.database.insert_album(album_id.to_string(), album);
                 }
             } else {
-                debug!("Album {} already in database\n", album_id);
+                debug!("Album {} already in database", album_id);
             }
         }
         Ok(())
@@ -684,6 +685,7 @@ impl App {
                         self.player.player_status = PlayerStatus::Playing;
                     }
                 }
+                IpcEvent::PlaybackRestart => {}
                 IpcEvent::Eof(reason) => {
                     if reason == "eof" && self.queue_has_next() {
                         self.go_next_queue();
@@ -692,7 +694,7 @@ impl App {
                 }
                 IpcEvent::Seek => {
                     let playback_time = self.player.get_playback_time();
-                    debug!("Got {} as playback time\n", playback_time);
+                    debug!("Got {} as playback time", playback_time);
                     if playback_time != -1.0 {
                         self.ticks_during_playing_state = (playback_time * 4.0).floor() as usize;
                     }
