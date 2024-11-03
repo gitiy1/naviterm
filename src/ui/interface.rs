@@ -9,7 +9,10 @@ use ratatui::{symbols, Frame};
 
 use crate::app::{App, CurrentScreen, Popup};
 use crate::ui::footer_now_playing::draw_footer;
-use crate::ui::{popup_add_to, popup_album_info, popup_connection_test, popup_genre_filter, tab_albums, tab_home, tab_playlists, tab_queue};
+use crate::ui::{
+    popup_add_to, popup_album_info, popup_connection_test, popup_genre_filter, popup_update,
+    tab_albums, tab_home, tab_playlists, tab_queue,
+};
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -43,6 +46,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         Popup::AlbumInformation => popup_album_info::draw_popup(app, frame).unwrap(),
         Popup::AddTo => popup_add_to::draw_popup(app, frame).unwrap(),
         Popup::GenreFilter => popup_genre_filter::draw_popup(app, frame).unwrap(),
+        Popup::UpdateDatabase => popup_update::draw_popup(app, frame).unwrap(),
         Popup::None => {}
     }
 

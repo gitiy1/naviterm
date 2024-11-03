@@ -297,8 +297,10 @@ pub async fn handle_key_events(
                 }
                 _ => {}
             },
-            Popup::None => {} // Exit popup no matter the current_popup
+            Popup::UpdateDatabase => {}
+            Popup::None => {}
         }
+        // Exit popup no matter the current_popup
         if key_event.code == KeyCode::Esc || key_event.code == KeyCode::Char('q') {
             app.current_popup = Popup::None;
         }
@@ -319,6 +321,9 @@ pub async fn handle_key_events(
     };
     if key_event.code == KeyCode::Esc {
         app.clear_search()?;
+    };
+    if key_event.code == KeyCode::Char('u') && app.current_popup == Popup::None {
+        app.current_popup = Popup::UpdateDatabase;
     };
     Ok(())
 }

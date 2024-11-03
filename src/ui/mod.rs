@@ -4,8 +4,10 @@ mod popup_add_to;
 mod popup_album_info;
 mod popup_connection_test;
 mod popup_genre_filter;
+mod popup_update;
 mod tab_albums;
 mod tab_home;
 mod tab_playlists;
 mod tab_queue;
 mod utils;
+

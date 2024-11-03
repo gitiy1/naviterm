@@ -53,6 +53,7 @@ pub enum Popup {
     AlbumInformation,
     AddTo,
     GenreFilter,
+    UpdateDatabase,
     None,
 }
 
