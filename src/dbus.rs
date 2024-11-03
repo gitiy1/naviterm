@@ -161,7 +161,7 @@ impl MediaPlayer2Player {
 
     #[zbus(property)]
     async fn set_shuffle(&mut self, _shuffle: bool) {
-        debug!("Shuffle request from dbus!\n");
+        debug!("Shuffle request from dbus!");
         self.sender.send(Event::Dbus(DbusEvent::Shuffle)).unwrap();
     }
 
@@ -194,37 +194,37 @@ impl MediaPlayer2Player {
     pub async fn seeked(signal_ctxt: &SignalContext<'_>, position: i64) -> zbus::Result<()>;
 
     async fn play_pause(&self) {
-        debug!("PlayPause request from dbus!\n");
+        debug!("PlayPause request from dbus!");
         self.sender.send(Event::Dbus(PlayPause)).unwrap();
     }
 
     async fn play(&self) {
-        debug!("Play request from dbus!\n");
+        debug!("Play request from dbus!");
         self.sender.send(Event::Dbus(Play)).unwrap();
     }
 
     async fn pause(&self) {
-        debug!("Pause request from dbus!\n");
+        debug!("Pause request from dbus!");
         self.sender.send(Event::Dbus(Pause)).unwrap();
     }
 
     async fn next(&self) {
-        debug!("Next request from dbus!\n");
+        debug!("Next request from dbus!");
         self.sender.send(Event::Dbus(Next)).unwrap();
     }
 
     async fn previous(&self) {
-        debug!("Previous request from dbus!\n");
+        debug!("Previous request from dbus!");
         self.sender.send(Event::Dbus(Previous)).unwrap();
     }
 
     async fn stop(&self) {
-        debug!("Stop request from dbus!\n");
+        debug!("Stop request from dbus!");
         self.sender.send(Event::Dbus(Stop)).unwrap();
     }
 
     async fn seek(&self, offset: i64) {
-        debug!("Seek request from dbus!\n");
+        debug!("Seek request from dbus!");
         if offset > 0 {
             self.sender.send(Event::Dbus(SeekForward)).unwrap();
         } else {

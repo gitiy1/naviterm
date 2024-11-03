@@ -220,7 +220,7 @@ pub async fn handle_key_events(
         if key_event.code == KeyCode::Char('q')
             || key_event.code == KeyCode::Char('c') && key_event.modifiers == KeyModifiers::CONTROL
         {
-            debug!("Starting app shutdown\n");
+            debug!("Starting app shutdown");
             app.quit();
         } else if key_event.code == KeyCode::Char('/') {
             app.getting_search_string = true;

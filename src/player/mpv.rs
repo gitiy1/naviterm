@@ -48,7 +48,7 @@ impl Mpv {
 
     pub fn quit_player(&mut self) {
         self.ipc.quit();
-        debug!("Message to quit sent, waiting for mpv to exit\n");
+        debug!("Message to quit sent, waiting for mpv to exit");
         self.mpv_process
             .wait()
             .expect("Could not wait mpv to finish");
