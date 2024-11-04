@@ -297,7 +297,13 @@ pub async fn handle_key_events(
                 }
                 _ => {}
             },
-            Popup::UpdateDatabase => {}
+            Popup::UpdateDatabase => match key_event.code {
+                KeyCode::Char('p') => {
+                    app.update_playlists_async()?;
+                    app.current_popup = Popup::None;
+                }
+                _ => {}
+            },
             Popup::None => {}
         }
         // Exit popup no matter the current_popup
@@ -322,7 +328,10 @@ pub async fn handle_key_events(
     if key_event.code == KeyCode::Esc {
         app.clear_search()?;
     };
-    if key_event.code == KeyCode::Char('u') && app.current_popup == Popup::None {
+    if key_event.code == KeyCode::Char('u')
+        && key_event.modifiers.is_empty()
+        && app.current_popup == Popup::None
+    {
         app.current_popup = Popup::UpdateDatabase;
     };
     Ok(())

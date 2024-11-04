@@ -5,7 +5,9 @@ use crate::event::Event::Dbus;
 use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
-use crate::server::{Server, SubsonicOperation};
+use crate::server::async_operation::Operation;
+use crate::server::parser::Parser;
+use crate::server::server::{Server, SubsonicOperation};
 use config::Config;
 use log::{debug, info, warn};
 use rand::seq::SliceRandom;
@@ -25,6 +27,12 @@ pub enum CurrentScreen {
     Playlists,
     Artists,
     Queue,
+}
+
+pub enum AppStatus {
+    Connected,
+    Disconnected,
+    Updating
 }
 
 #[derive(Debug, PartialEq)]
@@ -99,6 +107,7 @@ pub struct App {
     pub move_to_next_in_search: bool,
     pub upper_case_search: bool,
     pub search_results_indexes: Vec<usize>,
+    pub status: AppStatus,
 }
 
 #[derive(Default, Debug)]
@@ -154,6 +163,7 @@ impl Default for App {
             upper_case_search: false,
             search_string: String::from(""),
             search_results_indexes: vec![],
+            status: AppStatus::Connected,
         }
     }
 }
@@ -166,6 +176,7 @@ impl App {
 
     /// Handles the tick event of the terminal.
     pub fn tick(&mut self) {
+        self.process_pending_requests();
         self.process_player_events();
         if *self.player.player_status() == PlayerStatus::Playing {
             self.ticks_during_playing_state += 1;
@@ -213,8 +224,7 @@ impl App {
         self.update_alphabetical_albums().await?;
         self.update_recent_albums().await?;
         self.update_most_listened_albums().await?;
-        self.database
-            .set_playlists(self.server.get_playlists().await?);
+        self.update_playlists().await?;
         let mut genres = self.server.get_genres().await?;
         genres.sort();
         self.database.set_genres(genres);
@@ -251,8 +261,17 @@ impl App {
     }
 
     pub async fn update_playlists(&mut self) -> AppResult<()> {
-        self.database
-            .set_playlists(self.server.get_playlists().await?);
+        for playlist in self.server.get_playlists().await? {
+            if !self.database.contains_playlist(playlist.id()) {
+                self.database
+                    .insert_playlist(playlist.id().to_string(), playlist);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn update_playlists_async(&mut self) -> AppResult<()> {
+        self.server.get_playlists_async(true);
         Ok(())
     }
 
@@ -290,7 +309,7 @@ impl App {
             Ok(_) => Ok(()),
             Err(_) => {
                 warn!("Could not initialize ipc stream, retrying...");
-                sleep(Duration::from_millis(50));
+                sleep(Duration::from_millis(200));
                 self.player.initialize()
             }
         }
@@ -607,11 +626,7 @@ impl App {
                 self.item_to_be_added.media_type = MediaType::Album;
             }
             MediaType::Playlist => {
-                let selected_playlist = self
-                    .database
-                    .playlists()
-                    .get(self.playlist_state.selected().unwrap())
-                    .unwrap();
+                let selected_playlist = self.database.get_playlist(self.database.playlists().get(self.playlist_state.selected().unwrap()).unwrap().id());
                 self.item_to_be_added.name = selected_playlist.name().to_string();
                 self.item_to_be_added.id = selected_playlist.id().to_string();
                 self.item_to_be_added.media_type = MediaType::Playlist;
@@ -1103,5 +1118,52 @@ impl App {
         self.index_in_search = usize::MAX;
 
         Ok(())
+    }
+
+    pub fn process_pending_requests(&mut self) {
+        self.server.process_async_operations();
+        
+        let pending_operations_number = self. server.operations.len();
+        
+        if pending_operations_number > 0 { 
+            self.status = AppStatus::Updating
+        }
+        else { 
+            self.status = AppStatus::Connected;
+        }
+        
+        for i in 0..pending_operations_number {
+            let operation = &self.server.operations[i];
+            if operation.finished() {
+                debug!("Processing operation {:?}", operation.operation_id());
+                match operation.operation_id() {
+                    Operation::GetPlaylistsList(update) => {
+                        let force_update = *update;
+                        let playlist_list =
+                            Parser::parse_playlist_list(operation.result().to_string()).unwrap();
+                        for playlist in playlist_list {
+                            if self.database.contains_playlist(playlist.id()) && !force_update {
+                                debug!("Playlist {} already in database", playlist.name());
+                            }
+                            else if !self.database.contains_playlist(playlist.id()) {
+                                debug!("Playlist {} was not in database, fetching", playlist.name());
+                                self.server.get_playlist_async(playlist.id());
+                                self.database.insert_playlist(playlist.id().to_string(), playlist);
+                            }
+                            else {
+                                debug!("Forcing update for playlist {}", playlist.name());
+                                self.server.get_playlist_async(playlist.id());
+                            }
+                        }
+                    }
+                    Operation::GetPlaylist(id) => {
+                        self.database.set_playlist_songs(id, Parser::parse_playlist(operation.result().to_string()).unwrap());
+                    }
+                }
+            }
+        }
+
+        
+        self.server.remove_completed_operations();
     }
 }

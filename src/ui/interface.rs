@@ -1,13 +1,13 @@
 use ratatui::layout::Constraint::{Length, Min, Percentage};
 use ratatui::layout::{Layout, Rect};
 use ratatui::prelude::Line;
-use ratatui::style::Color::{Gray, Yellow};
+use ratatui::style::Color::{Gray, Green, Yellow};
 use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::text::Span;
 use ratatui::widgets::Tabs;
 use ratatui::{symbols, Frame};
-
-use crate::app::{App, CurrentScreen, Popup};
+use ratatui::prelude::Color::Red;
+use crate::app::{App, AppStatus, CurrentScreen, Popup};
 use crate::ui::footer_now_playing::draw_footer;
 use crate::ui::{
     popup_add_to, popup_album_info, popup_connection_test, popup_genre_filter, popup_update,
@@ -84,7 +84,21 @@ fn draw_title(app: &mut App, title_area: Rect, frame: &mut Frame) {
                 .style(Style::default().fg(Gray).add_modifier(Modifier::ITALIC)),
         );
     }
-    let status_line = Line::from("naviterm");
+    let status_span = match app.status {
+        AppStatus::Connected => {
+            Span::from("Connected").style(Style::default().fg(Green).add_modifier(Modifier::BOLD))
+        }
+        AppStatus::Disconnected => {
+            Span::from("Disconnected").style(Style::default().fg(Red).add_modifier(Modifier::BOLD))
+        }
+        AppStatus::Updating => {
+            Span::from("Updating").style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD))
+        }
+    };
+    let status_line = Line::from(vec![
+        Span::from("naviterm - "),
+        status_span
+    ]);
     frame.render_widget(Line::from(search_line), search_area);
     frame.render_widget(status_line, status_area);
 }

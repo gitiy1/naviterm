@@ -1,8 +1,10 @@
 use crate::app::AppResult;
+use crate::constants::MAX_SIMULTANEOUS_OPERATIONS;
 use crate::model::album::Album;
 use crate::model::playlist::Playlist;
 use crate::model::song::Song;
-use crate::parser::Parser;
+use crate::server::async_operation::{AsyncOperation, Operation};
+use crate::server::parser::Parser;
 use chrono;
 use log::{debug, error};
 use md5;
@@ -11,6 +13,7 @@ use reqwest::header::{ACCEPT, CONTENT_TYPE};
 use reqwest::Client;
 use std::fmt::Display;
 use std::vec;
+use tokio::sync::mpsc::{self, UnboundedSender};
 
 #[derive(Clone, Copy)]
 pub enum SubsonicOperation {
@@ -72,6 +75,8 @@ pub struct Server {
     password: String,
     /// http client
     client: Client,
+    pub operations: Vec<AsyncOperation>,
+    current_number_of_requests: usize,
 }
 
 impl Default for Server {
@@ -88,6 +93,8 @@ impl Default for Server {
             user: "".to_string(),
             password: "".to_string(),
             client: Client::new(),
+            operations: vec![],
+            current_number_of_requests: 0,
         }
     }
 }
@@ -96,6 +103,35 @@ impl Server {
     /// Constructs a new instance of [`Server`].
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn process_async_operations(&mut self) {
+        for operation in self.operations.iter_mut() {
+            if !operation.finished() {
+                debug!("Processing operation {:?}", operation);
+                let result = process_atomic_operations(operation);
+                debug!("Delta requests: {}", result);
+                if result > 0 {
+                    self.current_number_of_requests += result as usize;
+                } else {
+                    self.current_number_of_requests = self
+                        .current_number_of_requests
+                        .saturating_sub(result.unsigned_abs());
+                }
+                debug!(
+                    "Total inflight requests: {}",
+                    self.current_number_of_requests
+                );
+            }
+            if self.current_number_of_requests > MAX_SIMULTANEOUS_OPERATIONS {
+                debug!("Maximum number of requests reached");
+                break;
+            }
+        }
+    }
+
+    pub fn remove_completed_operations(&mut self) {
+        self.operations.retain(|operation| !operation.finished());
     }
 
     pub fn renew_credentials(&mut self) -> AppResult<()> {
@@ -150,6 +186,19 @@ impl Server {
         Ok(playlist_list)
     }
 
+    pub fn get_playlists_async(&mut self, update: bool) {
+        let url = self.build_url(
+            SubsonicOperation::GetPlaylistList,
+            vec![SubsonicParameter::None],
+        );
+
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation =
+            AsyncOperation::new(Operation::GetPlaylistsList(update), url.clone(), rx, tx);
+
+        self.operations.push(operation);
+    }
+
     pub async fn get_playlist(&mut self, playlist_id: &str) -> AppResult<Vec<String>> {
         let url = self.build_url(
             SubsonicOperation::GetPlaylist,
@@ -160,6 +209,23 @@ impl Server {
         let playlist_list = Parser::parse_playlist(response_text).unwrap();
 
         Ok(playlist_list)
+    }
+
+    pub fn get_playlist_async(&mut self, playlist_id: &str) {
+        let url = self.build_url(
+            SubsonicOperation::GetPlaylist,
+            vec![SubsonicParameter::PlaylistId(String::from(playlist_id))],
+        );
+
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(
+            Operation::GetPlaylist(playlist_id.to_string()),
+            url.clone(),
+            rx,
+            tx,
+        );
+
+        self.operations.push(operation);
     }
 
     pub async fn get_recent_albums(&mut self) -> AppResult<Vec<String>> {
@@ -314,10 +380,10 @@ impl Server {
             Ok(success_response) => match success_response.status() {
                 reqwest::StatusCode::OK => {
                     response_text = success_response.text().await.unwrap();
-                    debug!("Response from server: {}\n", response_text)
+                    debug!("Response from server: {}", response_text)
                 }
                 reqwest::StatusCode::UNAUTHORIZED => {
-                    println!("Need to grab a new token\n");
+                    debug!("Need to grab a new token");
                     //TODO
                 }
                 _ => {
@@ -326,7 +392,7 @@ impl Server {
                 }
             },
             Err(error) => {
-                error!("Error while doing request: {:?}\n", error)
+                error!("Error while doing request: {:?}", error)
             }
         };
         Ok(response_text)
@@ -450,4 +516,71 @@ impl Server {
     pub fn set_password(&mut self, password: String) {
         self.password = password;
     }
+}
+
+fn process_atomic_operations(operation: &mut AsyncOperation) -> isize {
+    let mut new_requests = 0;
+
+    if !operation.started() {
+        let url = operation.operation_url().to_string();
+        let sender = operation.thread_tx_handle().clone();
+        operation.set_started(true);
+        debug!("Starting operation. Processing request to {}.", url);
+        // Spawn a new tokio task
+        tokio::spawn(async move {
+            perform_request_async(url, sender).await;
+        });
+        new_requests += 1;
+    } else if operation.started() && !operation.finished() {
+        match operation.thread_rx_handle().try_recv() {
+            Ok(message) => {
+                debug!("Received message from thread_rx_handle");
+                operation.set_result(message);
+                operation.set_finished(true);
+                operation.thread_rx_handle().close();
+                new_requests -= 1;
+            }
+            Err(e) => {
+                debug!("Operation not ready with error: {}", e);
+            }
+        }
+    }
+    new_requests
+}
+
+async fn perform_request_async(url: String, sender: UnboundedSender<String>) {
+    let client = Client::new();
+    let response = client
+        .get(&url)
+        .header(CONTENT_TYPE, "application/json")
+        .header(ACCEPT, "application/json")
+        .send()
+        .await;
+
+    let result = match response {
+        Ok(success_response) => match success_response.status() {
+            reqwest::StatusCode::OK => {
+                let response_text = success_response.text().await;
+                match response_text {
+                    Ok(text) => {
+                        debug!("Response from server: {}", text);
+                        text
+                    }
+                    Err(_) => "error".into(),
+                }
+            }
+            reqwest::StatusCode::UNAUTHORIZED => {
+                println!("Need to grab a new token\n");
+                "error".into()
+            }
+            _ => "error".into(),
+        },
+        Err(err) => {
+            error!("Error while doing request: {:?}", err);
+            "error".into()
+        }
+    };
+
+    // Send the result back to the channel
+    let _ = sender.send(result);
 }

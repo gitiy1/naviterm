@@ -16,9 +16,6 @@ pub mod handler;
 /// Server connection handler
 pub mod server;
 
-/// Parser handler
-pub mod parser;
-
 pub mod model;
 
 pub mod music_database;

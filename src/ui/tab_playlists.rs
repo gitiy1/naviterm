@@ -21,19 +21,15 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             area,
         );
     } else {
-        let playlists = app
-            .database
-            .playlists()
-            .iter()
-            .enumerate()
-            .map(|(_i, playlist)| {
-                let playlist_item = Text::from(vec![Line::from(vec![Span {
-                    content: playlist.name().into(),
-                    style: Style::default().fg(Yellow),
-                }])]);
-                ListItem::from(playlist_item)
-            });
-        let list = List::new(playlists)
+        let mut playlist_items: Vec<ListItem> = Vec::new();
+        for playlist in app.database.playlists() {
+            let playlist_item = Text::from(vec![Line::from(vec![Span {
+                content: playlist.name().into(),
+                style: Style::default().fg(Yellow),
+            }])]);
+            playlist_items.push(ListItem::from(playlist_item));
+        }
+        let list = List::new(playlist_items)
             .block(Block::bordered().border_type(Rounded))
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);

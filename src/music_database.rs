@@ -13,7 +13,7 @@ pub struct MusicDatabase {
     genres: Vec<String>,
     albums: HashMap<String, Album>,
     songs: HashMap<String, Song>,
-    playlists: Vec<Playlist>,
+    playlists: HashMap<String,Playlist>,
 }
 
 impl MusicDatabase {
@@ -101,11 +101,26 @@ impl MusicDatabase {
         self.genres = genres;
     }
 
-    pub fn playlists(&self) -> &Vec<Playlist> {
-        &self.playlists
+    pub fn insert_playlist(&mut self, id: String, playlist: Playlist) {
+        self.playlists.insert(id, playlist);
     }
 
-    pub fn set_playlists(&mut self, playlists: Vec<Playlist>) {
-        self.playlists = playlists;
+    pub fn delete_playlist(&mut self, id: String) {
+        self.playlists.remove(&id);
+    }
+
+    pub fn get_playlist(&self, id: &str) -> &Playlist {
+        self.playlists.get(id).unwrap()
+    }
+
+    pub fn set_playlist_songs(&mut self, id: &str, songs: Vec<String>) {
+        self.playlists.get_mut(id).unwrap().set_song_list(songs);
+    }
+    pub fn contains_playlist(&self, id: &str) -> bool {
+        self.playlists.contains_key(id)
+    }
+    
+    pub fn playlists(&self) -> Vec<&Playlist> {
+        self.playlists.values().collect()
     }
 }
