@@ -2,8 +2,13 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 #[derive(Debug)]
 pub enum Operation {
-    GetPlaylistsList(bool),
+    GetPlaylistList(bool),
     GetPlaylist(String),
+    GetAlbumListAlphabetical(bool, usize),
+    GetAlbumListRecent(),
+    GetAlbumListMostListened(usize),
+    GetAlbum(String),
+    GetGenreList,
 }
 
 #[derive(Debug)]

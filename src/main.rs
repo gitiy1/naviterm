@@ -85,19 +85,21 @@ async fn main() -> AppResult<()> {
     }
 
     // Try to load database
-    match load_from_disk::<MusicDatabase>(database_file.as_str()) {
+    let loaded = match load_from_disk::<MusicDatabase>(database_file.as_str()) {
         Ok(loaded_data) => {
             app.database = loaded_data;
             info!("Loaded database from file!");
+            true
         }
         Err(e) => {
             error! {"Error loading database file: {}", e};
+            false
         }
-    }
+    };
 
     // Refresh database
     if app.mode == AppMode::Online {
-        app.populate_db().await?;
+        app.populate_db(!loaded)?;
         app.process_filtered_album_list().await?;
     }
 

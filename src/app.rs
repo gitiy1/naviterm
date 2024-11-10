@@ -7,7 +7,7 @@ use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
 use crate::server::async_operation::Operation;
 use crate::server::parser::Parser;
-use crate::server::server::{Server, SubsonicOperation};
+use crate::server::server::Server;
 use config::Config;
 use log::{debug, info, warn};
 use rand::seq::SliceRandom;
@@ -32,7 +32,7 @@ pub enum CurrentScreen {
 pub enum AppStatus {
     Connected,
     Disconnected,
-    Updating
+    Updating,
 }
 
 #[derive(Debug, PartialEq)]
@@ -108,6 +108,8 @@ pub struct App {
     pub upper_case_search: bool,
     pub search_results_indexes: Vec<usize>,
     pub status: AppStatus,
+    pub result_list_alphabetical: Vec<String>,
+    pub result_list_most_listened: Vec<String>,
 }
 
 #[derive(Default, Debug)]
@@ -164,6 +166,8 @@ impl Default for App {
             search_string: String::from(""),
             search_results_indexes: vec![],
             status: AppStatus::Connected,
+            result_list_most_listened: vec![],
+            result_list_alphabetical: vec![],
         }
     }
 }
@@ -219,87 +223,27 @@ impl App {
         Ok(())
     }
 
-    pub async fn populate_db(&mut self) -> AppResult<()> {
-        info!("Starting database population...");
-        self.update_alphabetical_albums().await?;
-        self.update_recent_albums().await?;
-        self.update_most_listened_albums().await?;
-        self.update_playlists().await?;
-        let mut genres = self.server.get_genres().await?;
-        genres.sort();
-        self.database.set_genres(genres);
-        Ok(())
-    }
-
-    pub async fn update_alphabetical_albums(&mut self) -> AppResult<()> {
-        let alphabetical_albums_list = self
-            .server
-            .get_album_list_complete(SubsonicOperation::GetAlbumListAlphabetical)
-            .await
-            .unwrap();
-        self.get_complete_albums_and_populate_db(&alphabetical_albums_list)
-            .await?;
-        self.database
-            .set_alphabetical_albums(alphabetical_albums_list);
-        Ok(())
-    }
-
-    pub async fn update_recent_albums(&mut self) -> AppResult<()> {
-        let recents = self.server.get_recent_albums().await?;
-        self.get_complete_albums_and_populate_db(&recents).await?;
-        self.database.set_recent_albums(recents);
-        Ok(())
-    }
-
-    pub async fn update_most_listened_albums(&mut self) -> AppResult<()> {
-        self.database.set_most_listened_albums(
-            self.server
-                .get_album_list_complete(SubsonicOperation::GetAlbumListMostListened)
-                .await?,
+    pub fn populate_db(&mut self, force_update: bool) -> AppResult<()> {
+        info!(
+            "Starting database population. Force update: {}",
+            force_update
         );
+        self.update_alphabetical_albums_async(force_update)?;
+        self.server.get_recent_albums_async();
+        self.server.get_most_listened_albums_async(0);
+        self.update_playlists_async(force_update)?;
+        self.server.get_genres_sync();
         Ok(())
     }
 
-    pub async fn update_playlists(&mut self) -> AppResult<()> {
-        for playlist in self.server.get_playlists().await? {
-            if !self.database.contains_playlist(playlist.id()) {
-                self.database
-                    .insert_playlist(playlist.id().to_string(), playlist);
-            }
-        }
+    pub fn update_playlists_async(&mut self, force_update: bool) -> AppResult<()> {
+        self.server.get_playlists_async(force_update);
         Ok(())
     }
 
-    pub fn update_playlists_async(&mut self) -> AppResult<()> {
-        self.server.get_playlists_async(true);
-        Ok(())
-    }
-
-    async fn get_complete_albums_and_populate_db(&mut self, list: &[String]) -> AppResult<()> {
-        let list_length = list.len();
-        for (i, album_id) in list.iter().enumerate() {
-            debug!("Fetching album ({}/{}): {}%", i + 1, list_length, album_id);
-            if !self.database.contains_album(album_id)
-                || !self.database.contains_complete_album(album_id)
-            {
-                let (album, songs) = self.server.get_complete_album(album_id).await?;
-                for song in songs {
-                    if !self.database.contains_song(song.id()) {
-                        self.database.insert_song(song.id().to_string(), song);
-                    }
-                }
-                if !self.database.contains_album(album_id) {
-                    debug!("Album {} not in database, inserting", album.name());
-                    self.database.insert_album(album_id.to_string(), album);
-                } else if !self.database.contains_complete_album(album_id) {
-                    debug!("Album {} was not complete, updating", album.name());
-                    self.database.delete_album(album_id.to_string());
-                    self.database.insert_album(album_id.to_string(), album);
-                }
-            } else {
-                debug!("Album {} already in database", album_id);
-            }
-        }
+    pub fn update_alphabetical_albums_async(&mut self, force_update: bool) -> AppResult<()> {
+        self.server
+            .get_album_list_alphabetical_async(force_update, 0);
         Ok(())
     }
 
@@ -626,7 +570,13 @@ impl App {
                 self.item_to_be_added.media_type = MediaType::Album;
             }
             MediaType::Playlist => {
-                let selected_playlist = self.database.get_playlist(self.database.playlists().get(self.playlist_state.selected().unwrap()).unwrap().id());
+                let selected_playlist = self.database.get_playlist(
+                    self.database
+                        .playlists()
+                        .get(self.playlist_state.selected().unwrap())
+                        .unwrap()
+                        .id(),
+                );
                 self.item_to_be_added.name = selected_playlist.name().to_string();
                 self.item_to_be_added.id = selected_playlist.id().to_string();
                 self.item_to_be_added.media_type = MediaType::Playlist;
@@ -1122,48 +1072,127 @@ impl App {
 
     pub fn process_pending_requests(&mut self) {
         self.server.process_async_operations();
-        
-        let pending_operations_number = self. server.operations.len();
-        
-        if pending_operations_number > 0 { 
+
+        let pending_operations_number = self.server.operations.len();
+
+        if pending_operations_number > 0 {
             self.status = AppStatus::Updating
-        }
-        else { 
+        } else {
             self.status = AppStatus::Connected;
         }
-        
+
         for i in 0..pending_operations_number {
             let operation = &self.server.operations[i];
             if operation.finished() {
                 debug!("Processing operation {:?}", operation.operation_id());
                 match operation.operation_id() {
-                    Operation::GetPlaylistsList(update) => {
+                    Operation::GetPlaylistList(update) => {
                         let force_update = *update;
                         let playlist_list =
                             Parser::parse_playlist_list(operation.result().to_string()).unwrap();
                         for playlist in playlist_list {
                             if self.database.contains_playlist(playlist.id()) && !force_update {
                                 debug!("Playlist {} already in database", playlist.name());
-                            }
-                            else if !self.database.contains_playlist(playlist.id()) {
-                                debug!("Playlist {} was not in database, fetching", playlist.name());
+                            } else if !self.database.contains_playlist(playlist.id()) {
+                                debug!(
+                                    "Playlist {} was not in database, fetching",
+                                    playlist.name()
+                                );
                                 self.server.get_playlist_async(playlist.id());
-                                self.database.insert_playlist(playlist.id().to_string(), playlist);
-                            }
-                            else {
+                                self.database
+                                    .insert_playlist(playlist.id().to_string(), playlist);
+                            } else {
                                 debug!("Forcing update for playlist {}", playlist.name());
                                 self.server.get_playlist_async(playlist.id());
                             }
                         }
                     }
                     Operation::GetPlaylist(id) => {
-                        self.database.set_playlist_songs(id, Parser::parse_playlist(operation.result().to_string()).unwrap());
+                        self.database.set_playlist_songs(
+                            id,
+                            Parser::parse_playlist(operation.result().to_string()).unwrap(),
+                        );
+                    }
+                    Operation::GetAlbumListAlphabetical(update, offset) => {
+                        debug!(
+                            "Getting alphabetical list. Force update: {}, offset: {}",
+                            update, offset
+                        );
+                        let force_update = *update;
+                        let mut album_list =
+                            Parser::parse_album_list_simple(operation.result().to_string())
+                                .unwrap();
+                        if !album_list.is_empty() {
+                            let new_offset = offset + album_list.len();
+                            for album_id in &album_list {
+                                if self.database.contains_album(album_id.as_str()) && !force_update
+                                {
+                                    debug!("Album {} already in database", album_id);
+                                } else if self.database.contains_album(album_id.as_str()) {
+                                    debug!("Album {} was not in database, fetching", album_id);
+                                    self.server.get_album_async(album_id.clone());
+                                } else {
+                                    debug!("Forcing update for album {}", album_id);
+                                    self.server.get_album_async(album_id.clone());
+                                }
+                            }
+                            self.result_list_alphabetical.append(&mut album_list);
+                            self.server
+                                .get_album_list_alphabetical_async(force_update, new_offset);
+                        } else {
+                            debug!("Alphabetical list was empty, finishing operation");
+                            self.database
+                                .set_alphabetical_albums(self.result_list_alphabetical.clone());
+                            self.result_list_alphabetical.clear();
+                        }
+                    }
+                    Operation::GetAlbum(album_id) => {
+                        let (album, songs) = Parser::parse_album(operation.result().to_string());
+                        for song in songs {
+                            if !self.database.contains_song(song.id()) {
+                                self.database.insert_song(song.id().to_string(), song);
+                            }
+                        }
+                        if !self.database.contains_album(album_id) {
+                            debug!("Album {} not in database, inserting", album.name());
+                            self.database.insert_album(album_id.to_string(), album);
+                        } else if !self.database.contains_complete_album(album_id) {
+                            debug!("Album {} was not complete, updating", album.name());
+                            self.database.delete_album(album_id.to_string());
+                            self.database.insert_album(album_id.to_string(), album);
+                        }
+                    }
+                    Operation::GetAlbumListRecent() => {
+                        let album_list =
+                            Parser::parse_album_list_simple(operation.result().to_string())
+                                .unwrap();
+                        self.database.set_recent_albums(album_list);
+                    }
+                    Operation::GetAlbumListMostListened(offset) => {
+                        let mut album_list =
+                            Parser::parse_album_list_simple(operation.result().to_string())
+                                .unwrap();
+                        if !album_list.is_empty() {
+                            let new_offset = offset + album_list.len();
+                            self.result_list_most_listened.append(&mut album_list);
+                            self.server.get_most_listened_albums_async(new_offset);
+                        } else {
+                            debug!("Alphabetical list was empty, finishing operation");
+                            self.database
+                                .set_most_listened_albums(self.result_list_most_listened.clone());
+                            self.result_list_most_listened.clear();
+                        }
+                    }
+                    Operation::GetGenreList => {
+                        let mut genres =
+                            Parser::parse_genres_list(operation.result().to_string()).unwrap();
+                        genres.sort();
+                        self.database.set_genres(genres);
                     }
                 }
             }
         }
 
-        
         self.server.remove_completed_operations();
     }
 }

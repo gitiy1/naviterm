@@ -1,7 +1,5 @@
 use crate::app::AppResult;
-use crate::constants::MAX_SIMULTANEOUS_OPERATIONS;
-use crate::model::album::Album;
-use crate::model::playlist::Playlist;
+use crate::constants::{ALBUM_LIST_CHUNK_SIZE, MAX_SIMULTANEOUS_OPERATIONS};
 use crate::model::song::Song;
 use crate::server::async_operation::{AsyncOperation, Operation};
 use crate::server::parser::Parser;
@@ -37,7 +35,6 @@ enum SubsonicParameter {
     AlbumId(String),
     SongId(String),
     PlaylistId(String),
-    Genre(String),
     Size(usize),
     Offset(usize),
 }
@@ -47,7 +44,6 @@ impl Display for SubsonicParameter {
         let str = match self {
             SubsonicParameter::AlbumId(val) => val.to_string(),
             SubsonicParameter::SongId(val) => val.to_string(),
-            SubsonicParameter::Genre(val) => val.to_string(),
             SubsonicParameter::None => "None".to_string(),
             SubsonicParameter::Size(val) => val.to_string(),
             SubsonicParameter::Offset(val) => val.to_string(),
@@ -162,28 +158,13 @@ impl Server {
         Ok(())
     }
 
-    pub async fn get_genres(&mut self) -> AppResult<Vec<String>> {
+    pub fn get_genres_sync(&mut self) {
         let url = self.build_url(SubsonicOperation::GetGenres, vec![SubsonicParameter::None]);
-        let response_text = self.make_request_text(url).await.unwrap();
 
-        let genres_list = Parser::parse_genres_list(response_text).unwrap();
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(Operation::GetGenreList, url.clone(), rx, tx);
 
-        Ok(genres_list)
-    }
-
-    pub async fn get_playlists(&mut self) -> AppResult<Vec<Playlist>> {
-        let url = self.build_url(
-            SubsonicOperation::GetPlaylistList,
-            vec![SubsonicParameter::None],
-        );
-        let response_text = self.make_request_text(url).await.unwrap();
-
-        let mut playlist_list = Parser::parse_playlist_list(response_text).unwrap();
-        for playlist in playlist_list.as_mut_slice() {
-            playlist.set_song_list(self.get_playlist(playlist.id()).await.unwrap())
-        }
-
-        Ok(playlist_list)
+        self.operations.push(operation);
     }
 
     pub fn get_playlists_async(&mut self, update: bool) {
@@ -194,21 +175,9 @@ impl Server {
 
         let (tx, rx) = mpsc::unbounded_channel();
         let operation =
-            AsyncOperation::new(Operation::GetPlaylistsList(update), url.clone(), rx, tx);
+            AsyncOperation::new(Operation::GetPlaylistList(update), url.clone(), rx, tx);
 
         self.operations.push(operation);
-    }
-
-    pub async fn get_playlist(&mut self, playlist_id: &str) -> AppResult<Vec<String>> {
-        let url = self.build_url(
-            SubsonicOperation::GetPlaylist,
-            vec![SubsonicParameter::PlaylistId(String::from(playlist_id))],
-        );
-        let response_text = self.make_request_text(url).await.unwrap();
-
-        let playlist_list = Parser::parse_playlist(response_text).unwrap();
-
-        Ok(playlist_list)
     }
 
     pub fn get_playlist_async(&mut self, playlist_id: &str) {
@@ -228,117 +197,64 @@ impl Server {
         self.operations.push(operation);
     }
 
-    pub async fn get_recent_albums(&mut self) -> AppResult<Vec<String>> {
+    pub fn get_recent_albums_async(&mut self) {
         let url = self.build_url(
             SubsonicOperation::GetAlbumListRecent,
-            vec![SubsonicParameter::None],
+            vec![SubsonicParameter::Size(ALBUM_LIST_CHUNK_SIZE)],
         );
-        let response_text = self.make_request_text(url).await.unwrap();
 
-        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(Operation::GetAlbumListRecent(), url.clone(), rx, tx);
 
-        Ok(album_list)
+        self.operations.push(operation);
     }
 
-    pub async fn get_most_listened_albums(&mut self) -> AppResult<Vec<String>> {
-        let parameters = vec![SubsonicParameter::Size(20), SubsonicParameter::Offset(0)];
-        let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, parameters);
-        let response_text = self.make_request_text(url).await.unwrap();
-
-        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
-
-        Ok(album_list)
-    }
-
-    pub async fn get_most_listened_albums_ids(&mut self, offset: usize) -> AppResult<Vec<String>> {
+    pub fn get_album_list_alphabetical_async(&mut self, update: bool, offset: usize) {
         let parameters = vec![
-            SubsonicParameter::Size(10),
-            SubsonicParameter::Offset(offset),
-        ];
-        let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, parameters);
-        let response_text = self.make_request_text(url).await.unwrap();
-
-        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
-
-        Ok(album_list)
-    }
-
-    pub async fn get_album_list_alphabetical(&mut self, offset: usize) -> AppResult<Vec<String>> {
-        let parameters = vec![
-            SubsonicParameter::Size(10),
+            SubsonicParameter::Size(ALBUM_LIST_CHUNK_SIZE),
             SubsonicParameter::Offset(offset),
         ];
         let url = self.build_url(SubsonicOperation::GetAlbumListAlphabetical, parameters);
-        let response_text = self.make_request_text(url).await.unwrap();
 
-        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(
+            Operation::GetAlbumListAlphabetical(update, offset),
+            url.clone(),
+            rx,
+            tx,
+        );
 
-        Ok(album_list)
+        self.operations.push(operation);
     }
 
-    pub async fn get_album_list_by_genre(
-        &mut self,
-        offset: usize,
-        genre: String,
-        sort_by_most_listened: bool,
-    ) -> AppResult<Vec<String>> {
+    pub fn get_most_listened_albums_async(&mut self, offset: usize) {
         let parameters = vec![
-            SubsonicParameter::Size(10),
+            SubsonicParameter::Size(ALBUM_LIST_CHUNK_SIZE),
             SubsonicParameter::Offset(offset),
-            SubsonicParameter::Genre(genre),
         ];
-        let url = if sort_by_most_listened {
-            self.build_url(
-                SubsonicOperation::GetAlbumListByGenreAndMostListened,
-                parameters,
-            )
-        } else {
-            self.build_url(SubsonicOperation::GetAlbumListByGenre, parameters)
-        };
-        let response_text = self.make_request_text(url).await.unwrap();
+        let url = self.build_url(SubsonicOperation::GetAlbumListMostListened, parameters);
 
-        let album_list = Parser::parse_album_list_simple(response_text).unwrap();
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(
+            Operation::GetAlbumListMostListened(offset),
+            url.clone(),
+            rx,
+            tx,
+        );
 
-        Ok(album_list)
+        self.operations.push(operation);
     }
 
-    pub async fn get_album_list_complete(
-        &mut self,
-        operation: SubsonicOperation,
-    ) -> AppResult<Vec<String>> {
-        let mut stop = false;
-        let mut offset = 0;
-
-        let mut album_list: Vec<String> = vec![];
-        while !stop {
-            let parameters = vec![
-                SubsonicParameter::Size(500),
-                SubsonicParameter::Offset(offset),
-            ];
-            let url = self.build_url(operation, parameters);
-            let response_text = self.make_request_text(url).await.unwrap();
-            let mut partial_album_list: Vec<String> =
-                Parser::parse_album_list_simple(response_text).unwrap();
-            stop = partial_album_list.is_empty();
-            if !stop {
-                album_list.append(&mut partial_album_list);
-                offset += 500;
-            }
-        }
-
-        Ok(album_list)
-    }
-
-    pub async fn get_complete_album(&mut self, album_id: &str) -> AppResult<(Album, Vec<Song>)> {
+    pub fn get_album_async(&mut self, album_id: String) {
         let url = self.build_url(
             SubsonicOperation::GetAlbum,
-            vec![SubsonicParameter::AlbumId(album_id.to_string())],
+            vec![SubsonicParameter::AlbumId(album_id.clone())],
         );
-        let response_text = self.make_request_text(url).await.unwrap();
 
-        let parsed_media = Parser::parse_album(response_text);
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(Operation::GetAlbum(album_id), url.clone(), rx, tx);
 
-        Ok(parsed_media)
+        self.operations.push(operation);
     }
 
     pub async fn get_album_songs(&mut self, album_id: &str) -> AppResult<Vec<Song>> {

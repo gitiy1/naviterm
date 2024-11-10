@@ -6,16 +6,14 @@ use ratatui::Frame;
 use crate::app::{App, AppResult};
 use crate::ui::utils;
 
-pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
+pub fn draw_popup(_app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(40, 30, frame.size());
 
-    let popup_block = Paragraph::new(format!(
-        "(b) Albums\n\
-         (p) Playlists\n\
-         (g) Genres\n\
-         (a) All\n\
-        "
-    ))
+    let popup_block = Paragraph::new("(b) Albums\n\
+         (y) Playlists\n\
+         (s) All - Quick scan\n\
+         (a) All - Full scan\n\
+        ".to_string())
     .wrap(Wrap { trim: true })
     .block(
         Block::bordered()

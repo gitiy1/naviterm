@@ -299,7 +299,19 @@ pub async fn handle_key_events(
             },
             Popup::UpdateDatabase => match key_event.code {
                 KeyCode::Char('p') => {
-                    app.update_playlists_async()?;
+                    app.update_playlists_async(true)?;
+                    app.current_popup = Popup::None;
+                }
+                KeyCode::Char('b') => {
+                    app.update_alphabetical_albums_async(true)?;
+                    app.current_popup = Popup::None;
+                }
+                KeyCode::Char('s') => {
+                    app.populate_db(false)?;
+                    app.current_popup = Popup::None;
+                }
+                KeyCode::Char('a') => {
+                    app.populate_db(true)?;
                     app.current_popup = Popup::None;
                 }
                 _ => {}

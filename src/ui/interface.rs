@@ -84,6 +84,7 @@ fn draw_title(app: &mut App, title_area: Rect, frame: &mut Frame) {
                 .style(Style::default().fg(Gray).add_modifier(Modifier::ITALIC)),
         );
     }
+    let pending_operations = app.server.operations.len().to_string();
     let status_span = match app.status {
         AppStatus::Connected => {
             Span::from("Connected").style(Style::default().fg(Green).add_modifier(Modifier::BOLD))
@@ -92,7 +93,7 @@ fn draw_title(app: &mut App, title_area: Rect, frame: &mut Frame) {
             Span::from("Disconnected").style(Style::default().fg(Red).add_modifier(Modifier::BOLD))
         }
         AppStatus::Updating => {
-            Span::from("Updating").style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD))
+            Span::from("Updating (".to_owned() + pending_operations.as_str() + ")").style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD))
         }
     };
     let status_line = Line::from(vec![
