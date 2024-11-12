@@ -99,6 +99,7 @@ async fn main() -> AppResult<()> {
 
     // Refresh database
     if app.mode == AppMode::Online {
+        app.updating_albums = true;
         app.populate_db(!loaded)?;
         app.process_filtered_album_list().await?;
     }

@@ -1,3 +1,4 @@
+use std::cmp::PartialEq;
 use crate::constants;
 use crate::event::DbusEvent::{Clear, Playing};
 use crate::event::Event;
@@ -110,6 +111,8 @@ pub struct App {
     pub status: AppStatus,
     pub result_list_alphabetical: Vec<String>,
     pub result_list_most_listened: Vec<String>,
+    pub updating_albums: bool,
+    pub albums_being_updated: usize,
 }
 
 #[derive(Default, Debug)]
@@ -168,9 +171,12 @@ impl Default for App {
             status: AppStatus::Connected,
             result_list_most_listened: vec![],
             result_list_alphabetical: vec![],
+            updating_albums: false,
+            albums_being_updated: 0
         }
     }
 }
+
 
 impl App {
     /// Constructs a new instance of [`App`].
@@ -1082,14 +1088,16 @@ impl App {
         }
 
         for i in 0..pending_operations_number {
-            let operation = &self.server.operations[i];
-            if operation.finished() {
-                debug!("Processing operation {:?}", operation.operation_id());
+            let operation = &mut self.server.operations[i];
+            if operation.finished() && !operation.processed() {
+                debug!("Processing finished operation {:?}, updating_albums: {}", operation.operation_id(), self.updating_albums);
                 match operation.operation_id() {
                     Operation::GetPlaylistList(update) => {
+                        if self.updating_albums { continue }
                         let force_update = *update;
                         let playlist_list =
                             Parser::parse_playlist_list(operation.result().to_string()).unwrap();
+                        operation.set_processed(true);
                         for playlist in playlist_list {
                             if self.database.contains_playlist(playlist.id()) && !force_update {
                                 debug!("Playlist {} already in database", playlist.name());
@@ -1108,17 +1116,22 @@ impl App {
                         }
                     }
                     Operation::GetPlaylist(id) => {
+                        if self.updating_albums {continue}
                         self.database.set_playlist_songs(
                             id,
                             Parser::parse_playlist(operation.result().to_string()).unwrap(),
                         );
+                        operation.set_processed(true);
                     }
                     Operation::GetAlbumListAlphabetical(update, offset) => {
                         debug!(
                             "Getting alphabetical list. Force update: {}, offset: {}",
                             update, offset
                         );
+                        self.updating_albums = true;
                         let force_update = *update;
+                        let offset = *offset;
+                        operation.set_processed(true);
                         let mut album_list =
                             Parser::parse_album_list_simple(operation.result().to_string())
                                 .unwrap();
@@ -1130,9 +1143,11 @@ impl App {
                                     debug!("Album {} already in database", album_id);
                                 } else if self.database.contains_album(album_id.as_str()) {
                                     debug!("Album {} was not in database, fetching", album_id);
+                                    self.albums_being_updated += 1;
                                     self.server.get_album_async(album_id.clone());
                                 } else {
                                     debug!("Forcing update for album {}", album_id);
+                                    self.albums_being_updated += 1;
                                     self.server.get_album_async(album_id.clone());
                                 }
                             }
@@ -1144,6 +1159,7 @@ impl App {
                             self.database
                                 .set_alphabetical_albums(self.result_list_alphabetical.clone());
                             self.result_list_alphabetical.clear();
+                            if self.albums_being_updated == 0 { self.updating_albums = false; }
                         }
                     }
                     Operation::GetAlbum(album_id) => {
@@ -1161,14 +1177,22 @@ impl App {
                             self.database.delete_album(album_id.to_string());
                             self.database.insert_album(album_id.to_string(), album);
                         }
+                        self.albums_being_updated -= 1;
+                        if self.albums_being_updated == 0 { self.updating_albums = false; }
+                        operation.set_processed(true);
                     }
                     Operation::GetAlbumListRecent() => {
+                        if self.updating_albums { continue }
                         let album_list =
                             Parser::parse_album_list_simple(operation.result().to_string())
                                 .unwrap();
                         self.database.set_recent_albums(album_list);
+                        operation.set_processed(true);
                     }
                     Operation::GetAlbumListMostListened(offset) => {
+                        if self.updating_albums { continue }
+                        let offset = *offset;
+                        operation.set_processed(true);
                         let mut album_list =
                             Parser::parse_album_list_simple(operation.result().to_string())
                                 .unwrap();
@@ -1184,10 +1208,12 @@ impl App {
                         }
                     }
                     Operation::GetGenreList => {
+                        if self.updating_albums {continue}
                         let mut genres =
                             Parser::parse_genres_list(operation.result().to_string()).unwrap();
                         genres.sort();
                         self.database.set_genres(genres);
+                        operation.set_processed(true);
                     }
                 }
             }

@@ -1,6 +1,6 @@
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum Operation {
     GetPlaylistList(bool),
     GetPlaylist(String),
@@ -18,6 +18,7 @@ pub struct AsyncOperation {
     result: String,
     started: bool,
     finished: bool,
+    processed: bool,
     thread_rx_handle: UnboundedReceiver<String>,
     thread_tx_handle: UnboundedSender<String>,
 }
@@ -36,6 +37,7 @@ impl AsyncOperation {
             thread_tx_handle,
             started: false,
             finished: false,
+            processed: false,
             operation_id,
         }
     }
@@ -64,6 +66,10 @@ impl AsyncOperation {
         self.finished
     }
 
+    pub fn processed(&self) -> bool {
+        self.processed
+    }
+
     pub fn set_started(&mut self, started: bool) {
         self.started = started;
     }
@@ -72,6 +78,7 @@ impl AsyncOperation {
         self.finished = finished;
     }
 
+    pub fn set_processed(&mut self, processed: bool) { self.processed = processed; }
     pub fn set_result(&mut self, result: String) {
         self.result = result;
     }

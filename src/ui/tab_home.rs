@@ -42,7 +42,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Paragraph::new(Line::from("No recent albums..."))
                 .block(Block::default())
                 .block(block_recents),
-            area,
+            chunks[0],
         );
     } else {
         let items = recent_albums.iter().enumerate().map(|(_i, album_id)| {
@@ -92,7 +92,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Paragraph::new(Line::from("No most listened albums..."))
                 .block(Block::default())
                 .block(block_most_listened),
-            area,
+            chunks[1],
         );
     } else {
         let items = most_listened_albums

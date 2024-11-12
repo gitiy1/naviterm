@@ -121,13 +121,13 @@ impl Server {
             }
             if self.current_number_of_requests > MAX_SIMULTANEOUS_OPERATIONS {
                 debug!("Maximum number of requests reached");
-                break;
+                continue;
             }
         }
     }
 
     pub fn remove_completed_operations(&mut self) {
-        self.operations.retain(|operation| !operation.finished());
+        self.operations.retain(|operation| !operation.processed());
     }
 
     pub fn renew_credentials(&mut self) -> AppResult<()> {
