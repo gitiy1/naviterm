@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult};
+use log::debug;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::prelude::Modifier;
 use ratatui::style::Color::{Black, Gray, Yellow};
@@ -105,9 +106,11 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         if !app.search_results_indexes.is_empty()
             && index == *app.search_results_indexes.get(app.index_in_search).unwrap()
         {
+            debug!("album: {}, search string: {}, album index: {}, app search index: {}, search matches indexes: {:?}", album_name_to_search, app.search_string, index, app.index_in_search, app.search_results_indexes);
             let match_indices: Vec<_> = album_name_to_search
                 .match_indices(app.search_string.as_str())
                 .collect();
+            debug!("match: {:?}", match_indices);
             let (first_index, first_match) = match_indices[0];
             let first_slice = &album.name()[0..first_index];
             let matched_slice = &album.name()[first_index..first_index + first_match.len()];

@@ -136,7 +136,7 @@ pub async fn handle_key_events(
                     };
                     app.clear_search()?;
                     app.album_state.select_first();
-                    app.process_filtered_album_list().await?;
+                    app.process_filtered_album_list()?;
                 }
                 KeyCode::Char('d') => {
                     if key_event.modifiers == KeyModifiers::CONTROL {
@@ -281,7 +281,7 @@ pub async fn handle_key_events(
                 KeyCode::Enter => {
                     app.album_state.select_first();
                     app.set_genre_filter()?;
-                    app.process_filtered_album_list().await?;
+                    app.process_filtered_album_list()?;
                     app.current_popup = Popup::None;
                     app.clear_search()?;
                 }

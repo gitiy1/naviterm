@@ -101,7 +101,7 @@ async fn main() -> AppResult<()> {
     if app.mode == AppMode::Online {
         app.updating_albums = true;
         app.populate_db(!loaded)?;
-        app.process_filtered_album_list().await?;
+        app.process_filtered_album_list()?;
     }
 
     // Initialize ipc stream

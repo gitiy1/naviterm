@@ -869,7 +869,7 @@ impl App {
         Ok(())
     }
 
-    pub async fn process_filtered_album_list(&mut self) -> AppResult<()> {
+    pub fn process_filtered_album_list(&mut self) -> AppResult<()> {
         let mut new_filtered_list: Vec<String> = vec![];
         let list = if self.album_sorting_mode == "frequent" {
             self.database.most_listened_albums()
@@ -1019,6 +1019,7 @@ impl App {
                 album.name().to_lowercase()
             };
             if album_name_to_search.contains(self.search_string.as_str()) {
+                debug!("album name: {}, matched string: {}", album_name_to_search, self.search_string);
                 self.search_results_indexes.push(index);
             }
         }
@@ -1159,7 +1160,10 @@ impl App {
                             self.database
                                 .set_alphabetical_albums(self.result_list_alphabetical.clone());
                             self.result_list_alphabetical.clear();
-                            if self.albums_being_updated == 0 { self.updating_albums = false; }
+                            if self.albums_being_updated == 0 { 
+                                self.updating_albums = false;
+                                self.process_filtered_album_list().unwrap();
+                            }
                         }
                     }
                     Operation::GetAlbum(album_id) => {
