@@ -1,4 +1,3 @@
-use std::cmp::PartialEq;
 use crate::constants;
 use crate::event::DbusEvent::{Clear, Playing};
 use crate::event::Event;
@@ -14,6 +13,7 @@ use log::{debug, info, warn};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use ratatui::widgets::ListState;
+use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::error;
 use std::thread::sleep;
@@ -37,14 +37,23 @@ pub enum AppStatus {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum AppMode {
+pub enum AppConnectionMode {
     Online,
     Offline,
 }
 
+pub enum AppHomeTabMode {
+    OneColumn,
+    TwoColumns,
+}
+
 pub enum HomePane {
     Top,
+    TopLeft,
+    TopRight,
     Bottom,
+    BottomLeft,
+    BottomRight,
 }
 
 #[derive(Debug, Default)]
@@ -73,16 +82,16 @@ pub type AppResult<T> = Result<T, Box<dyn error::Error>>;
 pub struct App {
     /// Is the application running?
     pub running: bool,
-    pub mode: AppMode,
+    pub mode: AppConnectionMode,
     pub current_screen: CurrentScreen,
     pub home_pane: HomePane,
+    pub home_tab_mode: AppHomeTabMode,
     pub current_popup: Popup,
     pub previous_popup: Popup,
     pub server: Server,
     pub event_sender: Option<UnboundedSender<Event>>,
     pub database: MusicDatabase,
-    pub home_top_state: ListState,
-    pub home_bottom_state: ListState,
+    pub list_states: AppListStates,
     pub queue_list_state: ListState,
     pub popup_list_state: ListState,
     pub popup_genre_list_state: ListState,
@@ -129,20 +138,30 @@ pub struct NowPlaying {
     pub duration: String,
 }
 
+#[derive(Default)]
+pub struct AppListStates {
+    pub home_tab_top: ListState,
+    pub home_tab_top_left: ListState,
+    pub home_tab_top_right: ListState,
+    pub home_tab_bottom: ListState,
+    pub home_tab_bottom_left: ListState,
+    pub home_tab_bottom_right: ListState,
+}
+
 impl Default for App {
     fn default() -> Self {
         Self {
             running: true,
-            mode: AppMode::Online,
+            mode: AppConnectionMode::Online,
             current_screen: CurrentScreen::Home,
-            home_pane: HomePane::Top,
+            home_pane: HomePane::TopLeft,
+            home_tab_mode: AppHomeTabMode::TwoColumns,
             current_popup: Popup::None,
             previous_popup: Popup::None,
             server: Server::new(),
             event_sender: None,
             database: MusicDatabase::new(),
-            home_top_state: ListState::default(),
-            home_bottom_state: ListState::default(),
+            list_states: AppListStates::default(),
             queue_list_state: ListState::default(),
             popup_list_state: ListState::default(),
             playlist_state: ListState::default(),
@@ -172,11 +191,10 @@ impl Default for App {
             result_list_most_listened: vec![],
             result_list_alphabetical: vec![],
             updating_albums: false,
-            albums_being_updated: 0
+            albums_being_updated: 0,
         }
     }
 }
-
 
 impl App {
     /// Constructs a new instance of [`App`].
@@ -272,19 +290,48 @@ impl App {
 
     pub async fn get_current_album_information(&mut self) -> AppResult<()> {
         let selected_album_id = match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::Top => self
-                    .database
-                    .recent_albums()
-                    .get(self.home_top_state.selected().unwrap())
-                    .unwrap()
-                    .clone(),
-                HomePane::Bottom => self
-                    .database
-                    .most_listened_albums()
-                    .get(self.home_bottom_state.selected().unwrap())
-                    .unwrap()
-                    .clone(),
+            CurrentScreen::Home => match self.home_tab_mode {
+                AppHomeTabMode::OneColumn => match self.home_pane {
+                    HomePane::Top => self
+                        .database
+                        .recent_albums()
+                        .get(self.list_states.home_tab_top.selected().unwrap())
+                        .unwrap()
+                        .clone(),
+                    HomePane::Bottom => self
+                        .database
+                        .most_listened_albums()
+                        .get(self.list_states.home_tab_bottom.selected().unwrap())
+                        .unwrap()
+                        .clone(),
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                },
+                AppHomeTabMode::TwoColumns => match self.home_pane {
+                    HomePane::TopLeft => self
+                        .database
+                        .recent_albums()
+                        .get(self.list_states.home_tab_top_left.selected().unwrap())
+                        .unwrap()
+                        .clone(),
+
+                    HomePane::TopRight => {
+                        panic!("Should not reach")
+                    }
+                    HomePane::BottomLeft => self
+                        .database
+                        .most_listened_albums()
+                        .get(self.list_states.home_tab_bottom_left.selected().unwrap())
+                        .unwrap()
+                        .clone(),
+                    HomePane::BottomRight => {
+                        panic!("Should not reach")
+                    }
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                },
             },
             CurrentScreen::Albums => self
                 .database
@@ -307,13 +354,35 @@ impl App {
 
     pub fn select_next_list(&mut self) -> AppResult<()> {
         match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::Top => {
-                    self.home_top_state.select_next();
-                }
-                HomePane::Bottom => {
-                    self.home_bottom_state.select_next();
-                }
+            CurrentScreen::Home => match self.home_tab_mode {
+                AppHomeTabMode::OneColumn => match self.home_pane {
+                    HomePane::Top => {
+                        self.list_states.home_tab_top.select_next();
+                    }
+                    HomePane::Bottom => {
+                        self.list_states.home_tab_bottom.select_next();
+                    }
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                },
+                AppHomeTabMode::TwoColumns => match self.home_pane {
+                    HomePane::TopLeft => {
+                        self.list_states.home_tab_top_left.select_next();
+                    }
+                    HomePane::TopRight => {
+                        self.list_states.home_tab_top_right.select_next();
+                    }
+                    HomePane::BottomLeft => {
+                        self.list_states.home_tab_bottom_left.select_next();
+                    }
+                    HomePane::BottomRight => {
+                        self.list_states.home_tab_bottom_right.select_next();
+                    }
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                },
             },
             CurrentScreen::Albums => {
                 self.album_state.select_next();
@@ -334,10 +403,22 @@ impl App {
         match self.current_screen {
             CurrentScreen::Home => match self.home_pane {
                 HomePane::Top => {
-                    self.home_top_state.select_previous();
+                    self.list_states.home_tab_top.select_previous();
                 }
                 HomePane::Bottom => {
-                    self.home_bottom_state.select_previous();
+                    self.list_states.home_tab_bottom.select_previous();
+                }
+                HomePane::TopLeft => {
+                    self.list_states.home_tab_top_left.select_previous();
+                }
+                HomePane::TopRight => {
+                    self.list_states.home_tab_top_right.select_previous();
+                }
+                HomePane::BottomLeft => {
+                    self.list_states.home_tab_bottom_left.select_previous();
+                }
+                HomePane::BottomRight => {
+                    self.list_states.home_tab_bottom_right.select_previous();
                 }
             },
             CurrentScreen::Albums => self.album_state.select_previous(),
@@ -531,16 +612,43 @@ impl App {
     pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
         let selected_album_index;
         let album_list = match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::Top => {
-                    selected_album_index = self.home_top_state.selected().unwrap();
-                    self.database.recent_albums()
-                }
-                HomePane::Bottom => {
-                    selected_album_index = self.home_bottom_state.selected().unwrap();
-                    self.database.most_listened_albums()
-                }
+            CurrentScreen::Home => match self.home_tab_mode {
+                AppHomeTabMode::OneColumn => match self.home_pane {
+                    HomePane::Top => {
+                        selected_album_index = self.list_states.home_tab_top.selected().unwrap();
+                        self.database.recent_albums()
+                    }
+                    HomePane::Bottom => {
+                        selected_album_index = self.list_states.home_tab_bottom.selected().unwrap();
+                        self.database.most_listened_albums()
+                    }
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                },
+                AppHomeTabMode::TwoColumns => match self.home_pane {
+                    HomePane::TopLeft => {
+                        selected_album_index =
+                            self.list_states.home_tab_top_left.selected().unwrap();
+                        self.database.recent_albums()
+                    }
+                    HomePane::TopRight => {
+                        panic!("Should not reach")
+                    }
+                    HomePane::BottomLeft => {
+                        selected_album_index =
+                            self.list_states.home_tab_bottom_left.selected().unwrap();
+                        self.database.most_listened_albums()
+                    }
+                    HomePane::BottomRight => {
+                        panic!("Should not reach")
+                    }
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                },
             },
+
             CurrentScreen::Albums => {
                 selected_album_index = self.album_state.selected().unwrap();
                 self.database.filtered_albums()
@@ -832,13 +940,35 @@ impl App {
     }
 
     pub fn cycle_home_pane(&mut self) -> AppResult<()> {
-        match self.home_pane {
-            HomePane::Top => {
-                self.home_pane = HomePane::Bottom;
-            }
-            HomePane::Bottom => {
-                self.home_pane = HomePane::Top;
-            }
+        match self.home_tab_mode {
+            AppHomeTabMode::OneColumn => match self.home_pane {
+                HomePane::Top => {
+                    self.home_pane = HomePane::Bottom;
+                }
+                HomePane::Bottom => {
+                    self.home_pane = HomePane::Top;
+                }
+                _ => {
+                    panic!("Should not reach")
+                }
+            },
+            AppHomeTabMode::TwoColumns => match self.home_pane {
+                HomePane::TopLeft => {
+                    self.home_pane = HomePane::TopRight;
+                }
+                HomePane::TopRight => {
+                    self.home_pane = HomePane::BottomLeft;
+                }
+                HomePane::BottomLeft => {
+                    self.home_pane = HomePane::BottomRight;
+                }
+                HomePane::BottomRight => {
+                    self.home_pane = HomePane::TopLeft;
+                }
+                _ => {
+                    panic!("Should not reach")
+                }
+            },
         }
 
         Ok(())
@@ -897,17 +1027,53 @@ impl App {
     pub fn page_down(&mut self) -> AppResult<()> {
         if self.current_popup == Popup::None {
             match self.current_screen {
-                CurrentScreen::Home => match self.home_pane {
-                    HomePane::Top => {
-                        self.home_top_state.select(Option::from(
-                            self.home_top_state.selected().unwrap() + constants::PAGE_SIZE,
-                        ));
-                    }
-                    HomePane::Bottom => {
-                        self.home_bottom_state.select(Option::from(
-                            self.home_bottom_state.selected().unwrap() + constants::PAGE_SIZE,
-                        ));
-                    }
+                CurrentScreen::Home => match self.home_tab_mode {
+                    AppHomeTabMode::OneColumn => match self.home_pane {
+                        HomePane::Top => {
+                            self.list_states.home_tab_top.select(Option::from(
+                                self.list_states.home_tab_top.selected().unwrap()
+                                    + constants::PAGE_SIZE,
+                            ));
+                        }
+                        HomePane::Bottom => {
+                            self.list_states.home_tab_bottom.select(Option::from(
+                                self.list_states.home_tab_bottom.selected().unwrap()
+                                    + constants::PAGE_SIZE,
+                            ));
+                        }
+                        _ => {
+                            panic!("Should not reach")
+                        }
+                    },
+                    AppHomeTabMode::TwoColumns => match self.home_pane {
+                        HomePane::TopLeft => {
+                            self.list_states.home_tab_top_left.select(Option::from(
+                                self.list_states.home_tab_top_left.selected().unwrap()
+                                    + constants::PAGE_SIZE,
+                            ));
+                        }
+                        HomePane::TopRight => {
+                            self.list_states.home_tab_top_right.select(Option::from(
+                                self.list_states.home_tab_top_right.selected().unwrap()
+                                    + constants::PAGE_SIZE,
+                            ));
+                        }
+                        HomePane::BottomLeft => {
+                            self.list_states.home_tab_bottom_left.select(Option::from(
+                                self.list_states.home_tab_bottom_left.selected().unwrap()
+                                    + constants::PAGE_SIZE,
+                            ));
+                        }
+                        HomePane::BottomRight => {
+                            self.list_states.home_tab_bottom_right.select(Option::from(
+                                self.list_states.home_tab_bottom_right.selected().unwrap()
+                                    + constants::PAGE_SIZE,
+                            ));
+                        }
+                        _ => {
+                            panic!("Should not reach")
+                        }
+                    },
                 },
                 CurrentScreen::Albums => {
                     self.album_state.select(Option::from(
@@ -937,22 +1103,70 @@ impl App {
     pub fn page_up(&mut self) -> AppResult<()> {
         if self.current_popup == Popup::None {
             match self.current_screen {
-                CurrentScreen::Home => match self.home_pane {
-                    HomePane::Top => {
-                        self.home_top_state.select(Option::from(
-                            self.home_top_state
-                                .selected()
-                                .unwrap()
-                                .saturating_sub(constants::PAGE_SIZE),
-                        ));
-                    }
-                    HomePane::Bottom => {
-                        self.home_bottom_state.select(Option::from(
-                            self.home_bottom_state
-                                .selected()
-                                .unwrap()
-                                .saturating_sub(constants::PAGE_SIZE),
-                        ));
+                CurrentScreen::Home => match self.home_tab_mode {
+                    AppHomeTabMode::OneColumn => match self.home_pane {
+                        HomePane::Top => {
+                            self.list_states.home_tab_top.select(Option::from(
+                                self.list_states
+                                    .home_tab_top
+                                    .selected()
+                                    .unwrap()
+                                    .saturating_sub(constants::PAGE_SIZE),
+                            ));
+                        }
+                        HomePane::Bottom => {
+                            self.list_states.home_tab_bottom.select(Option::from(
+                                self.list_states
+                                    .home_tab_bottom
+                                    .selected()
+                                    .unwrap()
+                                    .saturating_sub(constants::PAGE_SIZE),
+                            ));
+                        }
+                        _ => {
+                            panic!("Should not reach")
+                        }
+                    },
+                    AppHomeTabMode::TwoColumns => match self.home_pane {
+                        HomePane::TopLeft => {
+                            self.list_states.home_tab_top_left.select(Option::from(
+                                self.list_states
+                                    .home_tab_top_left
+                                    .selected()
+                                    .unwrap()
+                                    .saturating_sub(constants::PAGE_SIZE),
+                            ));
+                        }
+                        HomePane::TopRight => {
+                            self.list_states.home_tab_top_right.select(Option::from(
+                                self.list_states
+                                    .home_tab_top_right
+                                    .selected()
+                                    .unwrap()
+                                    .saturating_sub(constants::PAGE_SIZE),
+                            ));
+                        }
+                        HomePane::BottomLeft => {
+                            self.list_states.home_tab_bottom_left.select(Option::from(
+                                self.list_states
+                                    .home_tab_bottom_left
+                                    .selected()
+                                    .unwrap()
+                                    .saturating_sub(constants::PAGE_SIZE),
+                            ));
+                        }
+                        HomePane::BottomRight => {
+                            self.list_states.home_tab_bottom_right.select(Option::from(
+                                self.list_states
+                                    .home_tab_bottom_right
+                                    .selected()
+                                    .unwrap()
+                                    .saturating_sub(constants::PAGE_SIZE),
+                            ));
+                        }
+                        _ => {
+                            panic!("Should not reach")
+                        }
                     }
                 },
                 CurrentScreen::Albums => {
@@ -994,9 +1208,23 @@ impl App {
 
     pub fn search_in_current_list(&mut self) -> AppResult<()> {
         let list_to_be_searched = match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::Top => self.database.recent_albums(),
-                HomePane::Bottom => self.database.most_listened_albums(),
+            CurrentScreen::Home => match self.home_tab_mode {
+                AppHomeTabMode::OneColumn => match self.home_pane {
+                    HomePane::Top => self.database.recent_albums(),
+                    HomePane::Bottom => self.database.most_listened_albums(),
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                }
+                AppHomeTabMode::TwoColumns => match self.home_pane {
+                    HomePane::TopLeft => {self.database.recent_albums()}
+                    HomePane::TopRight => {self.database.recently_added_albums()}
+                    HomePane::BottomLeft => {self.database.most_listened_albums()}
+                    HomePane::BottomRight => {self.database.most_listened_tracks()}
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                }
             },
             CurrentScreen::Albums => self.database.filtered_albums(),
             CurrentScreen::Queue => &self.queue,
@@ -1019,7 +1247,10 @@ impl App {
                 album.name().to_lowercase()
             };
             if album_name_to_search.contains(self.search_string.as_str()) {
-                debug!("album name: {}, matched string: {}", album_name_to_search, self.search_string);
+                debug!(
+                    "album name: {}, matched string: {}",
+                    album_name_to_search, self.search_string
+                );
                 self.search_results_indexes.push(index);
             }
         }
@@ -1091,10 +1322,16 @@ impl App {
         for i in 0..pending_operations_number {
             let operation = &mut self.server.operations[i];
             if operation.finished() && !operation.processed() {
-                debug!("Processing finished operation {:?}, updating_albums: {}", operation.operation_id(), self.updating_albums);
+                debug!(
+                    "Processing finished operation {:?}, updating_albums: {}",
+                    operation.operation_id(),
+                    self.updating_albums
+                );
                 match operation.operation_id() {
                     Operation::GetPlaylistList(update) => {
-                        if self.updating_albums { continue }
+                        if self.updating_albums {
+                            continue;
+                        }
                         let force_update = *update;
                         let playlist_list =
                             Parser::parse_playlist_list(operation.result().to_string()).unwrap();
@@ -1117,7 +1354,9 @@ impl App {
                         }
                     }
                     Operation::GetPlaylist(id) => {
-                        if self.updating_albums {continue}
+                        if self.updating_albums {
+                            continue;
+                        }
                         self.database.set_playlist_songs(
                             id,
                             Parser::parse_playlist(operation.result().to_string()).unwrap(),
@@ -1160,7 +1399,7 @@ impl App {
                             self.database
                                 .set_alphabetical_albums(self.result_list_alphabetical.clone());
                             self.result_list_alphabetical.clear();
-                            if self.albums_being_updated == 0 { 
+                            if self.albums_being_updated == 0 {
                                 self.updating_albums = false;
                                 self.process_filtered_album_list().unwrap();
                             }
@@ -1182,11 +1421,15 @@ impl App {
                             self.database.insert_album(album_id.to_string(), album);
                         }
                         self.albums_being_updated -= 1;
-                        if self.albums_being_updated == 0 { self.updating_albums = false; }
+                        if self.albums_being_updated == 0 {
+                            self.updating_albums = false;
+                        }
                         operation.set_processed(true);
                     }
                     Operation::GetAlbumListRecent() => {
-                        if self.updating_albums { continue }
+                        if self.updating_albums {
+                            continue;
+                        }
                         let album_list =
                             Parser::parse_album_list_simple(operation.result().to_string())
                                 .unwrap();
@@ -1194,7 +1437,9 @@ impl App {
                         operation.set_processed(true);
                     }
                     Operation::GetAlbumListMostListened(offset) => {
-                        if self.updating_albums { continue }
+                        if self.updating_albums {
+                            continue;
+                        }
                         let offset = *offset;
                         operation.set_processed(true);
                         let mut album_list =
@@ -1212,7 +1457,9 @@ impl App {
                         }
                     }
                     Operation::GetGenreList => {
-                        if self.updating_albums {continue}
+                        if self.updating_albums {
+                            continue;
+                        }
                         let mut genres =
                             Parser::parse_genres_list(operation.result().to_string()).unwrap();
                         genres.sort();

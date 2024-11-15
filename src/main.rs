@@ -5,7 +5,7 @@ use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::Config as log4rsConfig;
-use naviterm::app::{App, AppMode, AppResult};
+use naviterm::app::{App, AppConnectionMode, AppResult};
 use naviterm::dbus;
 use naviterm::event::{Event, EventHandler};
 use naviterm::handler::{handle_dbus_events, handle_key_events};
@@ -41,12 +41,12 @@ async fn main() -> AppResult<()> {
         Err(_) => LevelFilter::Error,
     };
     let app_mode: Result<String, ConfigError> = settings.get("mode");
-    let mode: AppMode = match app_mode {
+    let mode: AppConnectionMode = match app_mode {
         Ok(mode) => match mode.as_str() {
-            "OFFLINE" => AppMode::Offline,
-            _ => AppMode::Online,
+            "OFFLINE" => AppConnectionMode::Offline,
+            _ => AppConnectionMode::Online,
         },
-        Err(_) => AppMode::Online,
+        Err(_) => AppConnectionMode::Online,
     };
 
     // Set the logging path
@@ -74,11 +74,11 @@ async fn main() -> AppResult<()> {
     app.mode = mode;
     app.set_config(settings)?;
     app.renew_credentials()?;
-    if app.mode != AppMode::Offline {
+    if app.mode != AppConnectionMode::Offline {
         match app.test_connection().await {
             Ok(_) => info!("Connected to server successfully!"),
             Err(_) => {
-                app.mode = AppMode::Offline;
+                app.mode = AppConnectionMode::Offline;
                 info!("Could not connect to server, starting offline!")
             }
         }
@@ -98,7 +98,7 @@ async fn main() -> AppResult<()> {
     };
 
     // Refresh database
-    if app.mode == AppMode::Online {
+    if app.mode == AppConnectionMode::Online {
         app.updating_albums = true;
         app.populate_db(!loaded)?;
         app.process_filtered_album_list()?;

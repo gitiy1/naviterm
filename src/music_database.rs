@@ -9,6 +9,8 @@ pub struct MusicDatabase {
     recent_albums: Vec<String>,
     most_listened_albums: Vec<String>,
     alphabetical_albums: Vec<String>,
+    most_listened_tracks: Vec<String>,
+    recently_added_albums: Vec<String>,
     filtered_albums: Vec<String>,
     genres: Vec<String>,
     albums: HashMap<String, Album>,
@@ -122,5 +124,21 @@ impl MusicDatabase {
     
     pub fn playlists(&self) -> Vec<&Playlist> {
         self.playlists.values().collect()
+    }
+
+    pub fn recently_added_albums(&self) -> &Vec<String> {
+        &self.recently_added_albums
+    }
+
+    pub fn most_listened_tracks(&self) -> &Vec<String> {
+        &self.most_listened_tracks
+    }
+
+    pub fn set_most_listened_tracks(&mut self, most_listened_tracks: Vec<String>) {
+        self.most_listened_tracks = most_listened_tracks;
+    }
+
+    pub fn set_recently_added_albums(&mut self, recently_added_albums: Vec<String>) {
+        self.recently_added_albums = recently_added_albums;
     }
 }

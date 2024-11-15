@@ -23,15 +23,33 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             HomePane::Top => app.database.get_album(
                 app.database
                     .recent_albums()
-                    .get(app.home_top_state.selected().unwrap())
+                    .get(app.list_states.home_tab_top.selected().unwrap())
                     .unwrap(),
             ),
             HomePane::Bottom => app.database.get_album(
                 app.database
                     .most_listened_albums()
-                    .get(app.home_bottom_state.selected().unwrap())
+                    .get(app.list_states.home_tab_bottom.selected().unwrap())
                     .unwrap(),
             ),
+            HomePane::TopLeft => app.database.get_album(
+                app.database
+                    .recent_albums()
+                    .get(app.list_states.home_tab_top_left.selected().unwrap())
+                    .unwrap(),
+            ),
+            HomePane::TopRight => {
+                panic!("Should not happen")
+            }
+            HomePane::BottomLeft => app.database.get_album(
+                app.database
+                    .most_listened_albums()
+                    .get(app.list_states.home_tab_bottom_left.selected().unwrap())
+                    .unwrap(),
+            ),
+            HomePane::BottomRight => {
+                panic!("Should not happen")
+            }
         },
         CurrentScreen::Albums => app.database.get_album(
             app.database
