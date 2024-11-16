@@ -254,6 +254,7 @@ impl App {
         );
         self.update_alphabetical_albums_async(force_update)?;
         self.server.get_recent_albums_async();
+        self.server.get_recently_added_albums_async();
         self.server.get_most_listened_albums_async(0);
         self.update_playlists_async(force_update)?;
         self.server.get_genres_sync();
@@ -316,9 +317,12 @@ impl App {
                         .unwrap()
                         .clone(),
 
-                    HomePane::TopRight => {
-                        panic!("Should not reach")
-                    }
+                    HomePane::TopRight => self
+                        .database
+                        .recently_added_albums()
+                        .get(self.list_states.home_tab_top_right.selected().unwrap())
+                        .unwrap()
+                        .clone(),
                     HomePane::BottomLeft => self
                         .database
                         .most_listened_albums()
@@ -326,7 +330,7 @@ impl App {
                         .unwrap()
                         .clone(),
                     HomePane::BottomRight => {
-                        panic!("Should not reach")
+                        panic!("Not implemented")
                     }
                     _ => {
                         panic!("Should not reach")
@@ -633,7 +637,9 @@ impl App {
                         self.database.recent_albums()
                     }
                     HomePane::TopRight => {
-                        panic!("Should not reach")
+                        selected_album_index =
+                            self.list_states.home_tab_top_right.selected().unwrap();
+                        self.database.recently_added_albums()
                     }
                     HomePane::BottomLeft => {
                         selected_album_index =
@@ -1167,7 +1173,7 @@ impl App {
                         _ => {
                             panic!("Should not reach")
                         }
-                    }
+                    },
                 },
                 CurrentScreen::Albums => {
                     self.album_state.select(Option::from(
@@ -1215,16 +1221,16 @@ impl App {
                     _ => {
                         panic!("Should not reach")
                     }
-                }
+                },
                 AppHomeTabMode::TwoColumns => match self.home_pane {
-                    HomePane::TopLeft => {self.database.recent_albums()}
-                    HomePane::TopRight => {self.database.recently_added_albums()}
-                    HomePane::BottomLeft => {self.database.most_listened_albums()}
-                    HomePane::BottomRight => {self.database.most_listened_tracks()}
+                    HomePane::TopLeft => self.database.recent_albums(),
+                    HomePane::TopRight => self.database.recently_added_albums(),
+                    HomePane::BottomLeft => self.database.most_listened_albums(),
+                    HomePane::BottomRight => self.database.most_listened_tracks(),
                     _ => {
                         panic!("Should not reach")
                     }
-                }
+                },
             },
             CurrentScreen::Albums => self.database.filtered_albums(),
             CurrentScreen::Queue => &self.queue,
@@ -1464,6 +1470,16 @@ impl App {
                             Parser::parse_genres_list(operation.result().to_string()).unwrap();
                         genres.sort();
                         self.database.set_genres(genres);
+                        operation.set_processed(true);
+                    }
+                    Operation::GetAlbumListRecentlyAdded() => {
+                        if self.updating_albums {
+                            continue;
+                        }
+                        let album_list =
+                            Parser::parse_album_list_simple(operation.result().to_string())
+                                .unwrap();
+                        self.database.set_recently_added_albums(album_list);
                         operation.set_processed(true);
                     }
                 }

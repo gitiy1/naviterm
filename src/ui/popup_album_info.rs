@@ -38,9 +38,12 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                     .get(app.list_states.home_tab_top_left.selected().unwrap())
                     .unwrap(),
             ),
-            HomePane::TopRight => {
-                panic!("Should not happen")
-            }
+            HomePane::TopRight => app.database.get_album(
+                app.database
+                    .recently_added_albums()
+                    .get(app.list_states.home_tab_top_right.selected().unwrap())
+                    .unwrap()
+            ),
             HomePane::BottomLeft => app.database.get_album(
                 app.database
                     .most_listened_albums()
@@ -48,7 +51,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                     .unwrap(),
             ),
             HomePane::BottomRight => {
-                panic!("Should not happen")
+                panic!("Not implemented")
             }
         },
         CurrentScreen::Albums => app.database.get_album(

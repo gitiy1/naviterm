@@ -210,6 +210,62 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 .block(block_recently_added),
             chunks_top[1],
         );
+    } else {
+        let items = recently_added_albums
+            .iter()
+            .enumerate()
+            .map(|(_i, album_id)| {
+                let album = app.database.get_album(album_id);
+                let album_item = Text::from(vec![
+                    Line::from(Span {
+                        content: album.name().into(),
+                        style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+                    }),
+                    Line::from(vec![
+                        Span {
+                            content: "from ".into(),
+                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                        },
+                        Span {
+                            content: album.artist().into(),
+                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                        },
+                        Span {
+                            content: ", ".into(),
+                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                        },
+                        Span {
+                            content: album.song_count().into(),
+                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                        },
+                        Span {
+                            content: " songs".into(),
+                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                        },
+                    ]),
+                ]);
+                ListItem::from(album_item)
+            });
+        let list = List::new(items)
+            .block(block_recently_added)
+            .highlight_symbol("-> ")
+            .highlight_spacing(HighlightSpacing::Always);
+        let list_state = match app.home_tab_mode {
+            AppHomeTabMode::OneColumn => {
+                // TODO: handle this appropriately
+                if app.list_states.home_tab_bottom.selected().is_none() {
+                    app.list_states.home_tab_bottom.select_first();
+                }
+                &mut app.list_states.home_tab_bottom
+            }
+            AppHomeTabMode::TwoColumns => {
+                if app.list_states.home_tab_top_right.selected().is_none() {
+                    app.list_states.home_tab_top_right.select_first();
+                }
+                &mut app.list_states.home_tab_top_right
+            }
+        };
+        frame.render_stateful_widget(list, chunks_top[1], list_state);
     }
 
     Ok(())

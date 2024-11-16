@@ -27,6 +27,7 @@ pub enum SubsonicOperation {
     GetAlbum,
     DownloadSong,
     GetCoverArt,
+    GetAlbumListRecentlyAdded,
 }
 
 #[derive(Debug)]
@@ -205,6 +206,18 @@ impl Server {
 
         let (tx, rx) = mpsc::unbounded_channel();
         let operation = AsyncOperation::new(Operation::GetAlbumListRecent(), url.clone(), rx, tx);
+
+        self.operations.push(operation);
+    }
+
+    pub fn get_recently_added_albums_async(&mut self) {
+        let url = self.build_url(
+            SubsonicOperation::GetAlbumListRecentlyAdded,
+            vec![SubsonicParameter::Size(ALBUM_LIST_CHUNK_SIZE)],
+        );
+
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(Operation::GetAlbumListRecentlyAdded(), url.clone(), rx, tx);
 
         self.operations.push(operation);
     }
@@ -422,6 +435,13 @@ impl Server {
                     "{}/navidrome/rest/getPlaylist.view?id={}&\
                 u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
+                )
+            }
+            SubsonicOperation::GetAlbumListRecentlyAdded => {
+                format!(
+                    "{}/navidrome/rest/getAlbumList.view?type=newest&\
+                    u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address, self.user, self.token, self.salt
                 )
             }
         };

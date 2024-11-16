@@ -6,6 +6,7 @@ pub enum Operation {
     GetPlaylist(String),
     GetAlbumListAlphabetical(bool, usize),
     GetAlbumListRecent(),
+    GetAlbumListRecentlyAdded(),
     GetAlbumListMostListened(usize),
     GetAlbum(String),
     GetGenreList,
