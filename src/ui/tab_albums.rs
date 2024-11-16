@@ -173,15 +173,15 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         .highlight_symbol("-> ")
         .highlight_spacing(HighlightSpacing::Always);
 
-    if app.album_state.selected().is_none() {
-        app.album_state.select_first()
+    if app.list_states.album_state.selected().is_none() {
+        app.list_states.album_state.select_first()
     } else if app.move_to_next_in_search {
         app.move_to_next_in_search = false;
-        app.album_state.select(Some(
+        app.list_states.album_state.select(Some(
             *app.search_results_indexes.get(app.index_in_search).unwrap(),
         ));
     }
-    frame.render_stateful_widget(list, chunks[1], &mut app.album_state);
+    frame.render_stateful_widget(list, chunks[1], &mut app.list_states.album_state);
 
     Ok(())
 }

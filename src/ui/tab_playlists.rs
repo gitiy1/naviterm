@@ -33,16 +33,16 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .block(Block::bordered().border_type(Rounded))
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
-        if app.playlist_state.selected().is_none() {
-            app.playlist_state.select_first()
+        if app.list_states.playlist_state.selected().is_none() {
+            app.list_states.playlist_state.select_first()
         }
 
-        frame.render_stateful_widget(list, chunks[0], &mut app.playlist_state);
+        frame.render_stateful_widget(list, chunks[0], &mut app.list_states.playlist_state);
 
         let song_items = app
             .database
             .playlists()
-            .get(app.playlist_state.selected().unwrap())
+            .get(app.list_states.playlist_state.selected().unwrap())
             .unwrap()
             .song_list()
             .iter()
@@ -74,11 +74,11 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
 
-        if app.playlist_selected_state.selected().is_none() {
-            app.playlist_selected_state.select_first()
+        if app.list_states.playlist_selected_state.selected().is_none() {
+            app.list_states.playlist_selected_state.select_first()
         }
 
-        frame.render_stateful_widget(list, chunks[1], &mut app.playlist_selected_state);
+        frame.render_stateful_widget(list, chunks[1], &mut app.list_states.playlist_selected_state);
     }
 
     Ok(())

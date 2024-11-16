@@ -135,7 +135,7 @@ pub async fn handle_key_events(
                         "alphabetically".to_string()
                     };
                     app.clear_search()?;
-                    app.album_state.select_first();
+                    app.list_states.album_state.select_first();
                     app.process_filtered_album_list()?;
                 }
                 KeyCode::Char('d') => {
@@ -279,7 +279,7 @@ pub async fn handle_key_events(
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
                 KeyCode::Enter => {
-                    app.album_state.select_first();
+                    app.list_states.album_state.select_first();
                     app.set_genre_filter()?;
                     app.process_filtered_album_list()?;
                     app.current_popup = Popup::None;

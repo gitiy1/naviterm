@@ -57,7 +57,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         CurrentScreen::Albums => app.database.get_album(
             app.database
                 .filtered_albums()
-                .get(app.album_state.selected().unwrap())
+                .get(app.list_states.album_state.selected().unwrap())
                 .unwrap(),
         ),
         _ => {
@@ -154,8 +154,8 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         ListItem::from(song_item)
     });
 
-    if app.popup_list_state.selected().is_none() {
-        app.popup_list_state.select_first()
+    if app.list_states.popup_list_state.selected().is_none() {
+        app.list_states.popup_list_state.select_first()
     }
     let popup_list = List::new(items)
         .style(Style::default().fg(Color::default()))
@@ -179,7 +179,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     frame.render_widget(Clear, area);
     frame.render_widget(block, chunks[0]);
     frame.render_widget(album_info, chunks_album[0]);
-    frame.render_stateful_widget(popup_list, chunks_album[1], &mut app.popup_list_state);
+    frame.render_stateful_widget(popup_list, chunks_album[1], &mut app.list_states.popup_list_state);
     frame.render_widget(popup_footer, chunks[1]);
     Ok(())
 }

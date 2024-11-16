@@ -49,10 +49,10 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .block(block)
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
-        if app.queue_list_state.selected().is_none() {
-            app.queue_list_state.select_first()
+        if app.list_states.queue_list_state.selected().is_none() {
+            app.list_states.queue_list_state.select_first()
         }
-        frame.render_stateful_widget(list, area, &mut app.queue_list_state);
+        frame.render_stateful_widget(list, area, &mut app.list_states.queue_list_state);
     }
 
     Ok(())

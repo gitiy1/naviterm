@@ -20,8 +20,8 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         items.push(ListItem::from(Text::from(genre.clone())))
     }
 
-    if app.popup_genre_list_state.selected().is_none() {
-        app.popup_genre_list_state.select_first()
+    if app.list_states.popup_genre_list_state.selected().is_none() {
+        app.list_states.popup_genre_list_state.select_first()
     }
     let popup_list = List::new(items)
         .style(Style::default().fg(Color::default()))
@@ -38,7 +38,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
 
     frame.render_widget(Clear, area);
     frame.render_widget(block, chunks[0]);
-    frame.render_stateful_widget(popup_list, inner, &mut app.popup_genre_list_state);
+    frame.render_stateful_widget(popup_list, inner, &mut app.list_states.popup_genre_list_state);
     frame.render_widget(popup_footer, chunks[1]);
     Ok(())
 }

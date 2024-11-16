@@ -92,12 +92,6 @@ pub struct App {
     pub event_sender: Option<UnboundedSender<Event>>,
     pub database: MusicDatabase,
     pub list_states: AppListStates,
-    pub queue_list_state: ListState,
-    pub popup_list_state: ListState,
-    pub popup_genre_list_state: ListState,
-    pub album_state: ListState,
-    pub playlist_state: ListState,
-    pub playlist_selected_state: ListState,
     pub item_to_be_added: ItemToBeAdded,
     pub queue: Vec<String>,
     pub queue_order: Vec<usize>,
@@ -146,6 +140,12 @@ pub struct AppListStates {
     pub home_tab_bottom: ListState,
     pub home_tab_bottom_left: ListState,
     pub home_tab_bottom_right: ListState,
+    pub queue_list_state: ListState,
+    pub popup_list_state: ListState,
+    pub popup_genre_list_state: ListState,
+    pub album_state: ListState,
+    pub playlist_state: ListState,
+    pub playlist_selected_state: ListState,
 }
 
 impl Default for App {
@@ -162,12 +162,6 @@ impl Default for App {
             event_sender: None,
             database: MusicDatabase::new(),
             list_states: AppListStates::default(),
-            queue_list_state: ListState::default(),
-            popup_list_state: ListState::default(),
-            playlist_state: ListState::default(),
-            playlist_selected_state: ListState::default(),
-            popup_genre_list_state: ListState::default(),
-            album_state: ListState::default(),
             item_to_be_added: ItemToBeAdded::default(),
             queue: vec![],
             queue_order: vec![],
@@ -340,7 +334,7 @@ impl App {
             CurrentScreen::Albums => self
                 .database
                 .filtered_albums()
-                .get(self.album_state.selected().unwrap())
+                .get(self.list_states.album_state.selected().unwrap())
                 .unwrap()
                 .clone(),
             _ => "".to_string(),
@@ -389,14 +383,14 @@ impl App {
                 },
             },
             CurrentScreen::Albums => {
-                self.album_state.select_next();
+                self.list_states.album_state.select_next();
             }
             CurrentScreen::Playlists => {
-                self.playlist_state.select_next();
+                self.list_states.playlist_state.select_next();
             }
             CurrentScreen::Artists => {}
             CurrentScreen::Queue => {
-                self.queue_list_state.select_next();
+                self.list_states.queue_list_state.select_next();
             }
         }
 
@@ -425,13 +419,13 @@ impl App {
                     self.list_states.home_tab_bottom_right.select_previous();
                 }
             },
-            CurrentScreen::Albums => self.album_state.select_previous(),
+            CurrentScreen::Albums => self.list_states.album_state.select_previous(),
             CurrentScreen::Playlists => {
-                self.playlist_state.select_previous();
+                self.list_states.playlist_state.select_previous();
             }
             CurrentScreen::Artists => {}
             CurrentScreen::Queue => {
-                self.queue_list_state.select_previous();
+                self.list_states.queue_list_state.select_previous();
             }
         }
         Ok(())
@@ -440,10 +434,10 @@ impl App {
     pub fn select_next_list_popup(&mut self) -> AppResult<()> {
         match self.current_popup {
             Popup::AlbumInformation => {
-                self.popup_list_state.select_next();
+                self.list_states.popup_list_state.select_next();
             }
             Popup::GenreFilter => {
-                self.popup_genre_list_state.select_next();
+                self.list_states.popup_genre_list_state.select_next();
             }
             _ => {
                 unreachable!()
@@ -455,10 +449,10 @@ impl App {
     pub fn select_previous_list_popup(&mut self) -> AppResult<()> {
         match self.current_popup {
             Popup::AlbumInformation => {
-                self.popup_list_state.select_previous();
+                self.list_states.popup_list_state.select_previous();
             }
             Popup::GenreFilter => {
-                self.popup_genre_list_state.select_previous();
+                self.list_states.popup_genre_list_state.select_previous();
             }
             _ => {
                 unreachable!()
@@ -503,7 +497,7 @@ impl App {
                 for song_id in self
                     .database
                     .playlists()
-                    .get(self.playlist_state.selected().unwrap())
+                    .get(self.list_states.playlist_state.selected().unwrap())
                     .unwrap()
                     .song_list()
                 {
@@ -557,7 +551,7 @@ impl App {
                 for song_id in self
                     .database
                     .playlists()
-                    .get(self.playlist_state.selected().unwrap())
+                    .get(self.list_states.playlist_state.selected().unwrap())
                     .unwrap()
                     .song_list()
                 {
@@ -598,7 +592,7 @@ impl App {
                 for song_id in self
                     .database
                     .playlists()
-                    .get(self.playlist_state.selected().unwrap())
+                    .get(self.list_states.playlist_state.selected().unwrap())
                     .unwrap()
                     .song_list()
                 {
@@ -656,7 +650,7 @@ impl App {
             },
 
             CurrentScreen::Albums => {
-                selected_album_index = self.album_state.selected().unwrap();
+                selected_album_index = self.list_states.album_state.selected().unwrap();
                 self.database.filtered_albums()
             }
             _ => {
@@ -671,7 +665,7 @@ impl App {
                 let songs_ids = self.database.get_album(selected_album_id).songs();
                 let song = self.database.get_song(
                     songs_ids
-                        .get(self.popup_list_state.selected().unwrap())
+                        .get(self.list_states.popup_list_state.selected().unwrap())
                         .unwrap(),
                 );
                 self.item_to_be_added.name = song.title().to_string();
@@ -693,7 +687,7 @@ impl App {
                 let selected_playlist = self.database.get_playlist(
                     self.database
                         .playlists()
-                        .get(self.playlist_state.selected().unwrap())
+                        .get(self.list_states.playlist_state.selected().unwrap())
                         .unwrap()
                         .id(),
                 );
@@ -837,12 +831,12 @@ impl App {
     pub fn play_queue_song(&mut self) -> AppResult<()> {
         self.change_current_playing_to(
             self.queue
-                .get(self.queue_list_state.selected().unwrap())
+                .get(self.list_states.queue_list_state.selected().unwrap())
                 .unwrap()
                 .clone()
                 .as_str(),
         );
-        self.index_in_queue = self.queue_list_state.selected().unwrap();
+        self.index_in_queue = self.list_states.queue_list_state.selected().unwrap();
         self.play_current(false);
         Ok(())
     }
@@ -981,12 +975,12 @@ impl App {
     }
 
     pub fn set_genre_filter(&mut self) -> AppResult<()> {
-        self.album_genre_filter = if self.popup_genre_list_state.selected().unwrap() == 0 {
+        self.album_genre_filter = if self.list_states.popup_genre_list_state.selected().unwrap() == 0 {
             "any".to_string()
         } else {
             self.database
                 .genres()
-                .get(self.popup_genre_list_state.selected().unwrap() - 1)
+                .get(self.list_states.popup_genre_list_state.selected().unwrap() - 1)
                 .unwrap()
                 .clone()
         };
@@ -1082,23 +1076,23 @@ impl App {
                     },
                 },
                 CurrentScreen::Albums => {
-                    self.album_state.select(Option::from(
-                        self.album_state.selected().unwrap() + constants::PAGE_SIZE,
+                    self.list_states.album_state.select(Option::from(
+                        self.list_states.album_state.selected().unwrap() + constants::PAGE_SIZE,
                     ));
                 }
                 CurrentScreen::Playlists => {}
                 CurrentScreen::Artists => {}
-                CurrentScreen::Queue => self.queue_list_state.select(Option::from(
-                    self.queue_list_state.selected().unwrap() + constants::PAGE_SIZE,
+                CurrentScreen::Queue => self.list_states.queue_list_state.select(Option::from(
+                    self.list_states.queue_list_state.selected().unwrap() + constants::PAGE_SIZE,
                 )),
             }
         } else {
             match self.current_popup {
-                Popup::GenreFilter => self.popup_genre_list_state.select(Option::from(
-                    self.popup_genre_list_state.selected().unwrap() + constants::PAGE_SIZE,
+                Popup::GenreFilter => self.list_states.popup_genre_list_state.select(Option::from(
+                    self.list_states.popup_genre_list_state.selected().unwrap() + constants::PAGE_SIZE,
                 )),
-                Popup::AlbumInformation => self.popup_list_state.select(Option::from(
-                    self.popup_list_state.selected().unwrap() + constants::PAGE_SIZE,
+                Popup::AlbumInformation => self.list_states.popup_list_state.select(Option::from(
+                    self.list_states.popup_list_state.selected().unwrap() + constants::PAGE_SIZE,
                 )),
                 _ => {}
             }
@@ -1176,8 +1170,8 @@ impl App {
                     },
                 },
                 CurrentScreen::Albums => {
-                    self.album_state.select(Option::from(
-                        self.album_state
+                    self.list_states.album_state.select(Option::from(
+                        self.list_states.album_state
                             .selected()
                             .unwrap()
                             .saturating_sub(constants::PAGE_SIZE),
@@ -1185,8 +1179,8 @@ impl App {
                 }
                 CurrentScreen::Playlists => {}
                 CurrentScreen::Artists => {}
-                CurrentScreen::Queue => self.queue_list_state.select(Option::from(
-                    self.queue_list_state
+                CurrentScreen::Queue => self.list_states.queue_list_state.select(Option::from(
+                    self.list_states.queue_list_state
                         .selected()
                         .unwrap()
                         .saturating_sub(constants::PAGE_SIZE),
@@ -1194,14 +1188,14 @@ impl App {
             }
         } else {
             match self.current_popup {
-                Popup::GenreFilter => self.popup_genre_list_state.select(Option::from(
-                    self.popup_genre_list_state
+                Popup::GenreFilter => self.list_states.popup_genre_list_state.select(Option::from(
+                    self.list_states.popup_genre_list_state
                         .selected()
                         .unwrap()
                         .saturating_sub(constants::PAGE_SIZE),
                 )),
-                Popup::AlbumInformation => self.popup_list_state.select(Option::from(
-                    self.popup_list_state
+                Popup::AlbumInformation => self.list_states.popup_list_state.select(Option::from(
+                    self.list_states.popup_list_state
                         .selected()
                         .unwrap()
                         .saturating_sub(constants::PAGE_SIZE),
@@ -1265,7 +1259,7 @@ impl App {
     }
     pub fn go_next_in_search(&mut self) -> AppResult<()> {
         let list_selected_state = match self.current_screen {
-            CurrentScreen::Albums => self.album_state.selected().unwrap(),
+            CurrentScreen::Albums => self.list_states.album_state.selected().unwrap(),
             _ => 0,
         };
         if self.search_results_indexes.is_empty() {
