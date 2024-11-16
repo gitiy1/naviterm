@@ -807,7 +807,13 @@ impl App {
                 .clone()
                 .as_str(),
         );
+        debug!("Selected: {}, queue_order: {:?}", self.list_states.queue_list_state.selected().unwrap(), self.queue_order);
         self.index_in_queue = self.list_states.queue_list_state.selected().unwrap();
+        if self.random_playback {
+            self.shuffle_queue_order_starting_at_current_index();
+            debug!("queue_order after shuffling: {:?}", self.queue_order);
+            self.index_in_queue = 0;
+        }
         self.play_current(false);
         Ok(())
     }
