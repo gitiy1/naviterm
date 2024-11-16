@@ -65,7 +65,6 @@ pub async fn handle_key_events(
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
                 KeyCode::Char('i') => {
-                    app.get_current_album_information().await?;
                     app.current_popup = Popup::AlbumInformation;
                 }
                 KeyCode::Char('a') => {
@@ -112,7 +111,6 @@ pub async fn handle_key_events(
                 KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
                 KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
                 KeyCode::Char('i') => {
-                    app.get_current_album_information().await?;
                     app.current_popup = Popup::AlbumInformation;
                 }
                 KeyCode::Char('a') => {
