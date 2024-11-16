@@ -1,6 +1,6 @@
 use config::{Config, ConfigError};
 use core::panic;
-use log::{debug, error, info, LevelFilter};
+use log::{debug, error, info, warn, LevelFilter};
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
@@ -48,6 +48,11 @@ async fn main() -> AppResult<()> {
         },
         Err(_) => AppConnectionMode::Online,
     };
+    let replay_gain_mode: Result<String, ConfigError> = settings.get("replay_gain");
+    let replay_mode = replay_gain_mode.unwrap_or_else(|_| {
+        warn!("No replay gain mode configured, setting to track");
+        String::from("track")
+    });
 
     // Set the logging path
     let file_path = "/tmp/naviterm.log";
@@ -113,6 +118,16 @@ async fn main() -> AppResult<()> {
             error!("Could not initialize ipc stream: {}", e);
             panic!("Could not initialize ipc stream: {}", e);
         }
+    }
+
+    if replay_mode == "auto" {
+        app.replay_gain_auto = true;
+        app.set_replay_gain("album")?;
+    } else if replay_mode == "track" || replay_mode == "album" {
+        app.set_replay_gain(replay_mode.as_str())?;
+    } else {
+        warn!("Unsupported replay mode: {}. Setting to track", replay_mode);
+        app.set_replay_gain("track")?;
     }
 
     app.poll_player_events().await?;

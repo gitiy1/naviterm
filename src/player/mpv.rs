@@ -91,7 +91,10 @@ impl Mpv {
     pub fn set_playback_percentage(&mut self, percentage: &str) {
         self.ipc.seek_percentage(percentage);
     }
-
+    
+    pub fn set_replay_gain(&mut self, replay_gain_mode: &str) {
+        self.ipc.set_replay_gain_mode(replay_gain_mode);
+    }
     pub fn player_status(&self) -> &PlayerStatus {
         &self.player_status
     }

@@ -118,6 +118,7 @@ pub struct App {
     pub result_list_most_listened: Vec<String>,
     pub updating_albums: bool,
     pub albums_being_updated: usize,
+    pub replay_gain_auto: bool,
 }
 
 #[derive(Default, Debug)]
@@ -188,6 +189,7 @@ impl Default for App {
             result_list_alphabetical: vec![],
             updating_albums: false,
             albums_being_updated: 0,
+            replay_gain_auto: false,
         }
     }
 }
@@ -614,7 +616,9 @@ impl App {
             MediaType::Song => {
                 let selected_album_id = album_list.get(selected_album_index).unwrap();
                 let songs_ids = self.database.get_album(selected_album_id).songs();
-                let song = if self.home_pane == HomePane::BottomRight && self.current_popup == Popup::None {
+                let song = if self.home_pane == HomePane::BottomRight
+                    && self.current_popup == Popup::None
+                {
                     self.database.get_song(
                         self.database
                             .most_listened_tracks()
@@ -673,6 +677,13 @@ impl App {
             } else {
                 self.shuffle_queue_order_starting_at_current_index();
                 self.index_in_queue = 0;
+            }
+        }
+        if self.replay_gain_auto {
+            if self.random_playback {
+                self.player.set_replay_gain("album");
+            } else {
+                self.player.set_replay_gain("track");
             }
         }
         self.random_playback = !self.random_playback;
@@ -1271,6 +1282,11 @@ impl App {
         self.search_results_indexes.clear();
         self.index_in_search = usize::MAX;
 
+        Ok(())
+    }
+
+    pub fn set_replay_gain(&mut self, replay_gain_mode: &str) -> AppResult<()> {
+        self.player.set_replay_gain(replay_gain_mode);
         Ok(())
     }
 

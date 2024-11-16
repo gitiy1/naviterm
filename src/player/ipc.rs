@@ -72,18 +72,20 @@ impl Ipc {
         let msg = String::from("{\"command\":[\"stop\"]}\n");
         self.send_ipc_command(msg, false);
     }
+    pub fn set_replay_gain_mode(&mut self, mode: &str) {
+        let msg = "{\"command\":[\"set_property\",\"replaygain\",\"".to_owned() + mode + "\"]}\n";
+        debug!("Sending command to set replay-gain mode: {}", mode);
+        self.send_ipc_command(msg, false);
+    }
 
     pub fn get_playback_time(&mut self) -> f64 {
         let msg = String::from("{\"command\":[\"get_property_string\",\"playback-time\"]}\n");
         debug!("Sending command to get playback-time");
         self.send_ipc_command(msg, true);
-        match f64::from_str_radix(self.parsed_value.as_str(), 10) {
-            Ok(parsed_value) => parsed_value,
-            Err(e) => {
-                error!("Error while parsing response from mpv: {}", e);
-                -1.0
-            }
-        }
+        f64::from_str_radix(self.parsed_value.as_str(), 10).unwrap_or_else(|e| {
+            error!("Error while parsing response from mpv: {}", e);
+            -1.0
+        })
     }
 
     pub async fn poll_events(&mut self) {
@@ -130,7 +132,7 @@ impl Ipc {
         match self.stream.as_ref().unwrap().read(&mut buf) {
             Ok(n) => {
                 let buf_string = String::from_utf8(buf[0..n].to_vec()).unwrap();
-                debug!("Response from stream: {}", buf_string);
+                debug!("Response from stream: {}", buf_string.trim());
                 if parse_response_data {
                     debug!("Parsing data");
                     let response = buf_string.split("\n").next();
@@ -155,7 +157,8 @@ impl Ipc {
     fn send_ipc_command(&mut self, msg: String, parse_response_data: bool) {
         debug!(
             "Sending message: {}, parse_response:{}",
-            msg, parse_response_data
+            msg.trim(),
+            parse_response_data
         );
         match self.stream.as_ref() {
             Some(mut stream) => match stream.write_all(msg.as_bytes()) {
