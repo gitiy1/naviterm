@@ -141,4 +141,8 @@ impl MusicDatabase {
     pub fn set_recently_added_albums(&mut self, recently_added_albums: Vec<String>) {
         self.recently_added_albums = recently_added_albums;
     }
+
+    pub fn songs(&self) -> &HashMap<String, Song> {
+        &self.songs
+    }
 }

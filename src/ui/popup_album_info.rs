@@ -42,7 +42,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                 app.database
                     .recently_added_albums()
                     .get(app.list_states.home_tab_top_right.selected().unwrap())
-                    .unwrap()
+                    .unwrap(),
             ),
             HomePane::BottomLeft => app.database.get_album(
                 app.database
@@ -50,9 +50,16 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                     .get(app.list_states.home_tab_bottom_left.selected().unwrap())
                     .unwrap(),
             ),
-            HomePane::BottomRight => {
-                panic!("Not implemented")
-            }
+            HomePane::BottomRight => app.database.get_album(
+                app.database
+                    .get_song(
+                        app.database
+                            .most_listened_tracks()
+                            .get(app.list_states.home_tab_bottom_right.selected().unwrap())
+                            .unwrap(),
+                    )
+                    .album_id(),
+            ),
         },
         CurrentScreen::Albums => app.database.get_album(
             app.database
@@ -179,7 +186,11 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     frame.render_widget(Clear, area);
     frame.render_widget(block, chunks[0]);
     frame.render_widget(album_info, chunks_album[0]);
-    frame.render_stateful_widget(popup_list, chunks_album[1], &mut app.list_states.popup_list_state);
+    frame.render_stateful_widget(
+        popup_list,
+        chunks_album[1],
+        &mut app.list_states.popup_list_state,
+    );
     frame.render_widget(popup_footer, chunks[1]);
     Ok(())
 }

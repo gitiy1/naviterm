@@ -1,4 +1,4 @@
-use crate::app::{App, AppResult, CurrentScreen, MediaType, Popup};
+use crate::app::{App, AppResult, CurrentScreen, HomePane, MediaType, Popup};
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
 use crate::player::mpv::PlayerStatus;
@@ -73,7 +73,11 @@ pub async fn handle_key_events(
                     app.set_item_to_be_added(MediaType::Album)?;
                 }
                 KeyCode::Enter => {
-                    app.set_item_to_be_added(MediaType::Album)?;
+                    if app.home_pane == HomePane::BottomRight {
+                        app.set_item_to_be_added(MediaType::Song)?;
+                    } else {
+                        app.set_item_to_be_added(MediaType::Album)?;
+                    }
                     app.add_queue_immediately().await?;
                 }
                 KeyCode::Tab => {

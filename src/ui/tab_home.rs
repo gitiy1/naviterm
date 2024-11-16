@@ -6,6 +6,7 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
 use ratatui::Frame;
+use crate::ui::utils::duration_to_hhmmss;
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let chunks = Layout::default()
@@ -201,6 +202,37 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 .block(block_most_listened_tracks),
             chunks_bottom[1],
         );
+    } else {
+        let items = app.database.most_listened_tracks().iter().enumerate().map(|(_i, song_id)| {
+            let song = app.database.get_song(song_id);
+            let song_item = Text::from(vec![Line::from(vec![
+                Span {
+                    content: song.title().into(),
+                    style: Style::default().fg(Yellow),
+                },
+                Span {
+                    content: " (".into(),
+                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                },
+                Span {
+                    content: duration_to_hhmmss(song.duration()).into(),
+                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                },
+                Span {
+                    content: ")".into(),
+                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                },
+            ])]);
+            ListItem::from(song_item)
+        });
+        let list = List::new(items)
+            .block(block_most_listened_tracks)
+            .highlight_symbol("-> ")
+            .highlight_spacing(HighlightSpacing::Always);
+        if app.list_states.home_tab_bottom_right.selected().is_none() {
+            app.list_states.home_tab_bottom_right.select_first()
+        }
+        frame.render_stateful_widget(list, chunks_bottom[1], &mut app.list_states.home_tab_bottom_right);
     }
 
     if recently_added_albums.is_empty() {

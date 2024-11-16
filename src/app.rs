@@ -2,6 +2,7 @@ use crate::constants;
 use crate::event::DbusEvent::{Clear, Playing};
 use crate::event::Event;
 use crate::event::Event::Dbus;
+use crate::model::song::Song;
 use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
@@ -47,6 +48,7 @@ pub enum AppHomeTabMode {
     TwoColumns,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum HomePane {
     Top,
     TopLeft,
@@ -323,9 +325,16 @@ impl App {
                         .get(self.list_states.home_tab_bottom_left.selected().unwrap())
                         .unwrap()
                         .clone(),
-                    HomePane::BottomRight => {
-                        panic!("Not implemented")
-                    }
+                    HomePane::BottomRight => self
+                        .database
+                        .get_song(
+                            self.database
+                                .most_listened_tracks()
+                                .get(self.list_states.home_tab_bottom_right.selected().unwrap())
+                                .unwrap(),
+                        )
+                        .album_id()
+                        .to_string(),
                     _ => {
                         panic!("Should not reach")
                     }
@@ -608,7 +617,7 @@ impl App {
     }
 
     pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
-        let selected_album_index;
+        let mut selected_album_index;
         let album_list = match self.current_screen {
             CurrentScreen::Home => match self.home_tab_mode {
                 AppHomeTabMode::OneColumn => match self.home_pane {
@@ -641,7 +650,23 @@ impl App {
                         self.database.most_listened_albums()
                     }
                     HomePane::BottomRight => {
-                        panic!("Should not reach")
+                        let album_id_selected = self
+                            .database
+                            .get_song(
+                                self.database
+                                    .most_listened_tracks()
+                                    .get(self.list_states.home_tab_bottom_right.selected().unwrap())
+                                    .unwrap(),
+                            )
+                            .album_id();
+                        selected_album_index = 0;
+                        for (i, album_id) in self.database.most_listened_albums().iter().enumerate()
+                        {
+                            if album_id_selected == album_id {
+                                selected_album_index = i;
+                            }
+                        }
+                        self.database.most_listened_albums()
                     }
                     _ => {
                         panic!("Should not reach")
@@ -663,11 +688,20 @@ impl App {
             MediaType::Song => {
                 let selected_album_id = album_list.get(selected_album_index).unwrap();
                 let songs_ids = self.database.get_album(selected_album_id).songs();
-                let song = self.database.get_song(
-                    songs_ids
-                        .get(self.list_states.popup_list_state.selected().unwrap())
-                        .unwrap(),
-                );
+                let song = if self.home_pane == HomePane::BottomRight && self.current_popup == Popup::None {
+                    self.database.get_song(
+                        self.database
+                            .most_listened_tracks()
+                            .get(self.list_states.home_tab_bottom_right.selected().unwrap())
+                            .unwrap(),
+                    )
+                } else {
+                    self.database.get_song(
+                        songs_ids
+                            .get(self.list_states.popup_list_state.selected().unwrap())
+                            .unwrap(),
+                    )
+                };
                 self.item_to_be_added.name = song.title().to_string();
                 self.item_to_be_added.id = song.id().to_string();
                 self.item_to_be_added.parent_id = selected_album_id.to_string();
@@ -975,15 +1009,16 @@ impl App {
     }
 
     pub fn set_genre_filter(&mut self) -> AppResult<()> {
-        self.album_genre_filter = if self.list_states.popup_genre_list_state.selected().unwrap() == 0 {
-            "any".to_string()
-        } else {
-            self.database
-                .genres()
-                .get(self.list_states.popup_genre_list_state.selected().unwrap() - 1)
-                .unwrap()
-                .clone()
-        };
+        self.album_genre_filter =
+            if self.list_states.popup_genre_list_state.selected().unwrap() == 0 {
+                "any".to_string()
+            } else {
+                self.database
+                    .genres()
+                    .get(self.list_states.popup_genre_list_state.selected().unwrap() - 1)
+                    .unwrap()
+                    .clone()
+            };
         Ok(())
     }
 
@@ -1089,7 +1124,8 @@ impl App {
         } else {
             match self.current_popup {
                 Popup::GenreFilter => self.list_states.popup_genre_list_state.select(Option::from(
-                    self.list_states.popup_genre_list_state.selected().unwrap() + constants::PAGE_SIZE,
+                    self.list_states.popup_genre_list_state.selected().unwrap()
+                        + constants::PAGE_SIZE,
                 )),
                 Popup::AlbumInformation => self.list_states.popup_list_state.select(Option::from(
                     self.list_states.popup_list_state.selected().unwrap() + constants::PAGE_SIZE,
@@ -1171,7 +1207,8 @@ impl App {
                 },
                 CurrentScreen::Albums => {
                     self.list_states.album_state.select(Option::from(
-                        self.list_states.album_state
+                        self.list_states
+                            .album_state
                             .selected()
                             .unwrap()
                             .saturating_sub(constants::PAGE_SIZE),
@@ -1180,7 +1217,8 @@ impl App {
                 CurrentScreen::Playlists => {}
                 CurrentScreen::Artists => {}
                 CurrentScreen::Queue => self.list_states.queue_list_state.select(Option::from(
-                    self.list_states.queue_list_state
+                    self.list_states
+                        .queue_list_state
                         .selected()
                         .unwrap()
                         .saturating_sub(constants::PAGE_SIZE),
@@ -1189,13 +1227,15 @@ impl App {
         } else {
             match self.current_popup {
                 Popup::GenreFilter => self.list_states.popup_genre_list_state.select(Option::from(
-                    self.list_states.popup_genre_list_state
+                    self.list_states
+                        .popup_genre_list_state
                         .selected()
                         .unwrap()
                         .saturating_sub(constants::PAGE_SIZE),
                 )),
                 Popup::AlbumInformation => self.list_states.popup_list_state.select(Option::from(
-                    self.list_states.popup_list_state
+                    self.list_states
+                        .popup_list_state
                         .selected()
                         .unwrap()
                         .saturating_sub(constants::PAGE_SIZE),
@@ -1402,6 +1442,10 @@ impl App {
                             if self.albums_being_updated == 0 {
                                 self.updating_albums = false;
                                 self.process_filtered_album_list().unwrap();
+                                self.database
+                                    .set_most_listened_tracks(sort_songs_by_play_count(
+                                        self.database.songs(),
+                                    ));
                             }
                         }
                     }
@@ -1422,6 +1466,10 @@ impl App {
                         }
                         self.albums_being_updated -= 1;
                         if self.albums_being_updated == 0 {
+                            self.database
+                                .set_most_listened_tracks(sort_songs_by_play_count(
+                                    self.database.songs(),
+                                ));
                             self.updating_albums = false;
                         }
                         operation.set_processed(true);
@@ -1482,4 +1530,19 @@ impl App {
 
         self.server.remove_completed_operations();
     }
+}
+fn sort_songs_by_play_count(songs: &HashMap<String, Song>) -> Vec<String> {
+    let mut song_vector: Vec<_> = songs
+        .iter()
+        .map(|(id, song)| (id.clone(), song.play_count()))
+        .collect();
+    song_vector.sort_by(|a, b| {
+        b.1.parse::<i32>()
+            .unwrap_or(0)
+            .cmp(&a.1.parse::<i32>().unwrap_or(0))
+    });
+
+    let sorted_ids: Vec<String> = song_vector.into_iter().map(|(id, _)| id).collect();
+
+    sorted_ids
 }
