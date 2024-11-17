@@ -28,6 +28,7 @@ pub enum SubsonicOperation {
     DownloadSong,
     GetCoverArt,
     GetAlbumListRecentlyAdded,
+    Scrobble,
 }
 
 #[derive(Debug)]
@@ -159,7 +160,7 @@ impl Server {
         Ok(())
     }
 
-    pub fn get_genres_sync(&mut self) {
+    pub fn get_genres_async(&mut self) {
         let url = self.build_url(SubsonicOperation::GetGenres, vec![SubsonicParameter::None]);
 
         let (tx, rx) = mpsc::unbounded_channel();
@@ -266,6 +267,18 @@ impl Server {
 
         let (tx, rx) = mpsc::unbounded_channel();
         let operation = AsyncOperation::new(Operation::GetAlbum(album_id), url.clone(), rx, tx);
+
+        self.operations.push(operation);
+    }
+
+    pub fn scrobble_song_async(&mut self, id: String) {
+        let url = self.build_url(
+            SubsonicOperation::Scrobble,
+            vec![SubsonicParameter::SongId(id.clone())],
+        );
+            
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(Operation::Scrobble(id), url.clone(), rx, tx);
 
         self.operations.push(operation);
     }
@@ -442,6 +455,13 @@ impl Server {
                     "{}/navidrome/rest/getAlbumList.view?type=newest&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, self.user, self.token, self.salt
+                )
+            }
+            SubsonicOperation::Scrobble => {
+                format!(
+                    "{}/navidrome/rest/scrobble?id={}&\
+                    u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
         };

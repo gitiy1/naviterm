@@ -119,6 +119,7 @@ pub struct App {
     pub updating_albums: bool,
     pub albums_being_updated: usize,
     pub replay_gain_auto: bool,
+    pub is_current_song_scrobbled: bool,
 }
 
 #[derive(Default, Debug)]
@@ -190,6 +191,7 @@ impl Default for App {
             updating_albums: false,
             albums_being_updated: 0,
             replay_gain_auto: false,
+            is_current_song_scrobbled: false,
         }
     }
 }
@@ -206,19 +208,24 @@ impl App {
         self.process_player_events();
         if *self.player.player_status() == PlayerStatus::Playing {
             self.ticks_during_playing_state += 1;
-        }
-        if !self.next_is_in_player_queue
-            && self.queue_has_next()
-            && (self.get_playback_time() + 10
-                > self.now_playing.duration.as_str().parse::<usize>().unwrap())
-        {
-            let next_index = self.queue_order.get(self.index_in_queue + 1).unwrap();
-            self.player.add_next_song_to_queue(
-                self.server
-                    .get_song_url(self.queue.get(*next_index).unwrap().clone())
-                    .as_str(),
-            );
-            self.next_is_in_player_queue = true;
+            if self.get_playback_time() + 10
+                > self.now_playing.duration.as_str().parse::<usize>().unwrap()
+            {
+                if !self.next_is_in_player_queue && self.queue_has_next() {
+                    let next_index = self.queue_order.get(self.index_in_queue + 1).unwrap();
+                    self.player.add_next_song_to_queue(
+                        self.server
+                            .get_song_url(self.queue.get(*next_index).unwrap().clone())
+                            .as_str(),
+                    );
+                    self.next_is_in_player_queue = true;
+                }
+
+                if !self.is_current_song_scrobbled {
+                    self.server.scrobble_song_async(self.now_playing.id.clone());
+                    self.is_current_song_scrobbled = true;
+                }
+            }
         }
     }
 
@@ -255,7 +262,7 @@ impl App {
         self.server.get_recently_added_albums_async();
         self.server.get_most_listened_albums_async(0);
         self.update_playlists_async(force_update)?;
-        self.server.get_genres_sync();
+        self.server.get_genres_async();
         Ok(())
     }
 
@@ -807,7 +814,11 @@ impl App {
                 .clone()
                 .as_str(),
         );
-        debug!("Selected: {}, queue_order: {:?}", self.list_states.queue_list_state.selected().unwrap(), self.queue_order);
+        debug!(
+            "Selected: {}, queue_order: {:?}",
+            self.list_states.queue_list_state.selected().unwrap(),
+            self.queue_order
+        );
         self.index_in_queue = self.list_states.queue_list_state.selected().unwrap();
         if self.random_playback {
             self.shuffle_queue_order_starting_at_current_index();
@@ -1402,13 +1413,16 @@ impl App {
                         for song in songs {
                             if !self.database.contains_song(song.id()) {
                                 self.database.insert_song(song.id().to_string(), song);
+                            } else { 
+                                self.database.delete_song(song.id().to_string());
+                                self.database.insert_song(song.id().to_string(), song);
                             }
                         }
                         if !self.database.contains_album(album_id) {
                             debug!("Album {} not in database, inserting", album.name());
                             self.database.insert_album(album_id.to_string(), album);
-                        } else if !self.database.contains_complete_album(album_id) {
-                            debug!("Album {} was not complete, updating", album.name());
+                        } else {
+                            debug!("Updating album {}", album.name());
                             self.database.delete_album(album_id.to_string());
                             self.database.insert_album(album_id.to_string(), album);
                         }
@@ -1470,6 +1484,10 @@ impl App {
                             Parser::parse_album_list_simple(operation.result().to_string())
                                 .unwrap();
                         self.database.set_recently_added_albums(album_list);
+                        operation.set_processed(true);
+                    }
+                    Operation::Scrobble(id) => {
+                        debug!("Scrobble operation done for song id: {}", id);
                         operation.set_processed(true);
                     }
                 }

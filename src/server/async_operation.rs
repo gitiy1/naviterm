@@ -10,6 +10,7 @@ pub enum Operation {
     GetAlbumListMostListened(usize),
     GetAlbum(String),
     GetGenreList,
+    Scrobble(String),
 }
 
 #[derive(Debug)]
