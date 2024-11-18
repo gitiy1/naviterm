@@ -418,13 +418,6 @@ impl App {
             MediaType::Album => {
                 self.queue.clear();
                 self.queue_order.clear();
-                if !self
-                    .database
-                    .contains_complete_album(self.item_to_be_added.id.as_str())
-                {
-                    self.populate_album_songs_in_db(self.item_to_be_added.id.clone().as_str())
-                        .await?;
-                }
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
                     self.queue.push(song.clone());
@@ -477,13 +470,6 @@ impl App {
                 self.queue_order.push(self.queue.len() - 1);
             }
             MediaType::Album => {
-                if !self
-                    .database
-                    .contains_complete_album(self.item_to_be_added.id.as_str())
-                {
-                    self.populate_album_songs_in_db(self.item_to_be_added.id.clone().as_str())
-                        .await?;
-                }
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
                     self.queue.insert(index_to_insert_to, song.clone());
@@ -519,13 +505,6 @@ impl App {
                 self.queue_order.push(self.queue.len() - 1);
             }
             MediaType::Album => {
-                if !self
-                    .database
-                    .contains_complete_album(self.item_to_be_added.id.as_str())
-                {
-                    self.populate_album_songs_in_db(self.item_to_be_added.id.clone().as_str())
-                        .await?;
-                }
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
                     self.queue.push(song.clone());
@@ -973,18 +952,6 @@ impl App {
                     .unwrap()
                     .clone()
             };
-        Ok(())
-    }
-
-    async fn populate_album_songs_in_db(&mut self, id: &str) -> AppResult<()> {
-        let parsed_songs = self.server.get_album_songs(id).await.unwrap();
-        let mut album_songs: Vec<String> = vec![];
-        for song in parsed_songs {
-            album_songs.push(song.id().to_string());
-            self.database.insert_song(song.id().to_string(), song);
-        }
-        self.database.set_album_songs(id, album_songs);
-
         Ok(())
     }
 
