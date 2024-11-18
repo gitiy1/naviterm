@@ -211,6 +211,7 @@ impl App {
             if self.get_playback_time() + 10
                 > self.now_playing.duration.as_str().parse::<usize>().unwrap()
             {
+                self.database.set_last_played_album_id(self.database.get_song(self.now_playing.id.as_str()).album_id().to_string());
                 if !self.next_is_in_player_queue && self.queue_has_next() {
                     let next_index = self.queue_order.get(self.index_in_queue + 1).unwrap();
                     self.player.add_next_song_to_queue(
@@ -1273,7 +1274,7 @@ impl App {
         self.player.set_replay_gain(replay_gain_mode);
         Ok(())
     }
-    
+
     fn increase_play_count_for_current_song_in_database(&mut self, song_id: String) {
         let song = self.database.get_song_mut(song_id.as_str());
         let play_count = song.play_count().parse::<usize>().unwrap();
@@ -1414,11 +1415,23 @@ impl App {
                         if self.updating_albums {
                             continue;
                         }
+                        operation.set_processed(true);
                         let album_list =
                             Parser::parse_album_list_simple(operation.result().to_string())
                                 .unwrap();
+                        if !self.database.last_played_album_id().is_empty() {
+                            debug!("Last played album id is {}", self.database.last_played_album_id());
+                            if let Some(last_played_album_index) = album_list.iter().position(|s| *s == self.database.last_played_album_id()) {
+                                debug!("Found '{}' at index {}/{}", self.database.last_played_album_id(), last_played_album_index, album_list.len());
+                                for album_id in album_list[0..last_played_album_index].iter() {
+                                    self.albums_being_updated += 1;
+                                    self.server.get_album_async(album_id.clone());
+                                }
+                            } else {
+                                debug!("Last played album with id '{}' not found in the last played albums!", self.database.last_played_album_id());
+                            }
+                        }
                         self.database.set_recent_albums(album_list);
-                        operation.set_processed(true);
                     }
                     Operation::GetAlbumListMostListened(offset) => {
                         if self.updating_albums {

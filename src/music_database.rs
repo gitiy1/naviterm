@@ -16,6 +16,7 @@ pub struct MusicDatabase {
     albums: HashMap<String, Album>,
     songs: HashMap<String, Song>,
     playlists: HashMap<String,Playlist>,
+    last_played_album_id: String,
 }
 
 impl MusicDatabase {
@@ -94,7 +95,7 @@ impl MusicDatabase {
     pub fn get_song(&self, id: &str) -> &Song {
         self.songs.get(id).unwrap()
     }
-    
+
     pub fn get_song_mut(&mut self, id: &str) -> &mut Song {
         self.songs.get_mut(id).unwrap()
     }
@@ -152,5 +153,13 @@ impl MusicDatabase {
 
     pub fn songs(&self) -> &HashMap<String, Song> {
         &self.songs
+    }
+
+    pub fn last_played_album_id(&self) -> &str {
+        &self.last_played_album_id
+    }
+
+    pub fn set_last_played_album_id(&mut self, last_played_album_id: String) {
+        self.last_played_album_id = last_played_album_id;
     }
 }

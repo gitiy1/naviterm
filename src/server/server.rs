@@ -218,7 +218,8 @@ impl Server {
         );
 
         let (tx, rx) = mpsc::unbounded_channel();
-        let operation = AsyncOperation::new(Operation::GetAlbumListRecentlyAdded(), url.clone(), rx, tx);
+        let operation =
+            AsyncOperation::new(Operation::GetAlbumListRecentlyAdded(), url.clone(), rx, tx);
 
         self.operations.push(operation);
     }
@@ -276,7 +277,7 @@ impl Server {
             SubsonicOperation::Scrobble,
             vec![SubsonicParameter::SongId(id.clone())],
         );
-            
+
         let (tx, rx) = mpsc::unbounded_channel();
         let operation = AsyncOperation::new(Operation::Scrobble(id), url.clone(), rx, tx);
 
@@ -354,8 +355,8 @@ impl Server {
             SubsonicOperation::GetAlbumListRecent => {
                 format!(
                     "{}/navidrome/rest/getAlbumList.view?type=recent&\
-                    u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, self.user, self.token, self.salt
+                    size={}&u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::GetAlbumListMostListened => {
