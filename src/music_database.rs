@@ -94,6 +94,10 @@ impl MusicDatabase {
     pub fn get_song(&self, id: &str) -> &Song {
         self.songs.get(id).unwrap()
     }
+    
+    pub fn get_song_mut(&mut self, id: &str) -> &mut Song {
+        self.songs.get_mut(id).unwrap()
+    }
 
     pub fn contains_song(&self, id: &str) -> bool {
         self.songs.contains_key(id)

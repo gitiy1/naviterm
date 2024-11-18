@@ -203,9 +203,17 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             chunks_bottom[1],
         );
     } else {
-        let items = app.database.most_listened_tracks().iter().enumerate().map(|(_i, song_id)| {
+        let items = app.database.most_listened_tracks().iter().map(|song_id| {
             let song = app.database.get_song(song_id);
             let song_item = Text::from(vec![Line::from(vec![
+                Span {
+                    content: song.play_count().into(),
+                    style: Style::default().fg(Yellow),
+                },
+                Span {
+                    content: " plays - ".into(),
+                    style: Style::default(),
+                },
                 Span {
                     content: song.title().into(),
                     style: Style::default().fg(Yellow),

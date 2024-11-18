@@ -223,6 +223,7 @@ impl App {
 
                 if !self.is_current_song_scrobbled {
                     self.server.scrobble_song_async(self.now_playing.id.clone());
+                    self.increase_play_count_for_current_song_in_database(self.now_playing.id.clone());
                     self.is_current_song_scrobbled = true;
                 }
             }
@@ -278,7 +279,6 @@ impl App {
     }
 
     pub fn initialize_player_stream(&mut self) -> AppResult<()> {
-        // TODO Try to capture connection error and retry, to give mpv time to initialize
         match self.player.initialize() {
             Ok(_) => Ok(()),
             Err(_) => {
@@ -1272,6 +1272,13 @@ impl App {
     pub fn set_replay_gain(&mut self, replay_gain_mode: &str) -> AppResult<()> {
         self.player.set_replay_gain(replay_gain_mode);
         Ok(())
+    }
+    
+    fn increase_play_count_for_current_song_in_database(&mut self, song_id: String) {
+        let song = self.database.get_song_mut(song_id.as_str());
+        let play_count = song.play_count().parse::<usize>().unwrap();
+        debug!("Increasing play count for song {} with id {} and play count {}", song.title(), song.id(), play_count);
+        song.set_play_count((play_count + 1).to_string());
     }
 
     pub fn process_pending_requests(&mut self) {
