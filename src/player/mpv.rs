@@ -1,5 +1,6 @@
 use std::process::{Child, Command, Stdio};
-
+use std::thread::sleep;
+use std::time::Duration;
 use log::debug;
 
 use crate::{app::AppResult, player::ipc::Ipc};
@@ -67,14 +68,34 @@ impl Mpv {
     pub fn toggle_play_pause(&mut self) {
         match self.player_status {
             PlayerStatus::Playing => {
+                self.lower_volume_to_0();
                 self.player_status = PlayerStatus::Paused;
                 self.ipc.toggle_play_pause();
             }
             PlayerStatus::Paused => {
                 self.player_status = PlayerStatus::Playing;
                 self.ipc.toggle_play_pause();
+                self.raise_volume_from_0();
             }
             PlayerStatus::Stopped => {}
+        }
+    }
+    
+    fn lower_volume_to_0 (&mut self) {
+        let mut v = self.volume;
+        while v > 0 {
+            self.ipc.set_volume(v.to_string().as_str());
+            v -= 2;
+            sleep(Duration::from_millis(5));
+        }
+    }
+
+    fn raise_volume_from_0 (&mut self) {
+        let mut v = 0;
+        while v < self.volume {
+            self.ipc.set_volume(v.to_string().as_str());
+            v += 2;
+            sleep(Duration::from_millis(5));
         }
     }
 
