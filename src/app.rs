@@ -979,6 +979,16 @@ impl App {
         }
         Ok(())
     }
+    
+    pub fn raise_volume(&mut self) -> AppResult<()> {
+        self.player.raise_volume();
+        Ok(())
+    }
+
+    pub fn lower_volume(&mut self) -> AppResult<()> {
+        self.player.lower_volume();
+        Ok(())
+    }
 
     pub fn set_genre_filter(&mut self) -> AppResult<()> {
         self.album_genre_filter =

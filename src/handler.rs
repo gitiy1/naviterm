@@ -62,14 +62,14 @@ pub async fn handle_key_events(
                 KeyCode::F(1) => {
                     app.current_popup = Popup::ConnectionTest;
                 }
-                KeyCode::Char('j') | KeyCode::Down => {
+                KeyCode::Char('j') => {
                     if  key_event.modifiers == KeyModifiers::CONTROL {
                         app.try_go_down_home_pane()?
                     } else {
                         app.select_next_list()?
                     }
                 },
-                KeyCode::Char('k') | KeyCode::Up => {
+                KeyCode::Char('k') => {
                     if  key_event.modifiers == KeyModifiers::CONTROL {
                         app.try_go_up_home_pane()?
                     } else {
@@ -130,8 +130,8 @@ pub async fn handle_key_events(
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Queue;
                 }
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
-                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
+                KeyCode::Char('j') => app.select_next_list()?,
+                KeyCode::Char('k') => app.select_previous_list()?,
                 KeyCode::Char('i') => {
                     app.current_popup = Popup::AlbumInformation;
                 }
@@ -195,8 +195,8 @@ pub async fn handle_key_events(
                     app.set_item_to_be_added(MediaType::Playlist)?;
                     app.add_queue_immediately().await?;
                 }
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
-                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
+                KeyCode::Char('j') => app.select_next_list()?,
+                KeyCode::Char('k') => app.select_previous_list()?,
                 _ => {}
             },
             CurrentScreen::Artists => {}
@@ -215,8 +215,8 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Char('l') => app.play_next()?,
                 KeyCode::Char('h') => app.play_previous()?,
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
-                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
+                KeyCode::Char('j') => app.select_next_list()?,
+                KeyCode::Char('k') => app.select_previous_list()?,
                 KeyCode::Char('c') => {
                     if key_event.modifiers != KeyModifiers::CONTROL {
                         handle_stop_playback(app, iface_ref).await?;
@@ -261,8 +261,8 @@ pub async fn handle_key_events(
                 _ => {}
             },
             Popup::AlbumInformation => match key_event.code {
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
-                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
+                KeyCode::Char('j') => app.select_next_list_popup()?,
+                KeyCode::Char('k') => app.select_previous_list_popup()?,
                 KeyCode::Enter => {
                     app.set_item_to_be_added(MediaType::Song)?;
                     app.add_queue_immediately().await?;
@@ -300,8 +300,8 @@ pub async fn handle_key_events(
                 _ => {}
             },
             Popup::GenreFilter => match key_event.code {
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list_popup()?,
-                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list_popup()?,
+                KeyCode::Char('j') => app.select_next_list_popup()?,
+                KeyCode::Char('k') => app.select_previous_list_popup()?,
                 KeyCode::Enter => {
                     app.list_states.album_state.select_first();
                     app.set_genre_filter()?;
@@ -349,7 +349,7 @@ pub async fn handle_key_events(
     }
 
     // Keycodes that should be considered not matter if in popup or not
-    if key_event.code == KeyCode::Char('p') {
+    if key_event.code == KeyCode::Char('p') || key_event.code == KeyCode::Char(' ') {
         handle_toggle_play_pause(app, iface_ref).await?
     };
     if key_event.code == KeyCode::Char('r') {
@@ -370,6 +370,12 @@ pub async fn handle_key_events(
     {
         app.current_popup = Popup::UpdateDatabase;
     };
+    if key_event.code == KeyCode::Up {
+        app.raise_volume()?;
+    }
+    if key_event.code == KeyCode::Down {
+        app.lower_volume()?;
+    }
     Ok(())
 }
 

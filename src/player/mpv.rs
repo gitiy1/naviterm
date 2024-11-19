@@ -18,6 +18,7 @@ pub struct Mpv {
     mpv_process: Child,
     pub(crate) player_status: PlayerStatus,
     pub(crate) ipc: Ipc,
+    volume: usize
 }
 
 impl Default for Mpv {
@@ -36,6 +37,7 @@ impl Default for Mpv {
                 .unwrap(),
             player_status: PlayerStatus::Stopped,
             ipc: Ipc::default(),
+            volume: 100
         }
     }
 }
@@ -104,5 +106,21 @@ impl Mpv {
     }
     pub fn get_playback_time(&mut self) -> f64 {
         self.ipc.get_playback_time()
+    }
+    
+    pub fn get_volume(&self) -> usize { self.volume }
+    
+    pub fn raise_volume(&mut self) {
+        if self.volume < 100 {
+            self.volume += 2;
+            self.ipc.set_volume(self.volume.to_string().as_str());
+        }
+    }
+
+    pub fn lower_volume(&mut self) {
+        if self.volume > 0 {
+            self.volume -= 2;
+            self.ipc.set_volume(self.volume.to_string().as_str());
+        }
     }
 }

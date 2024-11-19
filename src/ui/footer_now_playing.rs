@@ -122,7 +122,15 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
 
     let status_text = Line::from(vec![
         Span {
-            content: "random: ".into(),
+            content: "vol: ".into(),
+            style: Style::default(),
+        },
+        Span {
+            content: app.player.get_volume().to_string().into(),
+            style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+        },
+        Span {
+            content: ", random: ".into(),
             style: Style::default(),
         },
         random_status,

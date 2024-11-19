@@ -78,6 +78,12 @@ impl Ipc {
         self.send_ipc_command(msg, false);
     }
 
+    pub fn set_volume(&mut self, volume: &str) {
+        let msg = "{\"command\":[\"set_property\",\"volume\",\"".to_owned() + volume + "\"]}\n";
+        debug!("Sending command to set volume: {}", volume);
+        self.send_ipc_command(msg, false);
+    }
+
     pub fn get_playback_time(&mut self) -> f64 {
         let msg = String::from("{\"command\":[\"get_property_string\",\"playback-time\"]}\n");
         debug!("Sending command to get playback-time");
