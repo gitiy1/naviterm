@@ -62,8 +62,30 @@ pub async fn handle_key_events(
                 KeyCode::F(1) => {
                     app.current_popup = Popup::ConnectionTest;
                 }
-                KeyCode::Char('j') | KeyCode::Down => app.select_next_list()?,
-                KeyCode::Char('k') | KeyCode::Up => app.select_previous_list()?,
+                KeyCode::Char('j') | KeyCode::Down => {
+                    if  key_event.modifiers == KeyModifiers::CONTROL {
+                        app.try_go_down_home_pane()?
+                    } else {
+                        app.select_next_list()?
+                    }
+                },
+                KeyCode::Char('k') | KeyCode::Up => {
+                    if  key_event.modifiers == KeyModifiers::CONTROL {
+                        app.try_go_up_home_pane()?
+                    } else {
+                        app.select_previous_list()?
+                    }
+                },
+                KeyCode::Char('h') => {
+                    if  key_event.modifiers == KeyModifiers::CONTROL {
+                        app.try_go_left_home_pane()?
+                    }
+                },
+                KeyCode::Char('l') => {
+                    if  key_event.modifiers == KeyModifiers::CONTROL {
+                        app.try_go_right_home_pane()?
+                    }
+                },
                 KeyCode::Char('i') => {
                     app.current_popup = Popup::AlbumInformation;
                 }

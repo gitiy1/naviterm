@@ -941,6 +941,44 @@ impl App {
 
         Ok(())
     }
+    
+    pub fn try_go_up_home_pane(&mut self) -> AppResult<()> {
+        match self.home_pane {
+            HomePane::Bottom => { self.home_pane = HomePane::Top; }
+            HomePane::BottomLeft => { self.home_pane = HomePane::TopLeft; }
+            HomePane::BottomRight => { self.home_pane = HomePane::TopRight; }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn try_go_down_home_pane(&mut self) -> AppResult<()> {
+        match self.home_pane {
+            HomePane::Top => { self.home_pane = HomePane::Bottom; }
+            HomePane::TopLeft => { self.home_pane = HomePane::BottomLeft; }
+            HomePane::TopRight => { self.home_pane = HomePane::BottomRight; }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn try_go_left_home_pane(&mut self) -> AppResult<()> {
+        match self.home_pane {
+            HomePane::TopRight => { self.home_pane = HomePane::TopLeft; }
+            HomePane::BottomRight => { self.home_pane = HomePane::BottomLeft; }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn try_go_right_home_pane(&mut self) -> AppResult<()> {
+        match self.home_pane {
+            HomePane::TopLeft => { self.home_pane = HomePane::TopRight; }
+            HomePane::BottomLeft => { self.home_pane = HomePane::BottomRight; }
+            _ => {}
+        }
+        Ok(())
+    }
 
     pub fn set_genre_filter(&mut self) -> AppResult<()> {
         self.album_genre_filter =
