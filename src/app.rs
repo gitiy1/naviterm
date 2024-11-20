@@ -1482,6 +1482,7 @@ impl App {
                                     self.albums_being_updated += 1;
                                     self.server.get_album_async(album_id.clone());
                                 }
+                                self.database.set_last_played_album_id(album_list[0].to_string());
                             } else {
                                 debug!("Last played album with id '{}' not found in the last played albums!", self.database.last_played_album_id());
                             }
