@@ -93,6 +93,7 @@ pub struct MediaPlayer2Player {
     shuffle: bool,
     playback_status: String,
     position: i64,
+    volume: f64,
     metadata: HashMap<String, String>,
     sender: UnboundedSender<Event>,
 }
@@ -152,6 +153,19 @@ impl MediaPlayer2Player {
     #[zbus(property)]
     async fn position(&self) -> &i64 {
         &self.position
+    }
+
+    #[zbus(property)]
+    async fn volume(&self) -> &f64 {
+        &self.volume
+    }
+
+    #[zbus(property)]
+    async fn set_volume(&mut self, volume: f64) {
+        debug!("Volume change request from dbus!");
+        self.sender
+            .send(Event::Dbus(DbusEvent::Volume(volume)))
+            .unwrap();
     }
 
     #[zbus(property)]
@@ -246,6 +260,9 @@ impl MediaPlayer2Player {
         self.position = new_position;
     }
 
+    pub fn update_volume(&mut self, new_volume: f64) {
+        self.volume = new_volume;
+    }
     pub fn update_shuffle(&mut self, new_shuffle_status: bool) {
         self.shuffle = new_shuffle_status;
     }
@@ -284,6 +301,7 @@ pub async fn set_up_mpris(sender: UnboundedSender<Event>) -> AppResult<Connectio
                 can_go_previous: true,
                 shuffle: false,
                 position: 0,
+                volume: 1.0,
                 metadata: HashMap::new(),
                 playback_status: String::from("Stopped"),
                 sender,

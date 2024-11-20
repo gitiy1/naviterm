@@ -980,14 +980,15 @@ impl App {
         Ok(())
     }
     
-    pub fn raise_volume(&mut self) -> AppResult<()> {
-        self.player.raise_volume();
+    pub fn set_volume(&mut self, new_volume: f64) -> AppResult<()> {
+        self.player.set_volume((new_volume*100.0).floor() as usize);
         Ok(())
     }
-
-    pub fn lower_volume(&mut self) -> AppResult<()> {
-        self.player.lower_volume();
-        Ok(())
+    
+    pub fn get_volume_as_f64(&mut self) -> AppResult<f64> {
+        let volume = self.player.get_volume();
+        let volume_as_f64 = volume as f64 / 100.0;
+        Ok(volume_as_f64)
     }
 
     pub fn set_genre_filter(&mut self) -> AppResult<()> {

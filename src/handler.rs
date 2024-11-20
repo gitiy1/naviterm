@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult, CurrentScreen, HomePane, MediaType, Popup};
+use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
 use crate::player::mpv::PlayerStatus;
@@ -63,29 +64,29 @@ pub async fn handle_key_events(
                     app.current_popup = Popup::ConnectionTest;
                 }
                 KeyCode::Char('j') => {
-                    if  key_event.modifiers == KeyModifiers::CONTROL {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
                         app.try_go_down_home_pane()?
                     } else {
                         app.select_next_list()?
                     }
-                },
+                }
                 KeyCode::Char('k') => {
-                    if  key_event.modifiers == KeyModifiers::CONTROL {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
                         app.try_go_up_home_pane()?
                     } else {
                         app.select_previous_list()?
                     }
-                },
+                }
                 KeyCode::Char('h') => {
-                    if  key_event.modifiers == KeyModifiers::CONTROL {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
                         app.try_go_left_home_pane()?
                     }
-                },
+                }
                 KeyCode::Char('l') => {
-                    if  key_event.modifiers == KeyModifiers::CONTROL {
+                    if key_event.modifiers == KeyModifiers::CONTROL {
                         app.try_go_right_home_pane()?
                     }
-                },
+                }
                 KeyCode::Char('i') => {
                     app.current_popup = Popup::AlbumInformation;
                 }
@@ -371,10 +372,12 @@ pub async fn handle_key_events(
         app.current_popup = Popup::UpdateDatabase;
     };
     if key_event.code == KeyCode::Up {
-        app.raise_volume()?;
+        let volume = app.get_volume_as_f64()?;
+        handle_volume_change(app, iface_ref, volume + VOLUME_STEP).await?;
     }
     if key_event.code == KeyCode::Down {
-        app.lower_volume()?;
+        let volume = app.get_volume_as_f64()?;
+        handle_volume_change(app, iface_ref, volume - VOLUME_STEP).await?;
     }
     Ok(())
 }
@@ -439,6 +442,9 @@ pub async fn handle_dbus_events(
         }
         DbusEvent::Clear => {
             handle_clear_queue(iface_ref).await?;
+        }
+        DbusEvent::Volume(new_volume) => {
+            handle_volume_change(app, iface_ref, new_volume).await?;
         }
     }
     Ok(())
@@ -521,5 +527,18 @@ async fn handle_clear_queue(iface_ref: &InterfaceRef<MediaPlayer2Player>) -> App
     let mut iface = iface_ref.get_mut().await;
     iface.set_metadata(HashMap::new());
     iface.metadata_changed(iface_ref.signal_context()).await?;
+    Ok(())
+}
+async fn handle_volume_change(
+    app: &mut App,
+    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    volume: f64,
+) -> AppResult<()> {
+    let new_volume = volume.clamp(0.0, 1.0);
+    app.set_volume(new_volume)?;
+    let mut iface = iface_ref.get_mut().await;
+    iface.set_position((app.get_playback_time() * 1000000) as i64);
+    iface.update_volume(new_volume);
+    iface.volume_changed(iface_ref.signal_context()).await?;
     Ok(())
 }

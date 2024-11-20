@@ -19,6 +19,7 @@ pub enum DbusEvent {
     SeekBackwards,
     Shuffle,
     Clear,
+    Volume(f64),
 }
 
 /// Terminal events.

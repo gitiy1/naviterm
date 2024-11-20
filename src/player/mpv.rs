@@ -85,18 +85,20 @@ impl Mpv {
         let mut v = self.volume;
         while v > 0 {
             self.ipc.set_volume(v.to_string().as_str());
-            v -= 2;
+            v -= 5;
             sleep(Duration::from_millis(5));
         }
+        self.ipc.set_volume("0");
     }
 
     fn raise_volume_from_0 (&mut self) {
         let mut v = 0;
         while v < self.volume {
             self.ipc.set_volume(v.to_string().as_str());
-            v += 2;
+            v += 5;
             sleep(Duration::from_millis(5));
         }
+        self.ipc.set_volume(self.volume.to_string().as_str());
     }
 
     pub fn stop(&mut self) {
@@ -131,17 +133,8 @@ impl Mpv {
     
     pub fn get_volume(&self) -> usize { self.volume }
     
-    pub fn raise_volume(&mut self) {
-        if self.volume < 100 {
-            self.volume += 2;
-            self.ipc.set_volume(self.volume.to_string().as_str());
-        }
-    }
-
-    pub fn lower_volume(&mut self) {
-        if self.volume > 0 {
-            self.volume -= 2;
-            self.ipc.set_volume(self.volume.to_string().as_str());
-        }
+    pub fn set_volume(&mut self, new_volume: usize) {
+        self.volume = new_volume;
+        self.ipc.set_volume(new_volume.to_string().as_str());
     }
 }
