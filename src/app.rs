@@ -1277,13 +1277,19 @@ impl App {
             return Ok(());
         }
         if self.index_in_search == usize::MAX {
+            // If we index is equal to MAX, we are starting search
+            // We will try to get the search result after the current cursor position
             self.index_in_search = 0;
             while self.search_results_indexes[self.index_in_search] < list_selected_state {
-                self.index_in_search += 1;
+                if self.index_in_search < self.search_results_indexes.len() - 1 {
+                    self.index_in_search += 1;
+                } else { break; }
             }
         } else if self.index_in_search == self.search_results_indexes.len() - 1 {
+            // If we are at the end, go back to beginning
             self.index_in_search = 0;
         } else {
+            // Else go to next result
             self.index_in_search += 1;
         }
         self.move_to_next_in_search = true;
