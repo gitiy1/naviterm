@@ -208,10 +208,11 @@ impl App {
         self.process_player_events();
         if *self.player.player_status() == PlayerStatus::Playing {
             self.ticks_during_playing_state += 1;
+            // If we have only 10 seconds left for the current track
             if self.get_playback_time() + 10
                 > self.now_playing.duration.as_str().parse::<usize>().unwrap()
             {
-                self.database.set_last_played_album_id(self.database.get_song(self.now_playing.id.as_str()).album_id().to_string());
+                // If there is a next element in queue, add it to mpv queue if it has not been yet added
                 if !self.next_is_in_player_queue && self.queue_has_next() {
                     let next_index = self.queue_order.get(self.index_in_queue + 1).unwrap();
                     self.player.add_next_song_to_queue(
@@ -223,6 +224,12 @@ impl App {
                 }
 
                 if !self.is_current_song_scrobbled {
+                    // Update last listened album id to remember it for next startup
+                    let now_playing_album_id = self.database.get_song(self.now_playing.id.as_str()).album_id().to_string();
+                    self.database.set_last_played_album_id(now_playing_album_id.clone());
+                    // The current listened albums is going to be the first in the recent albums list
+                    self.database.recent_albums_mut().insert(0, now_playing_album_id);
+                    // Increase playing count in server and locally
                     self.server.scrobble_song_async(self.now_playing.id.clone());
                     self.increase_play_count_for_current_song_in_database(self.now_playing.id.clone());
                     self.is_current_song_scrobbled = true;

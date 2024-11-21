@@ -28,6 +28,10 @@ impl MusicDatabase {
         &self.recent_albums
     }
 
+    pub fn recent_albums_mut(&mut self) -> &mut Vec<String> {
+        &mut self.recent_albums
+    }
+
     pub fn most_listened_albums(&self) -> &Vec<String> {
         &self.most_listened_albums
     }
