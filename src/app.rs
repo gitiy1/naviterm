@@ -237,10 +237,19 @@ impl App {
                         .to_string();
                     self.database
                         .set_last_played_album_id(now_playing_album_id.clone());
-                    // The current listened albums is going to be the first in the recent albums list
-                    self.database
-                        .recent_albums_mut()
-                        .insert(0, now_playing_album_id);
+                    // The current listened albums is going to be the first in the recent albums
+                    // list, but if it is already in the list we remove it first
+                    let recent_albums = self.database.recent_albums_mut();
+                    let index = recent_albums
+                        .iter()
+                        .position(|x| x == &now_playing_album_id);
+                    match index {
+                        None => {}
+                        Some(index) => {
+                            recent_albums.remove(index);
+                        }
+                    }
+                    recent_albums.insert(0, now_playing_album_id.clone());
                     // Increase playing count in server and locally
                     self.server.scrobble_song_async(self.now_playing.id.clone());
                     self.increase_play_count_for_current_song_in_database(
