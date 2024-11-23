@@ -56,6 +56,10 @@ pub async fn handle_key_events(
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Playlists;
                 }
+                KeyCode::Char('4') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Artists;
+                }
                 KeyCode::Char('5') => {
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Queue;
@@ -127,6 +131,10 @@ pub async fn handle_key_events(
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Playlists;
                 }
+                KeyCode::Char('4') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Artists;
+                }
                 KeyCode::Char('5') => {
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Queue;
@@ -184,6 +192,10 @@ pub async fn handle_key_events(
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Albums;
                 }
+                KeyCode::Char('4') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Artists;
+                }
                 KeyCode::Char('5') => {
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Queue;
@@ -200,7 +212,27 @@ pub async fn handle_key_events(
                 KeyCode::Char('k') => app.select_previous_list()?,
                 _ => {}
             },
-            CurrentScreen::Artists => {}
+            CurrentScreen::Artists => match key_event.code {
+                KeyCode::Char('1') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Home;
+                }
+                KeyCode::Char('2') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Albums;
+                }
+                KeyCode::Char('3') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Playlists;
+                }
+                KeyCode::Char('5') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Queue;
+                }
+                KeyCode::Char('j') => app.select_next_list()?,
+                KeyCode::Char('k') => app.select_previous_list()?,
+                _ => {}
+            }
             CurrentScreen::Queue => match key_event.code {
                 KeyCode::Char('1') => {
                     app.clear_search()?;
@@ -213,6 +245,10 @@ pub async fn handle_key_events(
                 KeyCode::Char('3') => {
                     app.clear_search()?;
                     app.current_screen = CurrentScreen::Playlists;
+                }
+                KeyCode::Char('4') => {
+                    app.clear_search()?;
+                    app.current_screen = CurrentScreen::Artists;
                 }
                 KeyCode::Char('l') => app.play_next()?,
                 KeyCode::Char('h') => app.play_previous()?,

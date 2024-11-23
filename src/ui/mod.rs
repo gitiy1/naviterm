@@ -10,4 +10,5 @@ mod tab_home;
 mod tab_playlists;
 mod tab_queue;
 mod utils;
+mod tab_artists;
 

@@ -2,6 +2,7 @@ use crate::constants;
 use crate::event::DbusEvent::{Clear, Playing};
 use crate::event::Event;
 use crate::event::Event::Dbus;
+use crate::model::artist::Artist;
 use crate::model::song::Song;
 use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
@@ -117,6 +118,7 @@ pub struct App {
     pub result_list_alphabetical: Vec<String>,
     pub result_list_most_listened: Vec<String>,
     pub updating_albums: bool,
+    pub updating_alphabetical_albums: bool,
     pub albums_being_updated: usize,
     pub replay_gain_auto: bool,
     pub is_current_song_scrobbled: bool,
@@ -150,6 +152,8 @@ pub struct AppListStates {
     pub album_state: ListState,
     pub playlist_state: ListState,
     pub playlist_selected_state: ListState,
+    pub artist_state: ListState,
+    pub artist_selected_state: ListState,
 }
 
 impl Default for App {
@@ -189,6 +193,7 @@ impl Default for App {
             result_list_most_listened: vec![],
             result_list_alphabetical: vec![],
             updating_albums: false,
+            updating_alphabetical_albums: false,
             albums_being_updated: 0,
             replay_gain_auto: false,
             is_current_song_scrobbled: false,
@@ -225,13 +230,22 @@ impl App {
 
                 if !self.is_current_song_scrobbled {
                     // Update last listened album id to remember it for next startup
-                    let now_playing_album_id = self.database.get_song(self.now_playing.id.as_str()).album_id().to_string();
-                    self.database.set_last_played_album_id(now_playing_album_id.clone());
+                    let now_playing_album_id = self
+                        .database
+                        .get_song(self.now_playing.id.as_str())
+                        .album_id()
+                        .to_string();
+                    self.database
+                        .set_last_played_album_id(now_playing_album_id.clone());
                     // The current listened albums is going to be the first in the recent albums list
-                    self.database.recent_albums_mut().insert(0, now_playing_album_id);
+                    self.database
+                        .recent_albums_mut()
+                        .insert(0, now_playing_album_id);
                     // Increase playing count in server and locally
                     self.server.scrobble_song_async(self.now_playing.id.clone());
-                    self.increase_play_count_for_current_song_in_database(self.now_playing.id.clone());
+                    self.increase_play_count_for_current_song_in_database(
+                        self.now_playing.id.clone(),
+                    );
                     self.is_current_song_scrobbled = true;
                 }
             }
@@ -340,7 +354,9 @@ impl App {
             CurrentScreen::Playlists => {
                 self.list_states.playlist_state.select_next();
             }
-            CurrentScreen::Artists => {}
+            CurrentScreen::Artists => {
+                self.list_states.artist_state.select_next();
+            }
             CurrentScreen::Queue => {
                 self.list_states.queue_list_state.select_next();
             }
@@ -375,7 +391,9 @@ impl App {
             CurrentScreen::Playlists => {
                 self.list_states.playlist_state.select_previous();
             }
-            CurrentScreen::Artists => {}
+            CurrentScreen::Artists => {
+                self.list_states.artist_state.select_previous();
+            }
             CurrentScreen::Queue => {
                 self.list_states.queue_list_state.select_previous();
             }
@@ -948,12 +966,18 @@ impl App {
 
         Ok(())
     }
-    
+
     pub fn try_go_up_home_pane(&mut self) -> AppResult<()> {
         match self.home_pane {
-            HomePane::Bottom => { self.home_pane = HomePane::Top; }
-            HomePane::BottomLeft => { self.home_pane = HomePane::TopLeft; }
-            HomePane::BottomRight => { self.home_pane = HomePane::TopRight; }
+            HomePane::Bottom => {
+                self.home_pane = HomePane::Top;
+            }
+            HomePane::BottomLeft => {
+                self.home_pane = HomePane::TopLeft;
+            }
+            HomePane::BottomRight => {
+                self.home_pane = HomePane::TopRight;
+            }
             _ => {}
         }
         Ok(())
@@ -961,9 +985,15 @@ impl App {
 
     pub fn try_go_down_home_pane(&mut self) -> AppResult<()> {
         match self.home_pane {
-            HomePane::Top => { self.home_pane = HomePane::Bottom; }
-            HomePane::TopLeft => { self.home_pane = HomePane::BottomLeft; }
-            HomePane::TopRight => { self.home_pane = HomePane::BottomRight; }
+            HomePane::Top => {
+                self.home_pane = HomePane::Bottom;
+            }
+            HomePane::TopLeft => {
+                self.home_pane = HomePane::BottomLeft;
+            }
+            HomePane::TopRight => {
+                self.home_pane = HomePane::BottomRight;
+            }
             _ => {}
         }
         Ok(())
@@ -971,8 +1001,12 @@ impl App {
 
     pub fn try_go_left_home_pane(&mut self) -> AppResult<()> {
         match self.home_pane {
-            HomePane::TopRight => { self.home_pane = HomePane::TopLeft; }
-            HomePane::BottomRight => { self.home_pane = HomePane::BottomLeft; }
+            HomePane::TopRight => {
+                self.home_pane = HomePane::TopLeft;
+            }
+            HomePane::BottomRight => {
+                self.home_pane = HomePane::BottomLeft;
+            }
             _ => {}
         }
         Ok(())
@@ -980,18 +1014,23 @@ impl App {
 
     pub fn try_go_right_home_pane(&mut self) -> AppResult<()> {
         match self.home_pane {
-            HomePane::TopLeft => { self.home_pane = HomePane::TopRight; }
-            HomePane::BottomLeft => { self.home_pane = HomePane::BottomRight; }
+            HomePane::TopLeft => {
+                self.home_pane = HomePane::TopRight;
+            }
+            HomePane::BottomLeft => {
+                self.home_pane = HomePane::BottomRight;
+            }
             _ => {}
         }
         Ok(())
     }
-    
+
     pub fn set_volume(&mut self, new_volume: f64) -> AppResult<()> {
-        self.player.set_volume((new_volume*100.0).floor() as usize);
+        self.player
+            .set_volume((new_volume * 100.0).floor() as usize);
         Ok(())
     }
-    
+
     pub fn get_volume_as_f64(&mut self) -> AppResult<f64> {
         let volume = self.player.get_volume();
         let volume_as_f64 = volume as f64 / 100.0;
@@ -1290,7 +1329,9 @@ impl App {
             while self.search_results_indexes[self.index_in_search] < list_selected_state {
                 if self.index_in_search < self.search_results_indexes.len() - 1 {
                     self.index_in_search += 1;
-                } else { break; }
+                } else {
+                    break;
+                }
             }
         } else if self.index_in_search == self.search_results_indexes.len() - 1 {
             // If we are at the end, go back to beginning
@@ -1340,7 +1381,12 @@ impl App {
     fn increase_play_count_for_current_song_in_database(&mut self, song_id: String) {
         let song = self.database.get_song_mut(song_id.as_str());
         let play_count = song.play_count().parse::<usize>().unwrap();
-        debug!("Increasing play count for song {} with id {} and play count {}", song.title(), song.id(), play_count);
+        debug!(
+            "Increasing play count for song {} with id {} and play count {}",
+            song.title(),
+            song.id(),
+            play_count
+        );
         song.set_play_count((play_count + 1).to_string());
     }
 
@@ -1355,17 +1401,20 @@ impl App {
             self.status = AppStatus::Connected;
         }
 
+        // We will prioritize fetching the alphabetical album list to ensure we have all albums
+        // before anything else
         for i in 0..pending_operations_number {
             let operation = &mut self.server.operations[i];
             if operation.finished() && !operation.processed() {
                 debug!(
-                    "Processing finished operation {:?}, updating_albums: {}",
+                    "Processing finished operation {:?}, updating_albums: {}, updating_alphabetical_list: {}",
                     operation.operation_id(),
-                    self.updating_albums
+                    self.updating_albums,
+                    self.updating_alphabetical_albums
                 );
                 match operation.operation_id() {
                     Operation::GetPlaylistList(update) => {
-                        if self.updating_albums {
+                        if self.updating_albums || self.updating_alphabetical_albums {
                             continue;
                         }
                         let force_update = *update;
@@ -1390,7 +1439,7 @@ impl App {
                         }
                     }
                     Operation::GetPlaylist(id) => {
-                        if self.updating_albums {
+                        if self.updating_albums || self.updating_alphabetical_albums {
                             continue;
                         }
                         self.database.set_playlist_songs(
@@ -1404,7 +1453,7 @@ impl App {
                             "Getting alphabetical list. Force update: {}, offset: {}",
                             update, offset
                         );
-                        self.updating_albums = true;
+                        self.updating_alphabetical_albums = true;
                         let force_update = *update;
                         let offset = *offset;
                         operation.set_processed(true);
@@ -1434,27 +1483,29 @@ impl App {
                             debug!("Alphabetical list was empty, finishing operation");
                             self.database
                                 .set_alphabetical_albums(self.result_list_alphabetical.clone());
+                            self.updating_alphabetical_albums = false;
                             self.result_list_alphabetical.clear();
+                            // If there are no albums being updated, it is safe to assume that
+                            // we have them all. Else, this flag will be put to false in the
+                            // get album operation
                             if self.albums_being_updated == 0 {
                                 self.updating_albums = false;
-                                self.process_filtered_album_list().unwrap();
-                                self.database
-                                    .set_most_listened_tracks(sort_songs_by_play_count(
-                                        self.database.songs(),
-                                    ));
+                                self.finish_database_update();
                             }
                         }
                     }
                     Operation::GetAlbum(album_id) => {
-                        let (album, songs) = Parser::parse_album(operation.result().to_string());
+                        let (album, songs, artist) =
+                            Parser::parse_album(operation.result().to_string());
                         for song in songs {
                             if !self.database.contains_song(song.id()) {
                                 self.database.insert_song(song.id().to_string(), song);
-                            } else { 
+                            } else {
                                 self.database.delete_song(song.id().to_string());
                                 self.database.insert_song(song.id().to_string(), song);
                             }
                         }
+                        let album_genres = album.genres().clone();
                         if !self.database.contains_album(album_id) {
                             debug!("Album {} not in database, inserting", album.name());
                             self.database.insert_album(album_id.to_string(), album);
@@ -1463,18 +1514,36 @@ impl App {
                             self.database.delete_album(album_id.to_string());
                             self.database.insert_album(album_id.to_string(), album);
                         }
-                        self.albums_being_updated -= 1;
-                        if self.albums_being_updated == 0 {
+                        // If we do not have artist in database, create and insert. Otherwise, add
+                        // album to it.
+                        if !self.database.contains_artist(artist.id()) {
+                            debug!("Artist {} not in database, inserting", artist.name());
+                            let artist_id = artist.id().to_string();
+                            self.database.insert_artist(artist.id().to_string(), artist);
                             self.database
-                                .set_most_listened_tracks(sort_songs_by_play_count(
-                                    self.database.songs(),
-                                ));
+                                .get_artist_mut(artist_id.as_str())
+                                .insert_album(album_id.clone(), album_genres);
+                        } else {
+                            debug!(
+                                "Artist {} already in database. Adding album {} to it",
+                                artist.name(),
+                                album_id
+                            );
+                            self.database
+                                .get_artist_mut(artist.id())
+                                .insert_album(album_id.clone(), album_genres);
+                        }
+                        self.albums_being_updated -= 1;
+                        operation.set_processed(true);
+                        // If there are no more albums being updated, and we are not updating the
+                        // alphabetical list, we can be sure we have them all
+                        if self.albums_being_updated == 0 && !self.updating_alphabetical_albums {
+                            self.finish_database_update();
                             self.updating_albums = false;
                         }
-                        operation.set_processed(true);
                     }
                     Operation::GetAlbumListRecent() => {
-                        if self.updating_albums {
+                        if self.updating_albums || self.updating_alphabetical_albums {
                             continue;
                         }
                         operation.set_processed(true);
@@ -1482,14 +1551,26 @@ impl App {
                             Parser::parse_album_list_simple(operation.result().to_string())
                                 .unwrap();
                         if !self.database.last_played_album_id().is_empty() {
-                            debug!("Last played album id is {}", self.database.last_played_album_id());
-                            if let Some(last_played_album_index) = album_list.iter().position(|s| *s == self.database.last_played_album_id()) {
-                                debug!("Found '{}' at index {}/{}", self.database.last_played_album_id(), last_played_album_index, album_list.len());
+                            debug!(
+                                "Last played album id is {}",
+                                self.database.last_played_album_id()
+                            );
+                            if let Some(last_played_album_index) = album_list
+                                .iter()
+                                .position(|s| *s == self.database.last_played_album_id())
+                            {
+                                debug!(
+                                    "Found '{}' at index {}/{}",
+                                    self.database.last_played_album_id(),
+                                    last_played_album_index,
+                                    album_list.len()
+                                );
                                 for album_id in album_list[0..last_played_album_index].iter() {
                                     self.albums_being_updated += 1;
                                     self.server.get_album_async(album_id.clone());
                                 }
-                                self.database.set_last_played_album_id(album_list[0].to_string());
+                                self.database
+                                    .set_last_played_album_id(album_list[0].to_string());
                             } else {
                                 debug!("Last played album with id '{}' not found in the last played albums!", self.database.last_played_album_id());
                             }
@@ -1497,7 +1578,7 @@ impl App {
                         self.database.set_recent_albums(album_list);
                     }
                     Operation::GetAlbumListMostListened(offset) => {
-                        if self.updating_albums {
+                        if self.updating_albums || self.updating_alphabetical_albums {
                             continue;
                         }
                         let offset = *offset;
@@ -1510,14 +1591,14 @@ impl App {
                             self.result_list_most_listened.append(&mut album_list);
                             self.server.get_most_listened_albums_async(new_offset);
                         } else {
-                            debug!("Alphabetical list was empty, finishing operation");
+                            debug!("Most listened albums list was empty, finishing operation");
                             self.database
                                 .set_most_listened_albums(self.result_list_most_listened.clone());
                             self.result_list_most_listened.clear();
                         }
                     }
                     Operation::GetGenreList => {
-                        if self.updating_albums {
+                        if self.updating_albums || self.updating_alphabetical_albums {
                             continue;
                         }
                         let mut genres =
@@ -1543,8 +1624,15 @@ impl App {
                 }
             }
         }
-
         self.server.remove_completed_operations();
+    }
+
+    fn finish_database_update(&mut self) {
+        self.process_filtered_album_list().unwrap();
+        self.database
+            .set_most_listened_tracks(sort_songs_by_play_count(self.database.songs()));
+        self.database
+            .set_alphabetical_artists(sort_artists_by_name(self.database.artists()));
     }
 }
 fn sort_songs_by_play_count(songs: &HashMap<String, Song>) -> Vec<String> {
@@ -1561,4 +1649,14 @@ fn sort_songs_by_play_count(songs: &HashMap<String, Song>) -> Vec<String> {
     let sorted_ids: Vec<String> = song_vector.into_iter().map(|(id, _)| id).collect();
 
     sorted_ids
+}
+fn sort_artists_by_name(artists: &HashMap<String, Artist>) -> Vec<String> {
+    let mut artist_vec: Vec<(String, String)> = artists
+        .iter()
+        .map(|(_, artist)| (artist.name().to_string(), artist.id().to_string()))
+        .collect();
+
+    artist_vec.sort_by(|a, b| a.0.cmp(&b.0));
+
+    artist_vec.into_iter().map(|(_, id)| id).collect()
 }

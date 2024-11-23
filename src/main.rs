@@ -104,9 +104,11 @@ async fn main() -> AppResult<()> {
 
     // Refresh database
     if app.mode == AppConnectionMode::Online {
+        // Used to prioritize album updating vs other operations that would mean looking for an 
+        // album we have not yet fetched
         app.updating_albums = true;
+        // If we ha not loaded a database, fetch it whole
         app.populate_db(!loaded)?;
-        app.process_filtered_album_list()?;
     }
 
     // Initialize ipc stream
@@ -151,8 +153,12 @@ async fn main() -> AppResult<()> {
         tui.draw(&mut app)?;
         // Handle events.
         match tui.events.next().await? {
-            Event::Tick => app.tick(),
-            Event::Key(key_event) => handle_key_events(key_event, &mut app, &iface_ref).await?,
+            Event::Tick => {
+                app.tick()
+            },
+            Event::Key(key_event) => {
+                handle_key_events(key_event, &mut app, &iface_ref).await?
+            },
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
             Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, &iface_ref).await?,

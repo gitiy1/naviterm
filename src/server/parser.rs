@@ -4,6 +4,7 @@ use crate::model::connection_status::ConnectionStatus;
 use crate::model::song::Song;
 use encoding::all::ISO_8859_1;
 use encoding::{EncoderTrap, Encoding};
+use crate::model::artist::Artist;
 use crate::model::playlist::Playlist;
 
 pub struct Parser {}
@@ -105,13 +106,15 @@ impl Parser {
         Ok(album_list)
     }
 
-    pub fn parse_album(response: String) -> (Album, Vec<Song>) {
+    pub fn parse_album(response: String) -> (Album, Vec<Song>, Artist) {
         let root: minidom::Element = response.parse().unwrap();
         let mut song_list = Vec::new();
         let mut song_ids_list = Vec::new();
 
         let album = root.get_child("album", Self::NAMESPACE).unwrap();
         let mut new_album = Album::default();
+        let mut new_artist = Artist::default();
+        new_artist.set_number_of_albums(1);
         let mut album_genres = Vec::new();
 
         for attribute in album.attrs() {
@@ -123,8 +126,11 @@ impl Parser {
                 }
                 "artist" => {
                     let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
-                    new_album.set_artist(String::from_utf8(chars).unwrap())
+                    let name = String::from_utf8(chars).unwrap();
+                    new_album.set_artist(name.clone());
+                    new_artist.set_name(name);
                 }
+                "artistId" => new_artist.set_id(attribute.1.to_string()),
                 "coverArt" => new_album.set_cover_art(attribute.1.to_string()),
                 "duration" => new_album.set_duration(attribute.1.to_string()),
                 "playCount" => new_album.set_play_count(attribute.1.to_string()),
@@ -208,9 +214,10 @@ impl Parser {
             }
         }
         new_album.set_songs(song_ids_list);
-        new_album.set_genres(album_genres);
+        new_album.set_genres(album_genres.clone());
+        new_artist.set_genres(album_genres);
 
-        (new_album, song_list)
+        (new_album, song_list, new_artist)
     }
 
     pub fn parse_album_songs(response: String) -> Vec<Song> {

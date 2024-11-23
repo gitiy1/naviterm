@@ -2,6 +2,7 @@ use crate::model::album::Album;
 use crate::model::song::Song;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::model::artist::Artist;
 use crate::model::playlist::Playlist;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -16,6 +17,8 @@ pub struct MusicDatabase {
     albums: HashMap<String, Album>,
     songs: HashMap<String, Song>,
     playlists: HashMap<String,Playlist>,
+    artists: HashMap<String,Artist>,
+    alphabetical_artists: Vec<String>,
     last_played_album_id: String,
 }
 
@@ -165,5 +168,32 @@ impl MusicDatabase {
 
     pub fn set_last_played_album_id(&mut self, last_played_album_id: String) {
         self.last_played_album_id = last_played_album_id;
+    }
+
+    pub fn contains_artist(&self, artist_id: &str) -> bool {
+        self.artists.contains_key(artist_id)
+    }
+    pub fn insert_artist(&mut self, id: String, artist: Artist) {
+        self.artists.insert(id, artist);
+    }
+
+    pub fn get_artist_mut(&mut self, id: &str) -> &mut Artist {
+        self.artists.get_mut(id).unwrap()
+    }
+
+    pub fn get_artist(&self, id: &str) -> &Artist {
+        self.artists.get(id).unwrap()
+    }
+
+    pub fn artists(&self) -> &HashMap<String, Artist> {
+        &self.artists
+    }
+
+    pub fn alphabetical_artists(&self) -> &Vec<String> {
+        &self.alphabetical_artists
+    }
+
+    pub fn set_alphabetical_artists(&mut self, alphabetical_artists: Vec<String>) {
+        self.alphabetical_artists = alphabetical_artists;
     }
 }
