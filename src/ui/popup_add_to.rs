@@ -4,7 +4,7 @@ use ratatui::text::Line;
 use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
 
-use crate::app::{App, AppResult};
+use crate::app::{App, AppResult, MediaType};
 use crate::ui::utils;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
@@ -14,6 +14,10 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(5), Constraint::Length(1)])
         .split(area);
+    
+    let added_item_name = if app.item_to_be_added.media_type == MediaType::Artist {
+        format!("albums from {}", app.item_to_be_added.name)
+    } else { app.item_to_be_added.name.clone() };
 
     let popup_block = Paragraph::new(format!(
         "Adding {} to...\n\n\
@@ -21,7 +25,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                 (e) Queue, at the end\n\
                 (p) Playlist...\n\
                 ",
-        app.item_to_be_added.name
+        added_item_name
     ))
     .wrap(Wrap { trim: true })
     .block(

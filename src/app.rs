@@ -23,7 +23,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum with applications screens
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CurrentScreen {
     Home,
     Albums,
@@ -59,12 +59,19 @@ pub enum HomePane {
     BottomRight,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, PartialEq)]
+pub enum ArtistPane {
+    Left,
+    Right,
+}
+
+#[derive(Debug, Default, PartialEq)]
 pub enum MediaType {
     #[default]
     Song,
     Album,
     Playlist,
+    Artist,
 }
 
 /// Enum with applications screens
@@ -122,6 +129,7 @@ pub struct App {
     pub albums_being_updated: usize,
     pub replay_gain_auto: bool,
     pub is_current_song_scrobbled: bool,
+    pub artist_pane: ArtistPane,
 }
 
 #[derive(Default, Debug)]
@@ -197,6 +205,7 @@ impl Default for App {
             albums_being_updated: 0,
             replay_gain_auto: false,
             is_current_song_scrobbled: false,
+            artist_pane: ArtistPane::Left,
         }
     }
 }
@@ -364,7 +373,12 @@ impl App {
                 self.list_states.playlist_state.select_next();
             }
             CurrentScreen::Artists => {
-                self.list_states.artist_state.select_next();
+                if self.artist_pane == ArtistPane::Left {
+                    self.list_states.artist_state.select_next();
+                    self.list_states.artist_selected_state.select_first();
+                } else {
+                    self.list_states.artist_selected_state.select_next();
+                }
             }
             CurrentScreen::Queue => {
                 self.list_states.queue_list_state.select_next();
@@ -401,7 +415,12 @@ impl App {
                 self.list_states.playlist_state.select_previous();
             }
             CurrentScreen::Artists => {
-                self.list_states.artist_state.select_previous();
+                if self.artist_pane == ArtistPane::Left {
+                    self.list_states.artist_state.select_previous();
+                    self.list_states.artist_selected_state.select_first();
+                } else {
+                    self.list_states.artist_selected_state.select_previous();
+                }
             }
             CurrentScreen::Queue => {
                 self.list_states.queue_list_state.select_previous();
@@ -440,7 +459,34 @@ impl App {
         Ok(())
     }
 
-    pub async fn add_queue_immediately(&mut self) -> AppResult<()> {
+
+    pub(crate) fn artist_view_song_or_album(&self) -> MediaType {
+        let mut media_type: MediaType = MediaType::Song;
+        let albums = self
+            .database
+            .get_artist(
+                self.database
+                    .alphabetical_artists()
+                    .get(self.list_states.artist_state.selected().unwrap())
+                    .unwrap(),
+            )
+            .albums();
+        let mut album_index = 0;
+        for album_id in albums {
+            let album = self.database.get_album(album_id);
+            if album_index == self.list_states.artist_selected_state.selected().unwrap() {
+                media_type = MediaType::Album;
+                break
+            }
+            album_index += album.songs().len() + 1;
+            if album_index > self.list_states.artist_selected_state.selected().unwrap() {
+                media_type = MediaType::Song;
+            }
+        }
+        media_type
+    }
+
+    pub fn add_queue_immediately(&mut self) -> AppResult<()> {
         self.index_in_queue = 0;
         match self.item_to_be_added.media_type {
             MediaType::Song => {
@@ -474,6 +520,30 @@ impl App {
                     .song_list()
                 {
                     self.queue.push(song_id.clone());
+                }
+                self.queue_order = (0..self.queue.len()).collect();
+                if self.random_playback {
+                    self.shuffle_queue_order_starting_at_current_index()
+                }
+                self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
+            }
+            MediaType::Artist => {
+                self.queue.clear();
+                self.queue_order.clear();
+                let albums = self
+                    .database
+                    .get_artist(
+                        self.database
+                            .alphabetical_artists()
+                            .get(self.list_states.artist_state.selected().unwrap())
+                            .unwrap(),
+                    )
+                    .albums();
+                for album_id in albums {
+                    let album = self.database.get_album(album_id.as_str());
+                    for song in album.songs() {
+                        self.queue.push(song.clone());
+                    }
                 }
                 self.queue_order = (0..self.queue.len()).collect();
                 if self.random_playback {
@@ -525,6 +595,20 @@ impl App {
                     index_to_insert_to += 1;
                 }
             }
+            MediaType::Artist => {
+                for album_id in self
+                    .database
+                    .get_artist(self.item_to_be_added.id.as_str())
+                    .albums()
+                {
+                    let album = self.database.get_album(album_id.as_str());
+                    for song in album.songs() {
+                        self.queue.insert(index_to_insert_to, song.clone());
+                        self.queue_order.push(self.queue.len() - 1);
+                        index_to_insert_to += 1;
+                    }
+                }
+            }
         }
         if was_empty {
             self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
@@ -558,6 +642,19 @@ impl App {
                     self.queue_order.push(self.queue.len() - 1);
                 }
             }
+            MediaType::Artist => {
+                for album_id in self
+                    .database
+                    .get_artist(self.item_to_be_added.id.as_str())
+                    .albums()
+                {
+                    let album = self.database.get_album(album_id.as_str());
+                    for song in album.songs() {
+                        self.queue.push(song.clone());
+                        self.queue_order.push(self.queue.len() - 1);
+                    }
+                }
+            }
         }
         if was_empty {
             self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
@@ -567,6 +664,7 @@ impl App {
 
     pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
         let mut selected_album_index;
+        let mut offset = 0;
         let album_list = match self.current_screen {
             CurrentScreen::Home => match self.home_tab_mode {
                 AppHomeTabMode::OneColumn => match self.home_pane {
@@ -622,10 +720,35 @@ impl App {
                     }
                 },
             },
-
             CurrentScreen::Albums => {
                 selected_album_index = self.list_states.album_state.selected().unwrap();
                 self.database.filtered_albums()
+            }
+            CurrentScreen::Artists => {
+                selected_album_index = 0;
+                let albums = self
+                    .database
+                    .get_artist(
+                        self.database
+                            .alphabetical_artists()
+                            .get(self.list_states.artist_state.selected().unwrap())
+                            .unwrap(),
+                    )
+                    .albums();
+                // Very hacky way of getting the album index, since the list of the album and songs
+                // for the selected artist is not stored anywhere
+                for (i, album_id) in albums.iter().enumerate() {
+                    let album = self.database.get_album(album_id.as_str());
+                    // The list also have the album title as elements, that is way we add 1 more
+                    offset += album.songs().len() + 1;
+                    if self.list_states.artist_selected_state.selected().unwrap() < offset {
+                        selected_album_index = i;
+                        // We will need this later
+                        offset -= album.songs().len();
+                        break;
+                    }
+                }
+                albums
             }
             _ => {
                 selected_album_index = 0;
@@ -644,6 +767,14 @@ impl App {
                         self.database
                             .most_listened_tracks()
                             .get(self.list_states.home_tab_bottom_right.selected().unwrap())
+                            .unwrap(),
+                    )
+                } else if self.current_screen == CurrentScreen::Artists {
+                    self.database.get_song(
+                        songs_ids
+                            .get(
+                                self.list_states.artist_selected_state.selected().unwrap() - offset,
+                            )
                             .unwrap(),
                     )
                 } else {
@@ -679,6 +810,17 @@ impl App {
                 self.item_to_be_added.name = selected_playlist.name().to_string();
                 self.item_to_be_added.id = selected_playlist.id().to_string();
                 self.item_to_be_added.media_type = MediaType::Playlist;
+            }
+            MediaType::Artist => {
+                let selected_artist = self.database.get_artist(
+                    self.database
+                        .alphabetical_artists()
+                        .get(self.list_states.artist_state.selected().unwrap())
+                        .unwrap(),
+                );
+                self.item_to_be_added.name = selected_artist.name().to_string();
+                self.item_to_be_added.id = selected_artist.id().to_string();
+                self.item_to_be_added.media_type = MediaType::Artist;
             }
         }
         Ok(())
@@ -1389,7 +1531,7 @@ impl App {
 
     fn increase_play_count_for_current_song_in_database(&mut self, song_id: String) {
         let song = self.database.get_song_mut(song_id.as_str());
-        let play_count = song.play_count().parse::<usize>().unwrap();
+        let play_count = song.play_count().parse::<usize>().unwrap_or_default();
         debug!(
             "Increasing play count for song {} with id {} and play count {}",
             song.title(),

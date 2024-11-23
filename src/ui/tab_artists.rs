@@ -1,4 +1,4 @@
-use crate::app::{App, AppResult};
+use crate::app::{App, AppResult, ArtistPane};
 use crate::ui::utils::duration_to_hhmmss;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
@@ -13,6 +13,25 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(area);
+    
+    let mut block_artists = Block::bordered()
+        .border_type(Rounded)
+        .border_style(Style::default().fg(Gray));
+    
+    let mut block_artist_selected = Block::bordered()
+        .border_type(Rounded)
+        .border_style(Style::default().fg(Gray));
+
+    let active_pane_style = Style::default().fg(Yellow);
+    
+    match app.artist_pane {
+        ArtistPane::Left => {
+            block_artists = block_artists.border_style(active_pane_style);
+        }
+        ArtistPane::Right => {
+            block_artist_selected = block_artist_selected.border_style(active_pane_style);
+        }
+    }
 
     if app.database.artists().is_empty() {
         frame.render_widget(
@@ -31,9 +50,10 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             artists_items.push(ListItem::from(artist_item));
         }
         let list = List::new(artists_items)
-            .block(Block::bordered().border_type(Rounded))
+            .block(block_artists)
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
+        
         if app.list_states.artist_state.selected().is_none() {
             app.list_states.artist_state.select_first()
         }
@@ -112,18 +132,18 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         }
 
         let list = List::new(album_items)
-            .block(Block::bordered().border_type(Rounded))
+            .block(block_artist_selected)
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
 
-        if app.list_states.playlist_selected_state.selected().is_none() {
-            app.list_states.playlist_selected_state.select_first()
+        if app.list_states.artist_selected_state.selected().is_none() {
+            app.list_states.artist_selected_state.select_first();
         }
 
         frame.render_stateful_widget(
             list,
             chunks[1],
-            &mut app.list_states.playlist_selected_state,
+            &mut app.list_states.artist_selected_state,
         );
     }
 

@@ -1,4 +1,4 @@
-use crate::app::{App, AppResult, CurrentScreen, HomePane, MediaType, Popup};
+use crate::app::{App, AppResult, ArtistPane, CurrentScreen, HomePane, MediaType, Popup};
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
@@ -104,7 +104,7 @@ pub async fn handle_key_events(
                     } else {
                         app.set_item_to_be_added(MediaType::Album)?;
                     }
-                    app.add_queue_immediately().await?;
+                    app.add_queue_immediately()?;
                 }
                 KeyCode::Tab => {
                     app.cycle_home_pane()?;
@@ -150,7 +150,7 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Enter => {
                     app.set_item_to_be_added(MediaType::Album)?;
-                    app.add_queue_immediately().await?;
+                    app.add_queue_immediately()?;
                 }
                 KeyCode::Char('e') => {
                     app.current_popup = Popup::GenreFilter;
@@ -206,7 +206,7 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Enter => {
                     app.set_item_to_be_added(MediaType::Playlist)?;
-                    app.add_queue_immediately().await?;
+                    app.add_queue_immediately()?;
                 }
                 KeyCode::Char('j') => app.select_next_list()?,
                 KeyCode::Char('k') => app.select_previous_list()?,
@@ -231,8 +231,32 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Char('j') => app.select_next_list()?,
                 KeyCode::Char('k') => app.select_previous_list()?,
+                KeyCode::Char('l') => app.artist_pane = ArtistPane::Right,
+                KeyCode::Char('h') => app.artist_pane = ArtistPane::Left,
+                KeyCode::Char('a') => {
+                    app.current_popup = Popup::AddTo;
+                    if app.artist_pane == ArtistPane::Left {
+                        app.set_item_to_be_added(MediaType::Artist)?;
+                    } else {
+                        app.set_item_to_be_added(app.artist_view_song_or_album())?;
+                    }
+                }
+                KeyCode::Enter => {
+                    if app.artist_pane == ArtistPane::Left {
+                        app.set_item_to_be_added(MediaType::Artist)?;
+                    } else {
+                        app.set_item_to_be_added(app.artist_view_song_or_album())?;
+                    }
+                    app.add_queue_immediately()?;
+                }
+                KeyCode::Char('A') => {
+                    if app.artist_pane == ArtistPane::Right {
+                        app.current_popup = Popup::AddTo;
+                        app.set_item_to_be_added(MediaType::Album)?;
+                    }
+                }
                 _ => {}
-            }
+            },
             CurrentScreen::Queue => match key_event.code {
                 KeyCode::Char('1') => {
                     app.clear_search()?;
@@ -302,7 +326,7 @@ pub async fn handle_key_events(
                 KeyCode::Char('k') => app.select_previous_list_popup()?,
                 KeyCode::Enter => {
                     app.set_item_to_be_added(MediaType::Song)?;
-                    app.add_queue_immediately().await?;
+                    app.add_queue_immediately()?;
                     app.current_popup = Popup::None;
                 }
                 KeyCode::Char('a') => {
@@ -365,6 +389,10 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Char('b') => {
                     app.update_alphabetical_albums_async(true)?;
+                    app.current_popup = Popup::None;
+                }
+                KeyCode::Char('y') => {
+                    app.update_playlists_async(true)?;
                     app.current_popup = Popup::None;
                 }
                 KeyCode::Char('s') => {
