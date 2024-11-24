@@ -108,7 +108,7 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         .line_set(symbols::line::THICK)
         .ratio(ratio);
 
-    let random_status = if app.random_playback {
+    let random_status = if app.app_flags.random_playback {
         Span {
             content: "on".into(),
             style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),

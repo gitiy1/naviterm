@@ -58,7 +58,7 @@ fn draw_title(app: &mut App, title_area: Rect, frame: &mut Frame) {
     let horizontal = Layout::horizontal([Percentage(50), Percentage(50)]);
     let [search_area, status_area] = horizontal.areas(title_area);
     let mut search_line: Vec<Span> = vec![];
-    if !app.search_string.is_empty() || app.getting_search_string {
+    if !app.search_string.is_empty() || app.app_flags.getting_search_string {
         search_line.push(Span::from("Searching: "));
         search_line.push(
             Span::from(app.search_string.clone())
@@ -76,7 +76,7 @@ fn draw_title(app: &mut App, title_area: Rect, frame: &mut Frame) {
         );
     }
     if !app.search_string.is_empty()
-        && !app.getting_search_string
+        && !app.app_flags.getting_search_string
         && app.search_results_indexes.is_empty()
     {
         search_line.push(

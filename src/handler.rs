@@ -14,7 +14,7 @@ pub async fn handle_key_events(
     app: &mut App,
     iface_ref: &InterfaceRef<MediaPlayer2Player>,
 ) -> AppResult<()> {
-    if app.getting_search_string {
+    if app.app_flags.getting_search_string {
         match key_event.code {
             KeyCode::Backspace => {
                 if !app.search_string.is_empty() {
@@ -27,7 +27,7 @@ pub async fn handle_key_events(
                 }
             }
             KeyCode::Enter => {
-                app.getting_search_string = false;
+                app.app_flags.getting_search_string = false;
             }
             KeyCode::Char(c) => {
                 app.search_string.push(c);
@@ -38,7 +38,7 @@ pub async fn handle_key_events(
                 }
             }
             KeyCode::Esc => {
-                app.getting_search_string = false;
+                app.app_flags.getting_search_string = false;
                 app.clear_search()?;
             }
             _ => {}
@@ -263,7 +263,7 @@ pub async fn handle_key_events(
             app.current_screen = CurrentScreen::Queue;
         }
         if key_event.code == KeyCode::Char('/') {
-            app.getting_search_string = true;
+            app.app_flags.getting_search_string = true;
         }
         if key_event.code == KeyCode::Tab {
             app.cycle_pane()?;
@@ -480,7 +480,7 @@ async fn handle_shuffle_update(
     iface.set_position((app.get_playback_time() * 1000000) as i64);
 
     app.toggle_random_playback()?;
-    iface.update_shuffle(app.random_playback);
+    iface.update_shuffle(app.app_flags.random_playback);
     iface.shuffle_changed(iface_ref.signal_context()).await?;
     Ok(())
 }

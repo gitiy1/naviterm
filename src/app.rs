@@ -91,7 +91,7 @@ pub type AppResult<T> = Result<T, Box<dyn error::Error>>;
 /// Application.
 pub struct App {
     /// Is the application running?
-    pub running: bool,
+    pub app_flags: AppFlags,
     pub mode: AppConnectionMode,
     pub current_screen: CurrentScreen,
     pub home_pane: HomePane,
@@ -109,26 +109,17 @@ pub struct App {
     pub player: Mpv,
     pub index_in_queue: usize,
     pub ticks_during_playing_state: usize,
-    pub random_playback: bool,
-    pub next_is_in_player_queue: bool,
     pub album_genre_filter: String,
     pub album_year_filter: String,
     pub album_sorting_mode: String,
     pub album_sorting_direction: String,
     pub search_string: String,
-    pub getting_search_string: bool,
     pub index_in_search: usize,
-    pub move_to_next_in_search: bool,
-    pub upper_case_search: bool,
     pub search_results_indexes: Vec<usize>,
     pub status: AppStatus,
     pub result_list_alphabetical: Vec<String>,
     pub result_list_most_listened: Vec<String>,
-    pub updating_albums: bool,
-    pub updating_alphabetical_albums: bool,
     pub albums_being_updated: usize,
-    pub replay_gain_auto: bool,
-    pub is_current_song_scrobbled: bool,
     pub artist_pane: ArtistPane,
 }
 
@@ -139,6 +130,21 @@ pub struct ItemToBeAdded {
     pub parent_id: String,
     pub media_type: MediaType,
 }
+
+#[derive(Debug, Default, PartialEq)]
+pub struct AppFlags {
+    pub running: bool,
+    pub random_playback: bool,
+    pub next_is_in_player_queue: bool,
+    pub getting_search_string: bool,
+    pub move_to_next_in_search: bool,
+    pub upper_case_search: bool,
+    pub updating_albums: bool,
+    pub updating_alphabetical_albums: bool,
+    pub replay_gain_auto: bool,
+    pub is_current_song_scrobbled: bool,
+}
+
 
 #[derive(Default)]
 pub struct NowPlaying {
@@ -167,7 +173,7 @@ pub struct AppListStates {
 impl Default for App {
     fn default() -> Self {
         Self {
-            running: true,
+            app_flags: Default::default(),
             mode: AppConnectionMode::Online,
             current_screen: CurrentScreen::Home,
             home_pane: HomePane::TopLeft,
@@ -185,26 +191,17 @@ impl Default for App {
             player: Mpv::default(),
             index_in_queue: 0,
             ticks_during_playing_state: 0,
-            random_playback: false,
-            next_is_in_player_queue: false,
             album_genre_filter: String::from("any"),
             album_year_filter: String::from("any"),
             album_sorting_mode: String::from("alphabetically"),
             album_sorting_direction: String::from("descending"),
-            getting_search_string: false,
             index_in_search: usize::MAX,
-            move_to_next_in_search: false,
-            upper_case_search: false,
             search_string: String::from(""),
             search_results_indexes: vec![],
             status: AppStatus::Connected,
             result_list_most_listened: vec![],
             result_list_alphabetical: vec![],
-            updating_albums: false,
-            updating_alphabetical_albums: false,
             albums_being_updated: 0,
-            replay_gain_auto: false,
-            is_current_song_scrobbled: false,
             artist_pane: ArtistPane::Left,
         }
     }
@@ -227,17 +224,17 @@ impl App {
                 > self.now_playing.duration.as_str().parse::<usize>().unwrap()
             {
                 // If there is a next element in queue, add it to mpv queue if it has not been yet added
-                if !self.next_is_in_player_queue && self.queue_has_next() {
+                if !self.app_flags.next_is_in_player_queue && self.queue_has_next() {
                     let next_index = self.queue_order.get(self.index_in_queue + 1).unwrap();
                     self.player.add_next_song_to_queue(
                         self.server
                             .get_song_url(self.queue.get(*next_index).unwrap().clone())
                             .as_str(),
                     );
-                    self.next_is_in_player_queue = true;
+                    self.app_flags.next_is_in_player_queue = true;
                 }
 
-                if !self.is_current_song_scrobbled {
+                if !self.app_flags.is_current_song_scrobbled {
                     // Update last listened album id to remember it for next startup
                     let now_playing_album_id = self
                         .database
@@ -264,7 +261,7 @@ impl App {
                     self.increase_play_count_for_current_song_in_database(
                         self.now_playing.id.clone(),
                     );
-                    self.is_current_song_scrobbled = true;
+                    self.app_flags.is_current_song_scrobbled = true;
                 }
             }
         }
@@ -273,7 +270,7 @@ impl App {
     /// Set running to false in order to quit the application.
     pub fn quit(&mut self) {
         self.player.quit_player();
-        self.running = false;
+        self.app_flags.running = false;
     }
 
     pub fn set_config(&mut self, config: Config) -> AppResult<()> {
@@ -503,7 +500,7 @@ impl App {
                     self.queue.push(song.clone());
                 }
                 self.queue_order = (0..self.queue.len()).collect();
-                if self.random_playback {
+                if self.app_flags.random_playback {
                     self.shuffle_queue_order_starting_at_current_index()
                 }
                 self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
@@ -521,7 +518,7 @@ impl App {
                     self.queue.push(song_id.clone());
                 }
                 self.queue_order = (0..self.queue.len()).collect();
-                if self.random_playback {
+                if self.app_flags.random_playback {
                     self.shuffle_queue_order_starting_at_current_index()
                 }
                 self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
@@ -545,7 +542,7 @@ impl App {
                     }
                 }
                 self.queue_order = (0..self.queue.len()).collect();
-                if self.random_playback {
+                if self.app_flags.random_playback {
                     self.shuffle_queue_order_starting_at_current_index()
                 }
                 self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
@@ -832,7 +829,7 @@ impl App {
 
     pub fn toggle_random_playback(&mut self) -> AppResult<()> {
         if self.queue.len() > 1 {
-            if self.random_playback {
+            if self.app_flags.random_playback {
                 self.index_in_queue = *self.queue_order.get(self.index_in_queue).unwrap();
                 self.queue_order.clear();
                 self.queue_order = (0..self.queue.len()).collect();
@@ -841,14 +838,14 @@ impl App {
                 self.index_in_queue = 0;
             }
         }
-        if self.replay_gain_auto {
-            if self.random_playback {
+        if self.app_flags.replay_gain_auto {
+            if self.app_flags.random_playback {
                 self.player.set_replay_gain("album");
             } else {
                 self.player.set_replay_gain("track");
             }
         }
-        self.random_playback = !self.random_playback;
+        self.app_flags.random_playback = !self.app_flags.random_playback;
         Ok(())
     }
 
@@ -975,7 +972,7 @@ impl App {
             self.queue_order
         );
         self.index_in_queue = self.list_states.queue_list_state.selected().unwrap();
-        if self.random_playback {
+        if self.app_flags.random_playback {
             self.shuffle_queue_order_starting_at_current_index();
             debug!("queue_order after shuffling: {:?}", self.queue_order);
             self.index_in_queue = 0;
@@ -1026,15 +1023,15 @@ impl App {
     }
 
     fn play_current(&mut self, check_next_song: bool) {
-        if check_next_song && self.next_is_in_player_queue {
-            self.next_is_in_player_queue = false;
+        if check_next_song && self.app_flags.next_is_in_player_queue {
+            self.app_flags.next_is_in_player_queue = false;
         } else {
             self.player.play_song(
                 self.server
                     .get_song_url(self.now_playing.id.clone())
                     .as_str(),
             );
-            self.next_is_in_player_queue = false;
+            self.app_flags.next_is_in_player_queue = false;
         }
         self.event_sender
             .as_ref()
@@ -1446,17 +1443,17 @@ impl App {
             _ => return Ok(()),
         };
 
-        self.upper_case_search = false;
+        self.app_flags.upper_case_search = false;
         for char in self.search_string.chars() {
-            self.upper_case_search = char.is_uppercase();
-            if self.upper_case_search {
+            self.app_flags.upper_case_search = char.is_uppercase();
+            if self.app_flags.upper_case_search {
                 break;
             }
         }
 
         for (index, id) in list_to_be_searched.iter().enumerate() {
             let album = self.database.get_album(id.as_str());
-            let album_name_to_search = if self.upper_case_search {
+            let album_name_to_search = if self.app_flags.upper_case_search {
                 album.name().to_string()
             } else {
                 album.name().to_lowercase()
@@ -1498,7 +1495,7 @@ impl App {
             // Else go to next result
             self.index_in_search += 1;
         }
-        self.move_to_next_in_search = true;
+        self.app_flags.move_to_next_in_search = true;
         Ok(())
     }
 
@@ -1511,7 +1508,7 @@ impl App {
         } else {
             self.index_in_search -= 1;
         }
-        self.move_to_next_in_search = true;
+        self.app_flags.move_to_next_in_search = true;
         Ok(())
     }
 
@@ -1519,7 +1516,7 @@ impl App {
         self.search_string = "".to_string();
         self.search_results_indexes.clear();
         self.index_in_search = usize::MAX;
-        self.move_to_next_in_search = false;
+        self.app_flags.move_to_next_in_search = false;
 
         Ok(())
     }
@@ -1567,12 +1564,12 @@ impl App {
                 debug!(
                     "Processing finished operation {:?}, updating_albums: {}, updating_alphabetical_list: {}",
                     operation.operation_id(),
-                    self.updating_albums,
-                    self.updating_alphabetical_albums
+                    self.app_flags.updating_albums,
+                    self.app_flags.updating_alphabetical_albums
                 );
                 match operation.operation_id() {
                     Operation::GetPlaylistList(update) => {
-                        if self.updating_albums || self.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
                             continue;
                         }
                         let force_update = *update;
@@ -1597,7 +1594,7 @@ impl App {
                         }
                     }
                     Operation::GetPlaylist(id) => {
-                        if self.updating_albums || self.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
                             continue;
                         }
                         self.database.set_playlist_songs(
@@ -1611,7 +1608,7 @@ impl App {
                             "Getting alphabetical list. Force update: {}, offset: {}",
                             update, offset
                         );
-                        self.updating_alphabetical_albums = true;
+                        self.app_flags.updating_alphabetical_albums = true;
                         let force_update = *update;
                         let offset = *offset;
                         operation.set_processed(true);
@@ -1641,13 +1638,13 @@ impl App {
                             debug!("Alphabetical list was empty, finishing operation");
                             self.database
                                 .set_alphabetical_albums(self.result_list_alphabetical.clone());
-                            self.updating_alphabetical_albums = false;
+                            self.app_flags.updating_alphabetical_albums = false;
                             self.result_list_alphabetical.clear();
                             // If there are no albums being updated, it is safe to assume that
                             // we have them all. Else, this flag will be put to false in the
                             // get album operation
                             if self.albums_being_updated == 0 {
-                                self.updating_albums = false;
+                                self.app_flags.updating_albums = false;
                                 self.finish_database_update();
                             }
                         }
@@ -1695,13 +1692,13 @@ impl App {
                         operation.set_processed(true);
                         // If there are no more albums being updated, and we are not updating the
                         // alphabetical list, we can be sure we have them all
-                        if self.albums_being_updated == 0 && !self.updating_alphabetical_albums {
+                        if self.albums_being_updated == 0 && !self.app_flags.updating_alphabetical_albums {
                             self.finish_database_update();
-                            self.updating_albums = false;
+                            self.app_flags.updating_albums = false;
                         }
                     }
                     Operation::GetAlbumListRecent() => {
-                        if self.updating_albums || self.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
                             continue;
                         }
                         operation.set_processed(true);
@@ -1736,7 +1733,7 @@ impl App {
                         self.database.set_recent_albums(album_list);
                     }
                     Operation::GetAlbumListMostListened(offset) => {
-                        if self.updating_albums || self.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
                             continue;
                         }
                         let offset = *offset;
@@ -1756,7 +1753,7 @@ impl App {
                         }
                     }
                     Operation::GetGenreList => {
-                        if self.updating_albums || self.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
                             continue;
                         }
                         let mut genres =
@@ -1766,7 +1763,7 @@ impl App {
                         operation.set_processed(true);
                     }
                     Operation::GetAlbumListRecentlyAdded() => {
-                        if self.updating_albums {
+                        if self.app_flags.updating_albums {
                             continue;
                         }
                         let album_list =

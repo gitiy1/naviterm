@@ -96,7 +96,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let mut album_vector = Vec::new();
     for (index, album_id) in list.iter().enumerate() {
         let album = app.database.get_album(album_id);
-        let album_name_to_search = if app.upper_case_search {
+        let album_name_to_search = if app.app_flags.upper_case_search {
             album.name().to_string()
         } else {
             album.name().to_lowercase()
@@ -175,8 +175,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
 
     if app.list_states.album_state.selected().is_none() {
         app.list_states.album_state.select_first()
-    } else if app.move_to_next_in_search {
-        app.move_to_next_in_search = false;
+    } else if app.app_flags.move_to_next_in_search {
+        app.app_flags.move_to_next_in_search = false;
         app.list_states.album_state.select(Some(
             *app.search_results_indexes.get(app.index_in_search).unwrap(),
         ));

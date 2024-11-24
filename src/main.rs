@@ -77,6 +77,7 @@ async fn main() -> AppResult<()> {
     // Create an application.
     let mut app = App::new();
     app.mode = mode;
+    app.app_flags.running = true;
     app.set_config(settings)?;
     app.renew_credentials()?;
     if app.mode != AppConnectionMode::Offline {
@@ -106,7 +107,7 @@ async fn main() -> AppResult<()> {
     if app.mode == AppConnectionMode::Online {
         // Used to prioritize album updating vs other operations that would mean looking for an 
         // album we have not yet fetched
-        app.updating_albums = true;
+        app.app_flags.updating_albums = true;
         // If we ha not loaded a database, fetch it whole
         app.populate_db(!loaded)?;
     }
@@ -123,7 +124,7 @@ async fn main() -> AppResult<()> {
     }
 
     if replay_mode == "auto" {
-        app.replay_gain_auto = true;
+        app.app_flags.replay_gain_auto = true;
         app.set_replay_gain("album")?;
     } else if replay_mode == "track" || replay_mode == "album" {
         app.set_replay_gain(replay_mode.as_str())?;
@@ -148,7 +149,7 @@ async fn main() -> AppResult<()> {
         .await?;
 
     // Start the main loop.
-    while app.running {
+    while app.app_flags.running {
         // Render the user interface.
         tui.draw(&mut app)?;
         // Handle events.
