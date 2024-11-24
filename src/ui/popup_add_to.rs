@@ -14,10 +14,12 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(5), Constraint::Length(1)])
         .split(area);
-    
+
     let added_item_name = if app.item_to_be_added.media_type == MediaType::Artist {
         format!("albums from {}", app.item_to_be_added.name)
-    } else { app.item_to_be_added.name.clone() };
+    } else {
+        app.item_to_be_added.name.clone()
+    };
 
     let popup_block = Paragraph::new(format!(
         "Adding {} to...\n\n\

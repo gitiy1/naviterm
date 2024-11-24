@@ -48,22 +48,6 @@ pub async fn handle_key_events(
     if app.current_popup == Popup::None {
         match app.current_screen {
             CurrentScreen::Home => match key_event.code {
-                KeyCode::Char('2') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Albums;
-                }
-                KeyCode::Char('3') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Playlists;
-                }
-                KeyCode::Char('4') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Artists;
-                }
-                KeyCode::Char('5') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Queue;
-                }
                 KeyCode::F(1) => {
                     app.current_popup = Popup::ConnectionTest;
                 }
@@ -106,9 +90,6 @@ pub async fn handle_key_events(
                     }
                     app.add_queue_immediately()?;
                 }
-                KeyCode::Tab => {
-                    app.cycle_home_pane()?;
-                }
                 KeyCode::Char('d') => {
                     if key_event.modifiers == KeyModifiers::CONTROL {
                         app.page_down()?;
@@ -123,22 +104,6 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Albums => match key_event.code {
-                KeyCode::Char('1') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Home;
-                }
-                KeyCode::Char('3') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Playlists;
-                }
-                KeyCode::Char('4') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Artists;
-                }
-                KeyCode::Char('5') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Queue;
-                }
                 KeyCode::Char('j') => app.select_next_list()?,
                 KeyCode::Char('k') => app.select_previous_list()?,
                 KeyCode::Char('i') => {
@@ -184,22 +149,6 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Playlists => match key_event.code {
-                KeyCode::Char('1') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Home;
-                }
-                KeyCode::Char('2') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Albums;
-                }
-                KeyCode::Char('4') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Artists;
-                }
-                KeyCode::Char('5') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Queue;
-                }
                 KeyCode::Char('a') => {
                     app.current_popup = Popup::AddTo;
                     app.set_item_to_be_added(MediaType::Playlist)?;
@@ -258,22 +207,6 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Queue => match key_event.code {
-                KeyCode::Char('1') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Home;
-                }
-                KeyCode::Char('2') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Albums;
-                }
-                KeyCode::Char('3') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Playlists;
-                }
-                KeyCode::Char('4') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Artists;
-                }
                 KeyCode::Char('l') => app.play_next()?,
                 KeyCode::Char('h') => app.play_previous()?,
                 KeyCode::Char('j') => app.select_next_list()?,
@@ -307,8 +240,33 @@ pub async fn handle_key_events(
         {
             debug!("Starting app shutdown");
             app.quit();
-        } else if key_event.code == KeyCode::Char('/') {
+        }
+
+        if key_event.code == KeyCode::Char('1') {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Home;
+        }
+        if key_event.code == KeyCode::Char('2') {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Albums;
+        }
+        if key_event.code == KeyCode::Char('3') {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Playlists;
+        }
+        if key_event.code == KeyCode::Char('4') {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Artists;
+        }
+        if key_event.code == KeyCode::Char('5') {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Queue;
+        }
+        if key_event.code == KeyCode::Char('/') {
             app.getting_search_string = true;
+        }
+        if key_event.code == KeyCode::Tab {
+            app.cycle_pane()?;
         }
     } else {
         match app.current_popup {
@@ -532,7 +490,7 @@ async fn handle_seek_forward(
 ) -> AppResult<()> {
     let mut iface = iface_ref.get_mut().await;
 
-    app.player_seek_forward().unwrap();
+    app.player_seek_forward()?;
     let new_position = (app.get_playback_time() * 1000000) as i64;
     iface.set_position(new_position);
     MediaPlayer2Player::seeked(iface_ref.signal_context(), new_position).await?;
@@ -545,7 +503,7 @@ async fn handle_seek_backwards(
 ) -> AppResult<()> {
     let mut iface = iface_ref.get_mut().await;
 
-    app.player_seek_backwards().unwrap();
+    app.player_seek_backwards()?;
     let new_position = (app.get_playback_time() * 1000000) as i64;
     iface.set_position(new_position);
     MediaPlayer2Player::seeked(iface_ref.signal_context(), new_position).await?;
@@ -556,7 +514,7 @@ async fn handle_toggle_play_pause(
     app: &mut App,
     iface_ref: &InterfaceRef<MediaPlayer2Player>,
 ) -> AppResult<()> {
-    app.toggle_playing_status().unwrap();
+    app.toggle_playing_status()?;
     let mut iface = iface_ref.get_mut().await;
     iface.set_position((app.get_playback_time() * 1000000) as i64);
     if *app.player.player_status() == PlayerStatus::Playing {

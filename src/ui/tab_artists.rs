@@ -33,7 +33,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         }
     }
 
-    if app.database.artists().is_empty() {
+    if app.database.artists().is_empty() || app.database.alphabetical_artists().is_empty() {
         frame.render_widget(
             Paragraph::new(Line::from("No artists..."))
                 .block(Block::bordered().border_type(Rounded)),

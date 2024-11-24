@@ -459,8 +459,7 @@ impl App {
         Ok(())
     }
 
-
-    pub(crate) fn artist_view_song_or_album(&self) -> MediaType {
+    pub fn artist_view_song_or_album(&self) -> MediaType {
         let mut media_type: MediaType = MediaType::Song;
         let albums = self
             .database
@@ -476,7 +475,7 @@ impl App {
             let album = self.database.get_album(album_id);
             if album_index == self.list_states.artist_selected_state.selected().unwrap() {
                 media_type = MediaType::Album;
-                break
+                break;
             }
             album_index += album.songs().len() + 1;
             if album_index > self.list_states.artist_selected_state.selected().unwrap() {
@@ -1083,36 +1082,44 @@ impl App {
         metadata
     }
 
-    pub fn cycle_home_pane(&mut self) -> AppResult<()> {
-        match self.home_tab_mode {
-            AppHomeTabMode::OneColumn => match self.home_pane {
-                HomePane::Top => {
-                    self.home_pane = HomePane::Bottom;
-                }
-                HomePane::Bottom => {
-                    self.home_pane = HomePane::Top;
-                }
-                _ => {
-                    panic!("Should not reach")
-                }
+    pub fn cycle_pane(&mut self) -> AppResult<()> {
+        match self.current_screen {
+            CurrentScreen::Home => match self.home_tab_mode {
+                AppHomeTabMode::OneColumn => match self.home_pane {
+                    HomePane::Top => {
+                        self.home_pane = HomePane::Bottom;
+                    }
+                    HomePane::Bottom => {
+                        self.home_pane = HomePane::Top;
+                    }
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                },
+                AppHomeTabMode::TwoColumns => match self.home_pane {
+                    HomePane::TopLeft => {
+                        self.home_pane = HomePane::TopRight;
+                    }
+                    HomePane::TopRight => {
+                        self.home_pane = HomePane::BottomLeft;
+                    }
+                    HomePane::BottomLeft => {
+                        self.home_pane = HomePane::BottomRight;
+                    }
+                    HomePane::BottomRight => {
+                        self.home_pane = HomePane::TopLeft;
+                    }
+                    _ => {
+                        panic!("Should not reach")
+                    }
+                },
             },
-            AppHomeTabMode::TwoColumns => match self.home_pane {
-                HomePane::TopLeft => {
-                    self.home_pane = HomePane::TopRight;
-                }
-                HomePane::TopRight => {
-                    self.home_pane = HomePane::BottomLeft;
-                }
-                HomePane::BottomLeft => {
-                    self.home_pane = HomePane::BottomRight;
-                }
-                HomePane::BottomRight => {
-                    self.home_pane = HomePane::TopLeft;
-                }
-                _ => {
-                    panic!("Should not reach")
-                }
-            },
+            CurrentScreen::Playlists => {}
+            CurrentScreen::Artists => {
+                if self.artist_pane == ArtistPane::Left { self.artist_pane = ArtistPane::Right }
+                else { self.artist_pane = ArtistPane::Left }
+            }
+            _ => {}
         }
 
         Ok(())
