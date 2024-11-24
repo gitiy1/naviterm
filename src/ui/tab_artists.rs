@@ -1,4 +1,4 @@
-use crate::app::{App, AppResult, ArtistPane};
+use crate::app::{App, AppResult, TwoPaneVertical};
 use crate::ui::utils::duration_to_hhmmss;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
@@ -25,10 +25,10 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let active_pane_style = Style::default().fg(Yellow);
     
     match app.artist_pane {
-        ArtistPane::Left => {
+        TwoPaneVertical::Left => {
             block_artists = block_artists.border_style(active_pane_style);
         }
-        ArtistPane::Right => {
+        TwoPaneVertical::Right => {
             block_artist_selected = block_artist_selected.border_style(active_pane_style);
         }
     }

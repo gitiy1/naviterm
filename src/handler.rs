@@ -1,4 +1,4 @@
-use crate::app::{App, AppResult, ArtistPane, CurrentScreen, HomePane, MediaType, Popup};
+use crate::app::{App, AppResult, TwoPaneVertical, CurrentScreen, HomePane, MediaType, Popup};
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
@@ -180,18 +180,18 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Char('j') => app.select_next_list()?,
                 KeyCode::Char('k') => app.select_previous_list()?,
-                KeyCode::Char('l') => app.artist_pane = ArtistPane::Right,
-                KeyCode::Char('h') => app.artist_pane = ArtistPane::Left,
+                KeyCode::Char('l') => app.artist_pane = TwoPaneVertical::Right,
+                KeyCode::Char('h') => app.artist_pane = TwoPaneVertical::Left,
                 KeyCode::Char('a') => {
                     app.current_popup = Popup::AddTo;
-                    if app.artist_pane == ArtistPane::Left {
+                    if app.artist_pane == TwoPaneVertical::Left {
                         app.set_item_to_be_added(MediaType::Artist)?;
                     } else {
                         app.set_item_to_be_added(app.artist_view_song_or_album())?;
                     }
                 }
                 KeyCode::Enter => {
-                    if app.artist_pane == ArtistPane::Left {
+                    if app.artist_pane == TwoPaneVertical::Left {
                         app.set_item_to_be_added(MediaType::Artist)?;
                     } else {
                         app.set_item_to_be_added(app.artist_view_song_or_album())?;
@@ -199,7 +199,7 @@ pub async fn handle_key_events(
                     app.add_queue_immediately()?;
                 }
                 KeyCode::Char('A') => {
-                    if app.artist_pane == ArtistPane::Right {
+                    if app.artist_pane == TwoPaneVertical::Right {
                         app.current_popup = Popup::AddTo;
                         app.set_item_to_be_added(MediaType::Album)?;
                     }

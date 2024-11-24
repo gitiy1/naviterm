@@ -60,7 +60,7 @@ pub enum HomePane {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ArtistPane {
+pub enum TwoPaneVertical {
     Left,
     Right,
 }
@@ -120,7 +120,8 @@ pub struct App {
     pub result_list_alphabetical: Vec<String>,
     pub result_list_most_listened: Vec<String>,
     pub albums_being_updated: usize,
-    pub artist_pane: ArtistPane,
+    pub artist_pane: TwoPaneVertical,
+    pub playlist_pane: TwoPaneVertical,
 }
 
 #[derive(Default, Debug)]
@@ -144,7 +145,6 @@ pub struct AppFlags {
     pub replay_gain_auto: bool,
     pub is_current_song_scrobbled: bool,
 }
-
 
 #[derive(Default)]
 pub struct NowPlaying {
@@ -202,7 +202,8 @@ impl Default for App {
             result_list_most_listened: vec![],
             result_list_alphabetical: vec![],
             albums_being_updated: 0,
-            artist_pane: ArtistPane::Left,
+            artist_pane: TwoPaneVertical::Left,
+            playlist_pane: TwoPaneVertical::Left,
         }
     }
 }
@@ -367,10 +368,14 @@ impl App {
                 self.list_states.album_state.select_next();
             }
             CurrentScreen::Playlists => {
-                self.list_states.playlist_state.select_next();
+                if self.playlist_pane == TwoPaneVertical::Left {
+                    self.list_states.playlist_state.select_next();
+                } else {
+                    self.list_states.playlist_selected_state.select_next();
+                }
             }
             CurrentScreen::Artists => {
-                if self.artist_pane == ArtistPane::Left {
+                if self.artist_pane == TwoPaneVertical::Left {
                     self.list_states.artist_state.select_next();
                     self.list_states.artist_selected_state.select_first();
                 } else {
@@ -409,10 +414,14 @@ impl App {
             },
             CurrentScreen::Albums => self.list_states.album_state.select_previous(),
             CurrentScreen::Playlists => {
-                self.list_states.playlist_state.select_previous();
+                if self.playlist_pane == TwoPaneVertical::Left {
+                    self.list_states.playlist_state.select_previous();
+                } else {
+                    self.list_states.playlist_selected_state.select_previous();
+                }
             }
             CurrentScreen::Artists => {
-                if self.artist_pane == ArtistPane::Left {
+                if self.artist_pane == TwoPaneVertical::Left {
                     self.list_states.artist_state.select_previous();
                     self.list_states.artist_selected_state.select_first();
                 } else {
@@ -1111,10 +1120,19 @@ impl App {
                     }
                 },
             },
-            CurrentScreen::Playlists => {}
+            CurrentScreen::Playlists => {
+                if self.playlist_pane == TwoPaneVertical::Left {
+                    self.playlist_pane = TwoPaneVertical::Right
+                } else {
+                    self.playlist_pane = TwoPaneVertical::Left
+                }
+            }
             CurrentScreen::Artists => {
-                if self.artist_pane == ArtistPane::Left { self.artist_pane = ArtistPane::Right }
-                else { self.artist_pane = ArtistPane::Left }
+                if self.artist_pane == TwoPaneVertical::Left {
+                    self.artist_pane = TwoPaneVertical::Right
+                } else {
+                    self.artist_pane = TwoPaneVertical::Left
+                }
             }
             _ => {}
         }
@@ -1569,7 +1587,9 @@ impl App {
                 );
                 match operation.operation_id() {
                     Operation::GetPlaylistList(update) => {
-                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums
+                            || self.app_flags.updating_alphabetical_albums
+                        {
                             continue;
                         }
                         let force_update = *update;
@@ -1594,7 +1614,9 @@ impl App {
                         }
                     }
                     Operation::GetPlaylist(id) => {
-                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums
+                            || self.app_flags.updating_alphabetical_albums
+                        {
                             continue;
                         }
                         self.database.set_playlist_songs(
@@ -1692,13 +1714,17 @@ impl App {
                         operation.set_processed(true);
                         // If there are no more albums being updated, and we are not updating the
                         // alphabetical list, we can be sure we have them all
-                        if self.albums_being_updated == 0 && !self.app_flags.updating_alphabetical_albums {
+                        if self.albums_being_updated == 0
+                            && !self.app_flags.updating_alphabetical_albums
+                        {
                             self.finish_database_update();
                             self.app_flags.updating_albums = false;
                         }
                     }
                     Operation::GetAlbumListRecent() => {
-                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums
+                            || self.app_flags.updating_alphabetical_albums
+                        {
                             continue;
                         }
                         operation.set_processed(true);
@@ -1733,7 +1759,9 @@ impl App {
                         self.database.set_recent_albums(album_list);
                     }
                     Operation::GetAlbumListMostListened(offset) => {
-                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums
+                            || self.app_flags.updating_alphabetical_albums
+                        {
                             continue;
                         }
                         let offset = *offset;
@@ -1753,7 +1781,9 @@ impl App {
                         }
                     }
                     Operation::GetGenreList => {
-                        if self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums {
+                        if self.app_flags.updating_albums
+                            || self.app_flags.updating_alphabetical_albums
+                        {
                             continue;
                         }
                         let mut genres =

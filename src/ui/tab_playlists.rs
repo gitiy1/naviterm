@@ -1,4 +1,4 @@
-use crate::app::{App, AppResult};
+use crate::app::{App, AppResult, TwoPaneVertical};
 use crate::ui::utils::duration_to_hhmmss;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
@@ -13,6 +13,25 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
         .split(area);
+
+    let mut block_playlists = Block::bordered()
+        .border_type(Rounded)
+        .border_style(Style::default().fg(Gray));
+
+    let mut block_playlist_selected = Block::bordered()
+        .border_type(Rounded)
+        .border_style(Style::default().fg(Gray));
+
+    let active_pane_style = Style::default().fg(Yellow);
+
+    match app.playlist_pane {
+        TwoPaneVertical::Left => {
+            block_playlists = block_playlists.border_style(active_pane_style);
+        }
+        TwoPaneVertical::Right => {
+            block_playlist_selected = block_playlist_selected.border_style(active_pane_style);
+        }
+    }
 
     if app.database.playlists().is_empty() {
         frame.render_widget(
@@ -30,7 +49,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             playlist_items.push(ListItem::from(playlist_item));
         }
         let list = List::new(playlist_items)
-            .block(Block::bordered().border_type(Rounded))
+            .block(block_playlists)
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
         if app.list_states.playlist_state.selected().is_none() {
@@ -70,7 +89,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 ListItem::from(song_item)
             });
         let list = List::new(song_items)
-            .block(Block::bordered().border_type(Rounded))
+            .block(block_playlist_selected)
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
 
