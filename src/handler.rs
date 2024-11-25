@@ -1,4 +1,4 @@
-use crate::app::{App, AppResult, TwoPaneVertical, CurrentScreen, HomePane, MediaType, Popup};
+use crate::app::{App, AppMovementInList, AppResult, CurrentScreen, HomePane, MediaType, Popup, TwoPaneVertical};
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
@@ -51,28 +51,14 @@ pub async fn handle_key_events(
                 KeyCode::F(1) => {
                     app.current_popup = Popup::ConnectionTest;
                 }
-                KeyCode::Char('j') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.try_go_down_home_pane()?
-                    } else {
-                        app.select_next_list()?
-                    }
-                }
-                KeyCode::Char('k') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.try_go_up_home_pane()?
-                    } else {
-                        app.select_previous_list()?
-                    }
-                }
                 KeyCode::Char('h') => {
                     if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.try_go_left_home_pane()?
+                        app.try_go_left_pane()?
                     }
                 }
                 KeyCode::Char('l') => {
                     if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.try_go_right_home_pane()?
+                        app.try_go_right_pane()?
                     }
                 }
                 KeyCode::Char('i') => {
@@ -94,22 +80,10 @@ pub async fn handle_key_events(
                     }
                     app.add_queue_immediately()?;
                 }
-                KeyCode::Char('d') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_down()?;
-                    }
-                }
-                KeyCode::Char('u') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_up()?;
-                    }
-                }
                 // Other handlers you could add here.
                 _ => {}
             },
             CurrentScreen::Albums => match key_event.code {
-                KeyCode::Char('j') => app.select_next_list()?,
-                KeyCode::Char('k') => app.select_previous_list()?,
                 KeyCode::Char('i') => {
                     app.current_popup = Popup::AlbumInformation;
                 }
@@ -140,16 +114,6 @@ pub async fn handle_key_events(
                     app.list_states.album_state.select_first();
                     app.process_filtered_album_list()?;
                 }
-                KeyCode::Char('d') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_down()?;
-                    }
-                }
-                KeyCode::Char('u') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_up()?;
-                    }
-                }
                 _ => {}
             },
             CurrentScreen::Playlists => match key_event.code {
@@ -173,31 +137,9 @@ pub async fn handle_key_events(
                     }
                     app.add_queue_immediately()?;
                 }
-                KeyCode::Char('j') => app.select_next_list()?,
-                KeyCode::Char('k') => app.select_previous_list()?,
                 _ => {}
             },
             CurrentScreen::Artists => match key_event.code {
-                KeyCode::Char('1') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Home;
-                }
-                KeyCode::Char('2') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Albums;
-                }
-                KeyCode::Char('3') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Playlists;
-                }
-                KeyCode::Char('5') => {
-                    app.clear_search()?;
-                    app.current_screen = CurrentScreen::Queue;
-                }
-                KeyCode::Char('j') => app.select_next_list()?,
-                KeyCode::Char('k') => app.select_previous_list()?,
-                KeyCode::Char('l') => app.artist_pane = TwoPaneVertical::Right,
-                KeyCode::Char('h') => app.artist_pane = TwoPaneVertical::Left,
                 KeyCode::Char('a') => {
                     app.current_popup = Popup::AddTo;
                     if app.artist_pane == TwoPaneVertical::Left {
@@ -223,10 +165,8 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Queue => match key_event.code {
-                KeyCode::Char('l') => app.play_next()?,
-                KeyCode::Char('h') => app.play_previous()?,
-                KeyCode::Char('j') => app.select_next_list()?,
-                KeyCode::Char('k') => app.select_previous_list()?,
+                KeyCode::Char('>') => app.play_next()?,
+                KeyCode::Char('<') => app.play_previous()?,
                 KeyCode::Char('c') => {
                     if key_event.modifiers != KeyModifiers::CONTROL {
                         handle_stop_playback(app, iface_ref).await?;
@@ -235,16 +175,6 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Enter => {
                     app.play_queue_song()?;
-                }
-                KeyCode::Char('d') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_down()?;
-                    }
-                }
-                KeyCode::Char('u') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_up()?;
-                    }
                 }
                 _ => {}
             },
@@ -296,8 +226,6 @@ pub async fn handle_key_events(
                 _ => {}
             },
             Popup::AlbumInformation => match key_event.code {
-                KeyCode::Char('j') => app.select_next_list_popup()?,
-                KeyCode::Char('k') => app.select_previous_list_popup()?,
                 KeyCode::Enter => {
                     app.set_item_to_be_added(MediaType::Song)?;
                     app.add_queue_immediately()?;
@@ -310,16 +238,6 @@ pub async fn handle_key_events(
                 KeyCode::Char('A') => {
                     app.current_popup = Popup::AddTo;
                     app.set_item_to_be_added(MediaType::Album)?;
-                }
-                KeyCode::Char('d') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_down()?;
-                    }
-                }
-                KeyCode::Char('u') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_up()?;
-                    }
                 }
                 _ => {}
             },
@@ -335,24 +253,12 @@ pub async fn handle_key_events(
                 _ => {}
             },
             Popup::GenreFilter => match key_event.code {
-                KeyCode::Char('j') => app.select_next_list_popup()?,
-                KeyCode::Char('k') => app.select_previous_list_popup()?,
                 KeyCode::Enter => {
                     app.list_states.album_state.select_first();
                     app.set_genre_filter()?;
                     app.process_filtered_album_list()?;
                     app.current_popup = Popup::None;
                     app.clear_search()?;
-                }
-                KeyCode::Char('d') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_down()?;
-                    }
-                }
-                KeyCode::Char('u') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.page_up()?;
-                    }
                 }
                 _ => {}
             },
@@ -388,6 +294,44 @@ pub async fn handle_key_events(
     }
 
     // Keycodes that should be considered not matter if in popup or not
+    if key_event.code == KeyCode::Char('j') {
+        if key_event.modifiers == KeyModifiers::CONTROL {
+            app.try_go_down_pane()?
+        } else {
+            app.move_in_list(AppMovementInList::Next)?
+        }
+    }
+    if key_event.code == KeyCode::Char('k') {
+        if key_event.modifiers == KeyModifiers::CONTROL {
+            app.try_go_up_pane()?
+        } else {
+            app.move_in_list(AppMovementInList::Previous)?
+        }
+    }
+    if key_event.code == KeyCode::Char('h') && key_event.modifiers == KeyModifiers::CONTROL {
+        app.try_go_left_pane()?;
+    }
+    if key_event.code == KeyCode::Char('l') && key_event.modifiers == KeyModifiers::CONTROL {
+        app.try_go_right_pane()?;
+    }
+    if key_event.code == KeyCode::Char('d') {
+        if key_event.modifiers == KeyModifiers::CONTROL {
+            app.move_in_list(AppMovementInList::PageDown)?;
+        }
+    }
+    if key_event.code == KeyCode::Char('u') {
+        if key_event.modifiers == KeyModifiers::CONTROL {
+            app.move_in_list(AppMovementInList::PageUp)?;
+        } else if key_event.modifiers.is_empty() && app.current_popup == Popup::None {
+            app.current_popup = Popup::UpdateDatabase;
+        }
+    }
+    if key_event.code == KeyCode::Char('g') {
+        app.move_in_list(AppMovementInList::First)?;
+    }
+    if key_event.code == KeyCode::Char('G') {
+        app.move_in_list(AppMovementInList::Last)?;
+    }
     if key_event.code == KeyCode::Char('p') || key_event.code == KeyCode::Char(' ') {
         handle_toggle_play_pause(app, iface_ref).await?
     };
@@ -402,12 +346,6 @@ pub async fn handle_key_events(
     };
     if key_event.code == KeyCode::Esc {
         app.clear_search()?;
-    };
-    if key_event.code == KeyCode::Char('u')
-        && key_event.modifiers.is_empty()
-        && app.current_popup == Popup::None
-    {
-        app.current_popup = Popup::UpdateDatabase;
     };
     if key_event.code == KeyCode::Up {
         let volume = app.get_volume_as_f64()?;

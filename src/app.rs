@@ -44,6 +44,15 @@ pub enum AppConnectionMode {
     Online,
     Offline,
 }
+#[derive(Debug, PartialEq)]
+pub enum AppMovementInList {
+    Next,
+    Previous,
+    PageUp,
+    PageDown,
+    First,
+    Last
+}
 
 pub enum AppHomeTabMode {
     OneColumn,
@@ -330,139 +339,6 @@ impl App {
 
     pub async fn poll_player_events(&mut self) -> AppResult<()> {
         self.player.poll_ipc_events().await;
-        Ok(())
-    }
-
-    pub fn select_next_list(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_tab_mode {
-                AppHomeTabMode::OneColumn => match self.home_pane {
-                    HomePane::Top => {
-                        self.list_states.home_tab_top.select_next();
-                    }
-                    HomePane::Bottom => {
-                        self.list_states.home_tab_bottom.select_next();
-                    }
-                    _ => {
-                        panic!("Should not reach")
-                    }
-                },
-                AppHomeTabMode::TwoColumns => match self.home_pane {
-                    HomePane::TopLeft => {
-                        self.list_states.home_tab_top_left.select_next();
-                    }
-                    HomePane::TopRight => {
-                        self.list_states.home_tab_top_right.select_next();
-                    }
-                    HomePane::BottomLeft => {
-                        self.list_states.home_tab_bottom_left.select_next();
-                    }
-                    HomePane::BottomRight => {
-                        self.list_states.home_tab_bottom_right.select_next();
-                    }
-                    _ => {
-                        panic!("Should not reach")
-                    }
-                },
-            },
-            CurrentScreen::Albums => {
-                self.list_states.album_state.select_next();
-            }
-            CurrentScreen::Playlists => {
-                if self.playlist_pane == TwoPaneVertical::Left {
-                    self.list_states.playlist_state.select_next();
-                } else {
-                    self.list_states.playlist_selected_state.select_next();
-                }
-            }
-            CurrentScreen::Artists => {
-                if self.artist_pane == TwoPaneVertical::Left {
-                    self.list_states.artist_state.select_next();
-                    self.list_states.artist_selected_state.select_first();
-                } else {
-                    self.list_states.artist_selected_state.select_next();
-                }
-            }
-            CurrentScreen::Queue => {
-                self.list_states.queue_list_state.select_next();
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn select_previous_list(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::Top => {
-                    self.list_states.home_tab_top.select_previous();
-                }
-                HomePane::Bottom => {
-                    self.list_states.home_tab_bottom.select_previous();
-                }
-                HomePane::TopLeft => {
-                    self.list_states.home_tab_top_left.select_previous();
-                }
-                HomePane::TopRight => {
-                    self.list_states.home_tab_top_right.select_previous();
-                }
-                HomePane::BottomLeft => {
-                    self.list_states.home_tab_bottom_left.select_previous();
-                }
-                HomePane::BottomRight => {
-                    self.list_states.home_tab_bottom_right.select_previous();
-                }
-            },
-            CurrentScreen::Albums => self.list_states.album_state.select_previous(),
-            CurrentScreen::Playlists => {
-                if self.playlist_pane == TwoPaneVertical::Left {
-                    self.list_states.playlist_state.select_previous();
-                } else {
-                    self.list_states.playlist_selected_state.select_previous();
-                }
-            }
-            CurrentScreen::Artists => {
-                if self.artist_pane == TwoPaneVertical::Left {
-                    self.list_states.artist_state.select_previous();
-                    self.list_states.artist_selected_state.select_first();
-                } else {
-                    self.list_states.artist_selected_state.select_previous();
-                }
-            }
-            CurrentScreen::Queue => {
-                self.list_states.queue_list_state.select_previous();
-            }
-        }
-        Ok(())
-    }
-
-    pub fn select_next_list_popup(&mut self) -> AppResult<()> {
-        match self.current_popup {
-            Popup::AlbumInformation => {
-                self.list_states.popup_list_state.select_next();
-            }
-            Popup::GenreFilter => {
-                self.list_states.popup_genre_list_state.select_next();
-            }
-            _ => {
-                unreachable!()
-            }
-        }
-        Ok(())
-    }
-
-    pub fn select_previous_list_popup(&mut self) -> AppResult<()> {
-        match self.current_popup {
-            Popup::AlbumInformation => {
-                self.list_states.popup_list_state.select_previous();
-            }
-            Popup::GenreFilter => {
-                self.list_states.popup_genre_list_state.select_previous();
-            }
-            _ => {
-                unreachable!()
-            }
-        }
         Ok(())
     }
 
@@ -1176,58 +1052,82 @@ impl App {
         Ok(())
     }
 
-    pub fn try_go_up_home_pane(&mut self) -> AppResult<()> {
-        match self.home_pane {
-            HomePane::Bottom => {
-                self.home_pane = HomePane::Top;
-            }
-            HomePane::BottomLeft => {
-                self.home_pane = HomePane::TopLeft;
-            }
-            HomePane::BottomRight => {
-                self.home_pane = HomePane::TopRight;
-            }
+    pub fn try_go_up_pane(&mut self) -> AppResult<()> {
+        match self.current_screen {
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::Bottom => {
+                    self.home_pane = HomePane::Top;
+                }
+                HomePane::BottomLeft => {
+                    self.home_pane = HomePane::TopLeft;
+                }
+                HomePane::BottomRight => {
+                    self.home_pane = HomePane::TopRight;
+                }
+                _ => {}
+            },
             _ => {}
         }
         Ok(())
     }
 
-    pub fn try_go_down_home_pane(&mut self) -> AppResult<()> {
-        match self.home_pane {
-            HomePane::Top => {
-                self.home_pane = HomePane::Bottom;
-            }
-            HomePane::TopLeft => {
-                self.home_pane = HomePane::BottomLeft;
-            }
-            HomePane::TopRight => {
-                self.home_pane = HomePane::BottomRight;
-            }
+    pub fn try_go_down_pane(&mut self) -> AppResult<()> {
+        match self.current_screen {
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::Top => {
+                    self.home_pane = HomePane::Bottom;
+                }
+                HomePane::TopLeft => {
+                    self.home_pane = HomePane::BottomLeft;
+                }
+                HomePane::TopRight => {
+                    self.home_pane = HomePane::BottomRight;
+                }
+                _ => {}
+            },
             _ => {}
         }
         Ok(())
     }
 
-    pub fn try_go_left_home_pane(&mut self) -> AppResult<()> {
-        match self.home_pane {
-            HomePane::TopRight => {
-                self.home_pane = HomePane::TopLeft;
+    pub fn try_go_left_pane(&mut self) -> AppResult<()> {
+        match self.current_screen {
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::TopRight => {
+                    self.home_pane = HomePane::TopLeft;
+                }
+                HomePane::BottomRight => {
+                    self.home_pane = HomePane::BottomLeft;
+                }
+                _ => {}
+            },
+            CurrentScreen::Playlists => {
+                self.playlist_pane = TwoPaneVertical::Left;
             }
-            HomePane::BottomRight => {
-                self.home_pane = HomePane::BottomLeft;
+            CurrentScreen::Artists => {
+                self.artist_pane = TwoPaneVertical::Left;
             }
             _ => {}
         }
+
         Ok(())
     }
-
-    pub fn try_go_right_home_pane(&mut self) -> AppResult<()> {
-        match self.home_pane {
-            HomePane::TopLeft => {
-                self.home_pane = HomePane::TopRight;
+    pub fn try_go_right_pane(&mut self) -> AppResult<()> {
+        match self.current_screen {
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::TopLeft => {
+                    self.home_pane = HomePane::TopRight;
+                }
+                HomePane::BottomLeft => {
+                    self.home_pane = HomePane::BottomRight;
+                }
+                _ => {}
+            },
+            CurrentScreen::Playlists => {
+                self.playlist_pane = TwoPaneVertical::Right;
             }
-            HomePane::BottomLeft => {
-                self.home_pane = HomePane::BottomRight;
+            CurrentScreen::Artists => {
+                self.artist_pane = TwoPaneVertical::Right;
             }
             _ => {}
         }
@@ -1285,189 +1185,59 @@ impl App {
         Ok(())
     }
 
-    pub fn page_down(&mut self) -> AppResult<()> {
-        if self.current_popup == Popup::None {
+    pub fn move_in_list(&mut self, move_operation: AppMovementInList) -> AppResult<()> {
+        let list_state_item = if self.current_popup == Popup::None {
             match self.current_screen {
-                CurrentScreen::Home => match self.home_tab_mode {
-                    AppHomeTabMode::OneColumn => match self.home_pane {
-                        HomePane::Top => {
-                            self.list_states.home_tab_top.select(Option::from(
-                                self.list_states.home_tab_top.selected().unwrap()
-                                    + constants::PAGE_SIZE,
-                            ));
-                        }
-                        HomePane::Bottom => {
-                            self.list_states.home_tab_bottom.select(Option::from(
-                                self.list_states.home_tab_bottom.selected().unwrap()
-                                    + constants::PAGE_SIZE,
-                            ));
-                        }
-                        _ => {
-                            panic!("Should not reach")
-                        }
-                    },
-                    AppHomeTabMode::TwoColumns => match self.home_pane {
-                        HomePane::TopLeft => {
-                            self.list_states.home_tab_top_left.select(Option::from(
-                                self.list_states.home_tab_top_left.selected().unwrap()
-                                    + constants::PAGE_SIZE,
-                            ));
-                        }
-                        HomePane::TopRight => {
-                            self.list_states.home_tab_top_right.select(Option::from(
-                                self.list_states.home_tab_top_right.selected().unwrap()
-                                    + constants::PAGE_SIZE,
-                            ));
-                        }
-                        HomePane::BottomLeft => {
-                            self.list_states.home_tab_bottom_left.select(Option::from(
-                                self.list_states.home_tab_bottom_left.selected().unwrap()
-                                    + constants::PAGE_SIZE,
-                            ));
-                        }
-                        HomePane::BottomRight => {
-                            self.list_states.home_tab_bottom_right.select(Option::from(
-                                self.list_states.home_tab_bottom_right.selected().unwrap()
-                                    + constants::PAGE_SIZE,
-                            ));
-                        }
-                        _ => {
-                            panic!("Should not reach")
-                        }
-                    },
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::Top => &mut self.list_states.home_tab_top,
+                    HomePane::TopLeft => &mut self.list_states.home_tab_top_left,
+                    HomePane::TopRight => &mut self.list_states.home_tab_top_right,
+                    HomePane::Bottom => &mut self.list_states.home_tab_bottom,
+                    HomePane::BottomLeft => &mut self.list_states.home_tab_bottom_left,
+                    HomePane::BottomRight => &mut self.list_states.home_tab_bottom_right,
                 },
-                CurrentScreen::Albums => {
-                    self.list_states.album_state.select(Option::from(
-                        self.list_states.album_state.selected().unwrap() + constants::PAGE_SIZE,
-                    ));
+                CurrentScreen::Albums => &mut self.list_states.album_state,
+                CurrentScreen::Playlists => {
+                    if self.playlist_pane == TwoPaneVertical::Left {
+                        &mut self.list_states.playlist_state
+                    } else {
+                        &mut self.list_states.playlist_selected_state
+                    }
                 }
-                CurrentScreen::Playlists => {}
-                CurrentScreen::Artists => {}
-                CurrentScreen::Queue => self.list_states.queue_list_state.select(Option::from(
-                    self.list_states.queue_list_state.selected().unwrap() + constants::PAGE_SIZE,
-                )),
+                CurrentScreen::Artists => {
+                    if self.artist_pane == TwoPaneVertical::Left {
+                        &mut self.list_states.artist_state
+                    } else {
+                        &mut self.list_states.artist_selected_state
+                    }
+                }
+                CurrentScreen::Queue => &mut self.list_states.queue_list_state,
             }
         } else {
             match self.current_popup {
-                Popup::GenreFilter => self.list_states.popup_genre_list_state.select(Option::from(
-                    self.list_states.popup_genre_list_state.selected().unwrap()
-                        + constants::PAGE_SIZE,
-                )),
-                Popup::AlbumInformation => self.list_states.popup_list_state.select(Option::from(
-                    self.list_states.popup_list_state.selected().unwrap() + constants::PAGE_SIZE,
-                )),
-                _ => {}
+                Popup::AlbumInformation => &mut self.list_states.popup_list_state,
+                Popup::GenreFilter => &mut self.list_states.popup_genre_list_state,
+                _ => &mut self.list_states.popup_list_state,
             }
-        }
-        Ok(())
-    }
-
-    pub fn page_up(&mut self) -> AppResult<()> {
-        if self.current_popup == Popup::None {
-            match self.current_screen {
-                CurrentScreen::Home => match self.home_tab_mode {
-                    AppHomeTabMode::OneColumn => match self.home_pane {
-                        HomePane::Top => {
-                            self.list_states.home_tab_top.select(Option::from(
-                                self.list_states
-                                    .home_tab_top
-                                    .selected()
-                                    .unwrap()
-                                    .saturating_sub(constants::PAGE_SIZE),
-                            ));
-                        }
-                        HomePane::Bottom => {
-                            self.list_states.home_tab_bottom.select(Option::from(
-                                self.list_states
-                                    .home_tab_bottom
-                                    .selected()
-                                    .unwrap()
-                                    .saturating_sub(constants::PAGE_SIZE),
-                            ));
-                        }
-                        _ => {
-                            panic!("Should not reach")
-                        }
-                    },
-                    AppHomeTabMode::TwoColumns => match self.home_pane {
-                        HomePane::TopLeft => {
-                            self.list_states.home_tab_top_left.select(Option::from(
-                                self.list_states
-                                    .home_tab_top_left
-                                    .selected()
-                                    .unwrap()
-                                    .saturating_sub(constants::PAGE_SIZE),
-                            ));
-                        }
-                        HomePane::TopRight => {
-                            self.list_states.home_tab_top_right.select(Option::from(
-                                self.list_states
-                                    .home_tab_top_right
-                                    .selected()
-                                    .unwrap()
-                                    .saturating_sub(constants::PAGE_SIZE),
-                            ));
-                        }
-                        HomePane::BottomLeft => {
-                            self.list_states.home_tab_bottom_left.select(Option::from(
-                                self.list_states
-                                    .home_tab_bottom_left
-                                    .selected()
-                                    .unwrap()
-                                    .saturating_sub(constants::PAGE_SIZE),
-                            ));
-                        }
-                        HomePane::BottomRight => {
-                            self.list_states.home_tab_bottom_right.select(Option::from(
-                                self.list_states
-                                    .home_tab_bottom_right
-                                    .selected()
-                                    .unwrap()
-                                    .saturating_sub(constants::PAGE_SIZE),
-                            ));
-                        }
-                        _ => {
-                            panic!("Should not reach")
-                        }
-                    },
-                },
-                CurrentScreen::Albums => {
-                    self.list_states.album_state.select(Option::from(
-                        self.list_states
-                            .album_state
-                            .selected()
-                            .unwrap()
-                            .saturating_sub(constants::PAGE_SIZE),
-                    ));
-                }
-                CurrentScreen::Playlists => {}
-                CurrentScreen::Artists => {}
-                CurrentScreen::Queue => self.list_states.queue_list_state.select(Option::from(
-                    self.list_states
-                        .queue_list_state
+        };
+        match move_operation {
+            AppMovementInList::Next => { list_state_item. select_next() }
+            AppMovementInList::Previous => { list_state_item.select_previous() }
+            AppMovementInList::PageUp => {
+                list_state_item.select(Option::from(
+                    list_state_item
                         .selected()
                         .unwrap()
                         .saturating_sub(constants::PAGE_SIZE),
-                )),
+                ));
             }
-        } else {
-            match self.current_popup {
-                Popup::GenreFilter => self.list_states.popup_genre_list_state.select(Option::from(
-                    self.list_states
-                        .popup_genre_list_state
-                        .selected()
-                        .unwrap()
-                        .saturating_sub(constants::PAGE_SIZE),
-                )),
-                Popup::AlbumInformation => self.list_states.popup_list_state.select(Option::from(
-                    self.list_states
-                        .popup_list_state
-                        .selected()
-                        .unwrap()
-                        .saturating_sub(constants::PAGE_SIZE),
-                )),
-                _ => {}
+            AppMovementInList::PageDown => {
+                list_state_item.select(Option::from(
+                    list_state_item.selected().unwrap() + constants::PAGE_SIZE,
+                ));
             }
+            AppMovementInList::First => { list_state_item.select_first() }
+            AppMovementInList::Last => { list_state_item.select_last() }
         }
         Ok(())
     }
