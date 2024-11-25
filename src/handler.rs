@@ -79,8 +79,12 @@ pub async fn handle_key_events(
                     app.current_popup = Popup::AlbumInformation;
                 }
                 KeyCode::Char('a') => {
+                    if app.home_pane == HomePane::BottomRight {
+                        app.set_item_to_be_added(MediaType::Song)?;
+                    } else {
+                        app.set_item_to_be_added(MediaType::Album)?;
+                    }
                     app.current_popup = Popup::AddTo;
-                    app.set_item_to_be_added(MediaType::Album)?;
                 }
                 KeyCode::Enter => {
                     if app.home_pane == HomePane::BottomRight {
@@ -151,10 +155,22 @@ pub async fn handle_key_events(
             CurrentScreen::Playlists => match key_event.code {
                 KeyCode::Char('a') => {
                     app.current_popup = Popup::AddTo;
+                    if app.playlist_pane == TwoPaneVertical::Left {
+                        app.set_item_to_be_added(MediaType::Playlist)?;
+                    } else {
+                        app.set_item_to_be_added(MediaType::Song)?;
+                    }
+                }
+                KeyCode::Char('A') => {
+                    app.current_popup = Popup::AddTo;
                     app.set_item_to_be_added(MediaType::Playlist)?;
                 }
                 KeyCode::Enter => {
-                    app.set_item_to_be_added(MediaType::Playlist)?;
+                    if app.playlist_pane == TwoPaneVertical::Left {
+                        app.set_item_to_be_added(MediaType::Playlist)?;
+                    } else {
+                        app.set_item_to_be_added(MediaType::Song)?;
+                    }
                     app.add_queue_immediately()?;
                 }
                 KeyCode::Char('j') => app.select_next_list()?,

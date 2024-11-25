@@ -15,10 +15,19 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         .constraints([Constraint::Min(5), Constraint::Length(1)])
         .split(area);
 
-    let added_item_name = if app.item_to_be_added.media_type == MediaType::Artist {
-        format!("albums from {}", app.item_to_be_added.name)
-    } else {
-        app.item_to_be_added.name.clone()
+    let added_item_name = match app.item_to_be_added.media_type  {
+        MediaType::Song => {
+            format!("track {}", app.item_to_be_added.name)
+        }
+        MediaType::Album => {
+            format!("album {}", app.item_to_be_added.name)
+        }
+        MediaType::Playlist => {
+            format!("playlist {}", app.item_to_be_added.name)
+        }
+        MediaType::Artist => {
+            format!("albums from {}", app.item_to_be_added.name)
+        }
     };
 
     let popup_block = Paragraph::new(format!(

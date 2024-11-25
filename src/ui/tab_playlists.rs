@@ -33,7 +33,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         }
     }
 
-    if app.database.playlists().is_empty() {
+    if app.database.alphabetical_playlists().is_empty() {
         frame.render_widget(
             Paragraph::new(Line::from("No playlists..."))
                 .block(Block::bordered().border_type(Rounded)),
@@ -41,7 +41,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         );
     } else {
         let mut playlist_items: Vec<ListItem> = Vec::new();
-        for playlist in app.database.playlists() {
+        for playlist_id in app.database.alphabetical_playlists() {
+            let playlist = app.database.playlists().get(playlist_id).unwrap();
             let playlist_item = Text::from(vec![Line::from(vec![Span {
                 content: playlist.name().into(),
                 style: Style::default().fg(Yellow),
@@ -61,7 +62,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         let song_items = app
             .database
             .playlists()
-            .get(app.list_states.playlist_state.selected().unwrap())
+            .get(
+                app.database
+                    .alphabetical_playlists()
+                    .get(app.list_states.playlist_state.selected().unwrap())
+                    .unwrap(),
+            )
             .unwrap()
             .song_list()
             .iter()
@@ -97,7 +103,11 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             app.list_states.playlist_selected_state.select_first()
         }
 
-        frame.render_stateful_widget(list, chunks[1], &mut app.list_states.playlist_selected_state);
+        frame.render_stateful_widget(
+            list,
+            chunks[1],
+            &mut app.list_states.playlist_selected_state,
+        );
     }
 
     Ok(())

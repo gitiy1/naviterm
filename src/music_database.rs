@@ -19,6 +19,7 @@ pub struct MusicDatabase {
     playlists: HashMap<String,Playlist>,
     artists: HashMap<String,Artist>,
     alphabetical_artists: Vec<String>,
+    alphabetical_playlists: Vec<String>,
     last_played_album_id: String,
 }
 
@@ -138,8 +139,8 @@ impl MusicDatabase {
         self.playlists.contains_key(id)
     }
     
-    pub fn playlists(&self) -> Vec<&Playlist> {
-        self.playlists.values().collect()
+    pub fn playlists(&self) -> &HashMap<String, Playlist> {
+        &self.playlists
     }
 
     pub fn recently_added_albums(&self) -> &Vec<String> {
@@ -195,5 +196,13 @@ impl MusicDatabase {
 
     pub fn set_alphabetical_artists(&mut self, alphabetical_artists: Vec<String>) {
         self.alphabetical_artists = alphabetical_artists;
+    }
+
+    pub fn alphabetical_playlists(&self) -> &Vec<String> {
+        &self.alphabetical_playlists
+    }
+
+    pub fn set_alphabetical_playlists(&mut self, alphabetical_playlists: Vec<String>) {
+        self.alphabetical_playlists = alphabetical_playlists;
     }
 }

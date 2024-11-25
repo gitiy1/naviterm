@@ -3,6 +3,7 @@ use crate::event::DbusEvent::{Clear, Playing};
 use crate::event::Event;
 use crate::event::Event::Dbus;
 use crate::model::artist::Artist;
+use crate::model::playlist::Playlist;
 use crate::model::song::Song;
 use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
@@ -520,7 +521,12 @@ impl App {
                 for song_id in self
                     .database
                     .playlists()
-                    .get(self.list_states.playlist_state.selected().unwrap())
+                    .get(
+                        self.database
+                            .alphabetical_playlists()
+                            .get(self.list_states.playlist_state.selected().unwrap())
+                            .unwrap(),
+                    )
                     .unwrap()
                     .song_list()
                 {
@@ -591,7 +597,12 @@ impl App {
                 for song_id in self
                     .database
                     .playlists()
-                    .get(self.list_states.playlist_state.selected().unwrap())
+                    .get(
+                        self.database
+                            .alphabetical_playlists()
+                            .get(self.list_states.playlist_state.selected().unwrap())
+                            .unwrap(),
+                    )
                     .unwrap()
                     .song_list()
                 {
@@ -639,7 +650,12 @@ impl App {
                 for song_id in self
                     .database
                     .playlists()
-                    .get(self.list_states.playlist_state.selected().unwrap())
+                    .get(
+                        self.database
+                            .alphabetical_playlists()
+                            .get(self.list_states.playlist_state.selected().unwrap())
+                            .unwrap(),
+                    )
                     .unwrap()
                     .song_list()
                 {
@@ -782,6 +798,21 @@ impl App {
                             )
                             .unwrap(),
                     )
+                } else if self.current_screen == CurrentScreen::Playlists {
+                    self.database.get_song(
+                        self.database
+                            .playlists()
+                            .get(
+                                self.database
+                                    .alphabetical_playlists()
+                                    .get(self.list_states.playlist_state.selected().unwrap())
+                                    .unwrap(),
+                            )
+                            .unwrap()
+                            .song_list()
+                            .get(self.list_states.playlist_selected_state.selected().unwrap())
+                            .unwrap(),
+                    )
                 } else {
                     self.database.get_song(
                         songs_ids
@@ -808,7 +839,12 @@ impl App {
                 let selected_playlist = self.database.get_playlist(
                     self.database
                         .playlists()
-                        .get(self.list_states.playlist_state.selected().unwrap())
+                        .get(
+                            self.database
+                                .alphabetical_playlists()
+                                .get(self.list_states.playlist_state.selected().unwrap())
+                                .unwrap(),
+                        )
                         .unwrap()
                         .id(),
                 );
@@ -1818,6 +1854,8 @@ impl App {
             .set_most_listened_tracks(sort_songs_by_play_count(self.database.songs()));
         self.database
             .set_alphabetical_artists(sort_artists_by_name(self.database.artists()));
+        self.database
+            .set_alphabetical_playlists(sort_playlists_by_name(self.database.playlists()));
     }
 }
 fn sort_songs_by_play_count(songs: &HashMap<String, Song>) -> Vec<String> {
@@ -1844,4 +1882,15 @@ fn sort_artists_by_name(artists: &HashMap<String, Artist>) -> Vec<String> {
     artist_vec.sort_by(|a, b| a.0.cmp(&b.0));
 
     artist_vec.into_iter().map(|(_, id)| id).collect()
+}
+
+fn sort_playlists_by_name(playlists: &HashMap<String, Playlist>) -> Vec<String> {
+    let mut playlists_vec: Vec<(String, String)> = playlists
+        .iter()
+        .map(|(_, playlist)| (playlist.name().to_string(), playlist.id().to_string()))
+        .collect();
+
+    playlists_vec.sort_by(|a, b| a.0.cmp(&b.0));
+
+    playlists_vec.into_iter().map(|(_, id)| id).collect()
 }
