@@ -5,6 +5,7 @@ pub struct Playlist {
     name: String,
     song_count: String,
     duration: String,
+    modified: bool,
     song_list: Vec<String>
 }
 
@@ -45,7 +46,19 @@ impl Playlist {
         &self.song_list
     }
 
+    pub fn song_list_mut(&mut self) -> &mut Vec<String> {
+        &mut self.song_list
+    }
+
     pub fn set_song_list(&mut self, song_list: Vec<String>) {
         self.song_list = song_list;
+    }
+    
+    pub fn set_modified(&mut self, modified: bool) {
+        self.modified = modified;
+    }
+
+    pub fn modified(&self) -> bool {
+        self.modified
     }
 }

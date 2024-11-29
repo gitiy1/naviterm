@@ -21,6 +21,7 @@ pub struct MusicDatabase {
     alphabetical_artists: Vec<String>,
     alphabetical_playlists: Vec<String>,
     last_played_album_id: String,
+    number_of_local_playlists: usize,
 }
 
 impl MusicDatabase {
@@ -84,6 +85,10 @@ impl MusicDatabase {
         self.albums.get(id).unwrap()
     }
 
+    pub fn get_album_mut(&mut self, id: &str) -> &Album {
+        self.albums.get(id).unwrap()
+    }
+
     pub fn set_album_songs(&mut self, id: &str, songs: Vec<String>) {
         self.albums.get_mut(id).unwrap().set_songs(songs);
     }
@@ -130,6 +135,10 @@ impl MusicDatabase {
 
     pub fn get_playlist(&self, id: &str) -> &Playlist {
         self.playlists.get(id).unwrap()
+    }
+
+    pub fn get_mut_playlist(&mut self, id: &str) -> &mut Playlist {
+        self.playlists.get_mut(id).unwrap()
     }
 
     pub fn set_playlist_songs(&mut self, id: &str, songs: Vec<String>) {
@@ -204,5 +213,13 @@ impl MusicDatabase {
 
     pub fn set_alphabetical_playlists(&mut self, alphabetical_playlists: Vec<String>) {
         self.alphabetical_playlists = alphabetical_playlists;
+    }
+
+    pub fn number_of_local_playlists(&self) -> usize {
+        self.number_of_local_playlists
+    }
+
+    pub fn set_number_of_local_playlists(&mut self, number_of_local_playlists: usize) {
+        self.number_of_local_playlists = number_of_local_playlists;
     }
 }

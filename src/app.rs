@@ -51,7 +51,7 @@ pub enum AppMovementInList {
     PageUp,
     PageDown,
     First,
-    Last
+    Last,
 }
 
 pub enum AppHomeTabMode {
@@ -92,6 +92,7 @@ pub enum Popup {
     AddTo,
     GenreFilter,
     UpdateDatabase,
+    SelectPlaylist,
     None,
 }
 
@@ -132,6 +133,7 @@ pub struct App {
     pub albums_being_updated: usize,
     pub artist_pane: TwoPaneVertical,
     pub playlist_pane: TwoPaneVertical,
+    pub new_name: String,
 }
 
 #[derive(Default, Debug)]
@@ -150,10 +152,12 @@ pub struct AppFlags {
     pub getting_search_string: bool,
     pub move_to_next_in_search: bool,
     pub upper_case_search: bool,
+    pub updating_database: bool,
     pub updating_albums: bool,
     pub updating_alphabetical_albums: bool,
     pub replay_gain_auto: bool,
     pub is_current_song_scrobbled: bool,
+    pub is_introducing_new_playlist_name: bool,
 }
 
 #[derive(Default)]
@@ -173,6 +177,7 @@ pub struct AppListStates {
     pub queue_list_state: ListState,
     pub popup_list_state: ListState,
     pub popup_genre_list_state: ListState,
+    pub popup_select_playlist_list_state: ListState,
     pub album_state: ListState,
     pub playlist_state: ListState,
     pub playlist_selected_state: ListState,
@@ -214,6 +219,7 @@ impl Default for App {
             albums_being_updated: 0,
             artist_pane: TwoPaneVertical::Left,
             playlist_pane: TwoPaneVertical::Left,
+            new_name: String::from(""),
         }
     }
 }
@@ -443,7 +449,7 @@ impl App {
         Ok(())
     }
 
-    pub async fn add_queue_next(&mut self) -> AppResult<()> {
+    pub fn add_queue_next(&mut self) -> AppResult<()> {
         let mut was_empty = false;
         let mut index_to_insert_to = if self.queue.is_empty() {
             was_empty = true;
@@ -508,7 +514,7 @@ impl App {
         Ok(())
     }
 
-    pub async fn add_queue_later(&mut self) -> AppResult<()> {
+    pub fn add_queue_later(&mut self) -> AppResult<()> {
         let was_empty = self.queue.is_empty();
         match self.item_to_be_added.media_type {
             MediaType::Song => {
@@ -555,6 +561,115 @@ impl App {
         }
         if was_empty {
             self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
+        }
+        Ok(())
+    }
+
+    pub fn add_to_playlist(&mut self) -> AppResult<()> {
+        let mut songs_to_add = vec![];
+        let mut duration_to_add: usize = 0;
+        match self.item_to_be_added.media_type {
+            MediaType::Song => {
+                songs_to_add.push(self.item_to_be_added.id.clone());
+                duration_to_add = self
+                    .database
+                    .songs()
+                    .get(&self.item_to_be_added.id)
+                    .unwrap()
+                    .duration()
+                    .parse()
+                    .unwrap();
+            }
+            MediaType::Album => {
+                let album = self.database.get_album(self.item_to_be_added.id.as_str());
+                for song in album.songs() {
+                    songs_to_add.push(song.clone());
+                    duration_to_add += self
+                        .database
+                        .songs()
+                        .get(song)
+                        .unwrap()
+                        .duration()
+                        .parse::<usize>()
+                        .unwrap();
+                }
+            }
+            MediaType::Playlist => {
+                let playlist = self
+                    .database
+                    .get_playlist(self.item_to_be_added.id.as_str());
+                for song in playlist.song_list() {
+                    songs_to_add.push(song.clone());
+                    duration_to_add += self
+                        .database
+                        .songs()
+                        .get(song)
+                        .unwrap()
+                        .duration()
+                        .parse::<usize>()
+                        .unwrap();
+                }
+            }
+            MediaType::Artist => {
+                for album_id in self
+                    .database
+                    .get_artist(self.item_to_be_added.id.as_str())
+                    .albums()
+                {
+                    let album = self.database.get_album(album_id.as_str());
+                    for song in album.songs() {
+                        songs_to_add.push(song.clone());
+                        duration_to_add += self
+                            .database
+                            .songs()
+                            .get(song)
+                            .unwrap()
+                            .duration()
+                            .parse::<usize>()
+                            .unwrap();
+                    }
+                }
+            }
+        }
+        let mut index = self
+            .list_states
+            .popup_select_playlist_list_state
+            .selected()
+            .unwrap();
+        if index == 0 {
+            let mut new_playlist = Playlist::default();
+            self.database
+                .set_number_of_local_playlists(self.database.number_of_local_playlists() + 1);
+            let playlist_id = "local_".to_owned()
+                + self
+                    .database
+                    .number_of_local_playlists()
+                    .to_string()
+                    .as_str();
+            new_playlist.set_id(playlist_id.clone());
+            new_playlist.set_name(self.new_name.clone());
+            new_playlist.set_song_count(songs_to_add.len().to_string());
+            new_playlist.set_duration(duration_to_add.to_string());
+            new_playlist.song_list_mut().append(&mut songs_to_add);
+            self.database.insert_playlist(playlist_id, new_playlist);
+            self.database
+                .set_alphabetical_playlists(sort_playlists_by_name(self.database.playlists()));
+            self.new_name.clear();
+        } else {
+            index -= 1;
+            let playlist_id = self
+                .database
+                .alphabetical_playlists()
+                .get(index)
+                .unwrap()
+                .clone();
+            let playlist = self.database.get_mut_playlist(playlist_id.as_str());
+            let duration = playlist.duration().parse::<usize>().unwrap();
+            let song_count = playlist.song_count().parse::<usize>().unwrap();
+            playlist.song_list_mut().append(&mut songs_to_add);
+            playlist.set_duration((duration + duration_to_add).to_string());
+            playlist.set_song_count((song_count + songs_to_add.len()).to_string());
+            playlist.set_modified(true);
         }
         Ok(())
     }
@@ -1217,12 +1332,13 @@ impl App {
             match self.current_popup {
                 Popup::AlbumInformation => &mut self.list_states.popup_list_state,
                 Popup::GenreFilter => &mut self.list_states.popup_genre_list_state,
+                Popup::SelectPlaylist => &mut self.list_states.popup_select_playlist_list_state,
                 _ => &mut self.list_states.popup_list_state,
             }
         };
         match move_operation {
-            AppMovementInList::Next => { list_state_item. select_next() }
-            AppMovementInList::Previous => { list_state_item.select_previous() }
+            AppMovementInList::Next => list_state_item.select_next(),
+            AppMovementInList::Previous => list_state_item.select_previous(),
             AppMovementInList::PageUp => {
                 list_state_item.select(Option::from(
                     list_state_item
@@ -1236,8 +1352,8 @@ impl App {
                     list_state_item.selected().unwrap() + constants::PAGE_SIZE,
                 ));
             }
-            AppMovementInList::First => { list_state_item.select_first() }
-            AppMovementInList::Last => { list_state_item.select_last() }
+            AppMovementInList::First => list_state_item.select_first(),
+            AppMovementInList::Last => list_state_item.select_last(),
         }
         Ok(())
     }
@@ -1378,6 +1494,12 @@ impl App {
             self.status = AppStatus::Updating
         } else {
             self.status = AppStatus::Connected;
+            if !(self.app_flags.updating_albums || self.app_flags.updating_alphabetical_albums)
+                && self.app_flags.updating_database
+            {
+                self.finish_database_update();
+                self.app_flags.updating_database = false;
+            }
         }
 
         // We will prioritize fetching the alphabetical album list to ensure we have all albums
@@ -1429,6 +1551,10 @@ impl App {
                             id,
                             Parser::parse_playlist(operation.result().to_string()).unwrap(),
                         );
+                        // We have the latest version from server, so remove modified flag
+                        self.database
+                            .get_mut_playlist(id.as_str())
+                            .set_modified(false);
                         operation.set_processed(true);
                     }
                     Operation::GetAlbumListAlphabetical(update, offset) => {
@@ -1473,7 +1599,6 @@ impl App {
                             // get album operation
                             if self.albums_being_updated == 0 {
                                 self.app_flags.updating_albums = false;
-                                self.finish_database_update();
                             }
                         }
                     }

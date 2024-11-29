@@ -43,10 +43,23 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         let mut playlist_items: Vec<ListItem> = Vec::new();
         for playlist_id in app.database.alphabetical_playlists() {
             let playlist = app.database.playlists().get(playlist_id).unwrap();
-            let playlist_item = Text::from(vec![Line::from(vec![Span {
-                content: playlist.name().into(),
-                style: Style::default().fg(Yellow),
-            }])]);
+            let modified_indicator = if playlist.modified() {
+                " - Modified"
+            } else if playlist.id().starts_with("local") {
+                " - Local"
+            } else {
+                ""
+            };
+            let playlist_item = Text::from(vec![Line::from(vec![
+                Span {
+                    content: playlist.name().into(),
+                    style: Style::default().fg(Yellow),
+                },
+                Span {
+                    content: modified_indicator.into(),
+                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                },
+            ])]);
             playlist_items.push(ListItem::from(playlist_item));
         }
         let list = List::new(playlist_items)

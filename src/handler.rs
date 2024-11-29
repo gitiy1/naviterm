@@ -1,4 +1,6 @@
-use crate::app::{App, AppMovementInList, AppResult, CurrentScreen, HomePane, MediaType, Popup, TwoPaneVertical};
+use crate::app::{
+    App, AppMovementInList, AppResult, CurrentScreen, HomePane, MediaType, Popup, TwoPaneVertical,
+};
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
@@ -40,6 +42,30 @@ pub async fn handle_key_events(
             KeyCode::Esc => {
                 app.app_flags.getting_search_string = false;
                 app.clear_search()?;
+            }
+            _ => {}
+        }
+        return Ok(());
+    }
+
+    if app.app_flags.is_introducing_new_playlist_name {
+        match key_event.code {
+            KeyCode::Backspace => {
+                if !app.search_string.is_empty() {
+                    app.new_name.remove(app.new_name.len() - 1);
+                }
+            }
+            KeyCode::Enter => {
+                app.app_flags.is_introducing_new_playlist_name = false;
+                app.add_to_playlist()?;
+                app.current_popup = Popup::None;
+            }
+            KeyCode::Char(c) => {
+                app.new_name.push(c);
+            }
+            KeyCode::Esc => {
+                app.new_name.clear();
+                app.app_flags.is_introducing_new_playlist_name = false;
             }
             _ => {}
         }
@@ -243,12 +269,15 @@ pub async fn handle_key_events(
             },
             Popup::AddTo => match key_event.code {
                 KeyCode::Char('n') => {
-                    app.add_queue_next().await?;
+                    app.add_queue_next()?;
                     app.current_popup = Popup::None;
                 }
                 KeyCode::Char('e') => {
-                    app.add_queue_later().await?;
+                    app.add_queue_later()?;
                     app.current_popup = Popup::None;
+                }
+                KeyCode::Char('p') => {
+                    app.current_popup = Popup::SelectPlaylist;
                 }
                 _ => {}
             },
@@ -282,6 +311,23 @@ pub async fn handle_key_events(
                 KeyCode::Char('a') => {
                     app.populate_db(true)?;
                     app.current_popup = Popup::None;
+                }
+                _ => {}
+            },
+            Popup::SelectPlaylist => match key_event.code {
+                KeyCode::Enter => {
+                    if app
+                        .list_states
+                        .popup_select_playlist_list_state
+                        .selected()
+                        .unwrap()
+                        == 0
+                    {
+                        app.app_flags.is_introducing_new_playlist_name = true;
+                    } else {
+                        app.add_to_playlist()?;
+                        app.current_popup = Popup::None;
+                    }
                 }
                 _ => {}
             },
