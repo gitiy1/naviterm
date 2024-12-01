@@ -25,6 +25,7 @@ pub enum SubsonicOperation {
     GetPlaylistList,
     GetPlaylist,
     CreatePlaylist,
+    DeletePlaylist,
     GetAlbum,
     DownloadSong,
     GetCoverArt,
@@ -221,6 +222,17 @@ impl Server {
             tx,
         );
 
+        self.operations.push(operation);
+    }
+    
+    pub fn delete_playlist_async(&mut self, playlist_id: &str) {
+        let url = self.build_url(
+            SubsonicOperation::DeletePlaylist,
+            vec![SubsonicParameter::PlaylistId(playlist_id.to_string())],
+        );
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(Operation::DeletePlaylist(playlist_id.to_string()), url, rx, tx);
+        
         self.operations.push(operation);
     }
 
@@ -500,6 +512,13 @@ impl Server {
                     self.user,
                     self.token,
                     self.salt
+                )
+            }
+            SubsonicOperation::DeletePlaylist => {
+                format!(
+                    "{}/navidrome/rest/deletePlaylist.view?id={}&\
+                u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
         };

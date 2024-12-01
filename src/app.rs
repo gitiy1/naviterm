@@ -94,6 +94,7 @@ pub enum Popup {
     UpdateDatabase,
     SelectPlaylist,
     SynchronizePlaylist,
+    ConfirmPlaylistDeletion,
     None,
 }
 
@@ -865,9 +866,10 @@ impl App {
         self.player.toggle_play_pause();
         Ok(())
     }
-    
+
     pub fn push_local_playlist(&mut self) -> AppResult<()> {
-        let playlist = self.database
+        let playlist = self
+            .database
             .playlists()
             .get(
                 self.database
@@ -876,7 +878,11 @@ impl App {
                     .unwrap(),
             )
             .unwrap();
-        self.server.create_playlist_async(playlist.name(), playlist.song_list().clone(), playlist.id());
+        self.server.create_playlist_async(
+            playlist.name(),
+            playlist.song_list().clone(),
+            playlist.id(),
+        );
         Ok(())
     }
 
@@ -1511,6 +1517,22 @@ impl App {
         song.set_play_count((play_count + 1).to_string());
     }
 
+    pub fn delete_selected_playlist(&mut self) -> AppResult<()> {
+        let playlist_id = self
+            .database
+            .alphabetical_playlists()
+            .get(self.list_states.playlist_state.selected().unwrap())
+            .unwrap()
+            .clone();
+        if !self.is_selected_playlist_local()? {
+            self.server.delete_playlist_async(playlist_id.as_str());
+        }
+        self.database.remove_playlist(playlist_id.as_str());
+        self.database
+            .set_alphabetical_playlists(sort_playlists_by_name(self.database.playlists()));
+        Ok(())
+    }
+
     pub fn process_pending_requests(&mut self) {
         self.server.process_async_operations();
 
@@ -1784,6 +1806,13 @@ impl App {
                     }
                     Operation::Scrobble(id) => {
                         debug!("Scrobble operation done for song id: {}", id);
+                        operation.set_processed(true);
+                    }
+                    Operation::DeletePlaylist(playlist_id) => {
+                        debug!(
+                            "DeletePlaylist operation done for playlist: {}",
+                            playlist_id
+                        );
                         operation.set_processed(true);
                     }
                 }

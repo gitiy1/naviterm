@@ -166,6 +166,11 @@ pub async fn handle_key_events(
                     }
                     app.add_queue_immediately()?;
                 }
+                KeyCode::Char('d') => {
+                    if app.playlist_pane == TwoPaneVertical::Left {
+                        app.current_popup = Popup::ConfirmPlaylistDeletion;
+                    }
+                }
                 _ => {}
             },
             CurrentScreen::Artists => match key_event.code {
@@ -357,6 +362,16 @@ pub async fn handle_key_events(
                        _ => {}
                    }
                }
+            }
+            Popup::ConfirmPlaylistDeletion => match key_event.code {
+                KeyCode::Char('y') => {
+                    app.delete_selected_playlist()?;
+                    app.current_popup = Popup::None;
+                }
+                KeyCode::Char('n') => {
+                    app.current_popup = Popup::None;
+                }
+                _ => {}
             }
             Popup::None => {}
         }

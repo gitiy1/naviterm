@@ -5,6 +5,7 @@ pub enum Operation {
     GetPlaylistList(bool),
     GetPlaylist(String),
     CreatePlaylist(String),
+    DeletePlaylist(String),
     GetAlbumListAlphabetical(bool, usize),
     GetAlbumListRecent(),
     GetAlbumListRecentlyAdded(),

@@ -13,3 +13,4 @@ mod utils;
 mod tab_artists;
 mod popup_select_playlist;
 mod popup_synchronize_playlist;
+mod popup_deletion_playlist;
