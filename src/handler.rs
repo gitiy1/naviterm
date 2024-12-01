@@ -155,6 +155,9 @@ pub async fn handle_key_events(
                     app.current_popup = Popup::AddTo;
                     app.set_item_to_be_added(MediaType::Playlist)?;
                 }
+                KeyCode::Char('s') => {
+                    app.current_popup = Popup::SynchronizePlaylist;
+                }
                 KeyCode::Enter => {
                     if app.playlist_pane == TwoPaneVertical::Left {
                         app.set_item_to_be_added(MediaType::Playlist)?;
@@ -331,6 +334,30 @@ pub async fn handle_key_events(
                 }
                 _ => {}
             },
+            Popup::SynchronizePlaylist => {
+               if app.is_selected_playlist_local()? {
+                   match key_event.code {
+                       KeyCode::Char('y') => {
+                           app.push_local_playlist()?;
+                           app.current_popup = Popup::None;
+                       }
+                       KeyCode::Char('n') => {
+                           app.current_popup = Popup::None;
+                       }
+                       _ => {}
+                   }
+               } else {
+                   match key_event.code {
+                       KeyCode::Char('l') => {
+                           app.current_popup = Popup::None;
+                       }
+                       KeyCode::Char('r') => {
+                           app.current_popup = Popup::None;
+                       }
+                       _ => {}
+                   }
+               }
+            }
             Popup::None => {}
         }
         // Exit popup no matter the current_popup

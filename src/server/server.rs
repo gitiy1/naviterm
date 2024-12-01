@@ -24,6 +24,7 @@ pub enum SubsonicOperation {
     GetAlbumListByGenreAndMostListened,
     GetPlaylistList,
     GetPlaylist,
+    CreatePlaylist,
     GetAlbum,
     DownloadSong,
     GetCoverArt,
@@ -37,6 +38,8 @@ enum SubsonicParameter {
     AlbumId(String),
     SongId(String),
     PlaylistId(String),
+    PlaylistName(String),
+    PlaylistSongs(Vec<String>),
     Size(usize),
     Offset(usize),
 }
@@ -50,6 +53,8 @@ impl Display for SubsonicParameter {
             SubsonicParameter::Size(val) => val.to_string(),
             SubsonicParameter::Offset(val) => val.to_string(),
             SubsonicParameter::PlaylistId(val) => val.to_string(),
+            SubsonicParameter::PlaylistName(val) => val.to_string(),
+            SubsonicParameter::PlaylistSongs(song_vector) => song_vector.join("&songId="),
         };
         write!(f, "{}", str)
     }
@@ -148,9 +153,9 @@ impl Server {
 
     pub async fn test_connection(&mut self) -> AppResult<()> {
         let url = self.build_url(SubsonicOperation::Ping, vec![SubsonicParameter::None]);
-        let response_text = self.make_request_text(url).await.unwrap();
+        let response_text = self.make_request_text(url).await?;
 
-        let connection_status = Parser::parse_connection_status(response_text).unwrap();
+        let connection_status = Parser::parse_connection_status(response_text)?;
         self.connection_status = connection_status.status().to_string();
         self.server_version = connection_status.server_version().to_string();
         self.connection_code = connection_status.error_code().to_string();
@@ -191,6 +196,26 @@ impl Server {
         let (tx, rx) = mpsc::unbounded_channel();
         let operation = AsyncOperation::new(
             Operation::GetPlaylist(playlist_id.to_string()),
+            url.clone(),
+            rx,
+            tx,
+        );
+
+        self.operations.push(operation);
+    }
+
+    pub fn create_playlist_async(&mut self, name: &str, songs: Vec<String>, temporary_playlist_id: &str) {
+        let url = self.build_url(
+            SubsonicOperation::CreatePlaylist,
+            vec![
+                SubsonicParameter::PlaylistName(name.to_string()),
+                SubsonicParameter::PlaylistSongs(songs),
+            ],
+        );
+        
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(
+            Operation::CreatePlaylist(temporary_playlist_id.to_string()),
             url.clone(),
             rx,
             tx,
@@ -287,7 +312,7 @@ impl Server {
     pub async fn get_album_songs(&mut self, album_id: &str) -> AppResult<Vec<Song>> {
         let parameters = vec![SubsonicParameter::AlbumId(String::from(album_id))];
         let url = self.build_url(SubsonicOperation::GetAlbum, parameters);
-        let response_text = self.make_request_text(url).await.unwrap();
+        let response_text = self.make_request_text(url).await?;
 
         let parsed_media = Parser::parse_album_songs(response_text);
 
@@ -463,6 +488,18 @@ impl Server {
                     "{}/navidrome/rest/scrobble?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
+                )
+            }
+            SubsonicOperation::CreatePlaylist => {
+                format!(
+                    "{}/navidrome/rest/createPlaylist.view?name={}&\
+                    songId={}&u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address,
+                    parameters[0],
+                    parameters[1],
+                    self.user,
+                    self.token,
+                    self.salt
                 )
             }
         };

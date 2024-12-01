@@ -93,6 +93,7 @@ pub enum Popup {
     GenreFilter,
     UpdateDatabase,
     SelectPlaylist,
+    SynchronizePlaylist,
     None,
 }
 
@@ -669,7 +670,9 @@ impl App {
             playlist.song_list_mut().append(&mut songs_to_add);
             playlist.set_duration((duration + duration_to_add).to_string());
             playlist.set_song_count((song_count + songs_to_add.len()).to_string());
-            playlist.set_modified(true);
+            if !playlist.id().starts_with("local") {
+                playlist.set_modified(true);
+            }
         }
         Ok(())
     }
@@ -860,6 +863,20 @@ impl App {
 
     pub fn toggle_playing_status(&mut self) -> AppResult<()> {
         self.player.toggle_play_pause();
+        Ok(())
+    }
+    
+    pub fn push_local_playlist(&mut self) -> AppResult<()> {
+        let playlist = self.database
+            .playlists()
+            .get(
+                self.database
+                    .alphabetical_playlists()
+                    .get(self.list_states.playlist_state.selected().unwrap())
+                    .unwrap(),
+            )
+            .unwrap();
+        self.server.create_playlist_async(playlist.name(), playlist.song_list().clone(), playlist.id());
         Ok(())
     }
 
@@ -1473,6 +1490,15 @@ impl App {
         Ok(())
     }
 
+    pub fn is_selected_playlist_local(&self) -> AppResult<bool> {
+        Ok(self
+            .database
+            .alphabetical_playlists()
+            .get(self.list_states.playlist_state.selected().unwrap())
+            .unwrap()
+            .starts_with("local"))
+    }
+
     fn increase_play_count_for_current_song_in_database(&mut self, song_id: String) {
         let song = self.database.get_song_mut(song_id.as_str());
         let play_count = song.play_count().parse::<usize>().unwrap_or_default();
@@ -1555,6 +1581,29 @@ impl App {
                         self.database
                             .get_mut_playlist(id.as_str())
                             .set_modified(false);
+                        operation.set_processed(true);
+                    }
+                    Operation::CreatePlaylist(temporary_id) => {
+                        if self.app_flags.updating_albums
+                            || self.app_flags.updating_alphabetical_albums
+                        {
+                            continue;
+                        }
+                        match Parser::parse_playlist_id(operation.result().to_string()) {
+                            Ok(playlist_id) => {
+                                let mut updated_playlist =
+                                    self.database.remove_playlist(temporary_id);
+                                updated_playlist.set_id(playlist_id.clone());
+                                self.database.insert_playlist(playlist_id, updated_playlist);
+                                self.database
+                                    .set_alphabetical_playlists(sort_playlists_by_name(
+                                        self.database.playlists(),
+                                    ));
+                            }
+                            Err(e) => {
+                                warn!("Could not parse playlist id: {}", e);
+                            }
+                        }
                         operation.set_processed(true);
                     }
                     Operation::GetAlbumListAlphabetical(update, offset) => {

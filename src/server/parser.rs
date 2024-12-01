@@ -335,4 +335,17 @@ impl Parser {
         }
         Ok(playlists_songs)
     }
+
+    pub fn parse_playlist_id(response: String) -> AppResult<String> {
+        let root: minidom::Element = response.parse().unwrap();
+
+        let playlist = root.get_child("playlist", Self::NAMESPACE).unwrap();
+        for attribute in playlist.attrs() {
+            match attribute.0 {
+                "id" => return Ok(attribute.1.to_string()),
+                _ => {}
+            }
+        }
+        Err(Box::from("Could not find playlist id in server response"))
+    }
 }

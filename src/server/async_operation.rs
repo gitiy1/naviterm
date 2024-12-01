@@ -4,6 +4,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 pub enum Operation {
     GetPlaylistList(bool),
     GetPlaylist(String),
+    CreatePlaylist(String),
     GetAlbumListAlphabetical(bool, usize),
     GetAlbumListRecent(),
     GetAlbumListRecentlyAdded(),

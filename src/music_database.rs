@@ -128,6 +128,10 @@ impl MusicDatabase {
     pub fn insert_playlist(&mut self, id: String, playlist: Playlist) {
         self.playlists.insert(id, playlist);
     }
+    
+    pub fn remove_playlist(&mut self, id: &str) -> Playlist {
+        self.playlists.remove(id).unwrap()
+    }
 
     pub fn delete_playlist(&mut self, id: String) {
         self.playlists.remove(&id);
