@@ -25,6 +25,7 @@ pub enum SubsonicOperation {
     GetPlaylistList,
     GetPlaylist,
     CreatePlaylist,
+    UpdatePlaylist,
     DeletePlaylist,
     GetAlbum,
     DownloadSong,
@@ -224,7 +225,27 @@ impl Server {
 
         self.operations.push(operation);
     }
-    
+
+    pub fn update_playlist_async(&mut self,  songs: Vec<String>, playlist_id: &str) {
+        let url = self.build_url(
+            SubsonicOperation::UpdatePlaylist,
+            vec![
+                SubsonicParameter::PlaylistId(playlist_id.to_string()),
+                SubsonicParameter::PlaylistSongs(songs),
+            ],
+        );
+
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(
+            Operation::UpdatePlaylist(playlist_id.to_string()),
+            url.clone(),
+            rx,
+            tx,
+        );
+
+        self.operations.push(operation);
+    }
+
     pub fn delete_playlist_async(&mut self, playlist_id: &str) {
         let url = self.build_url(
             SubsonicOperation::DeletePlaylist,
@@ -519,6 +540,18 @@ impl Server {
                     "{}/navidrome/rest/deletePlaylist.view?id={}&\
                 u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
+                )
+            }
+            SubsonicOperation::UpdatePlaylist => {
+                format!(
+                    "{}/navidrome/rest/createPlaylist.view?playlistId={}&\
+                    songId={}&u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address,
+                    parameters[0],
+                    parameters[1],
+                    self.user,
+                    self.token,
+                    self.salt
                 )
             }
         };

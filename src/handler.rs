@@ -167,8 +167,10 @@ pub async fn handle_key_events(
                     app.add_queue_immediately()?;
                 }
                 KeyCode::Char('d') => {
-                    if app.playlist_pane == TwoPaneVertical::Left {
+                    if app.playlist_pane == TwoPaneVertical::Left && key_event.modifiers != KeyModifiers::CONTROL {
                         app.current_popup = Popup::ConfirmPlaylistDeletion;
+                    } else if app.playlist_pane == TwoPaneVertical::Right && key_event.modifiers != KeyModifiers::CONTROL {
+                        app.delete_selected_song_from_playlist()?;
                     }
                 }
                 _ => {}
@@ -354,9 +356,11 @@ pub async fn handle_key_events(
                } else {
                    match key_event.code {
                        KeyCode::Char('l') => {
+                           app.push_local_playlist()?;
                            app.current_popup = Popup::None;
                        }
                        KeyCode::Char('r') => {
+                           app.pull_remote_playlist()?;
                            app.current_popup = Popup::None;
                        }
                        _ => {}

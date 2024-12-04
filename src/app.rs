@@ -878,14 +878,39 @@ impl App {
                     .unwrap(),
             )
             .unwrap();
-        self.server.create_playlist_async(
-            playlist.name(),
-            playlist.song_list().clone(),
-            playlist.id(),
-        );
+        self.server
+            .update_playlist_async(playlist.song_list().clone(), playlist.id());
         Ok(())
     }
 
+    pub fn pull_remote_playlist(&mut self) -> AppResult<()> {
+        let playlist = self
+            .database
+            .playlists()
+            .get(
+                self.database
+                    .alphabetical_playlists()
+                    .get(self.list_states.playlist_state.selected().unwrap())
+                    .unwrap(),
+            )
+            .unwrap();
+        self.server.get_playlist_async(playlist.id());
+        Ok(())
+    }
+
+    pub fn delete_selected_song_from_playlist(&mut self) -> AppResult<()> {
+        let playlist_id = self
+            .database
+            .alphabetical_playlists()
+            .get(self.list_states.playlist_state.selected().unwrap())
+            .unwrap().clone();
+        let song_index = self.list_states.playlist_selected_state.selected().unwrap();
+        let playlist = self.database.get_mut_playlist(playlist_id.as_str());
+        playlist.song_list_mut().remove(song_index);
+        playlist.set_modified(true);
+
+        Ok(())
+    }
     pub fn toggle_random_playback(&mut self) -> AppResult<()> {
         if self.queue.len() > 1 {
             if self.app_flags.random_playback {
@@ -1616,6 +1641,7 @@ impl App {
                                 let mut updated_playlist =
                                     self.database.remove_playlist(temporary_id);
                                 updated_playlist.set_id(playlist_id.clone());
+                                updated_playlist.set_modified(false);
                                 self.database.insert_playlist(playlist_id, updated_playlist);
                                 self.database
                                     .set_alphabetical_playlists(sort_playlists_by_name(
@@ -1813,6 +1839,16 @@ impl App {
                             "DeletePlaylist operation done for playlist: {}",
                             playlist_id
                         );
+                        operation.set_processed(true);
+                    }
+                    Operation::UpdatePlaylist(playlist_id) => {
+                        debug!(
+                            "UpdatePlaylist operation done for playlist: {}",
+                            playlist_id
+                        );
+                        self.database
+                            .get_mut_playlist(playlist_id)
+                            .set_modified(false);
                         operation.set_processed(true);
                     }
                 }
