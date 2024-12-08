@@ -226,4 +226,13 @@ impl MusicDatabase {
     pub fn set_number_of_local_playlists(&mut self, number_of_local_playlists: usize) {
         self.number_of_local_playlists = number_of_local_playlists;
     }
+    pub fn get_number_of_albums(&self) -> usize {
+        self.albums.len()
+    }
+    pub fn albums(&self) -> &HashMap<String, Album> {
+        &self.albums
+    }
+    pub fn remove_album(&mut self, id: &str) {
+        self.albums.remove(id);
+    }
 }

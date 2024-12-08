@@ -903,7 +903,8 @@ impl App {
             .database
             .alphabetical_playlists()
             .get(self.list_states.playlist_state.selected().unwrap())
-            .unwrap().clone();
+            .unwrap()
+            .clone();
         let song_index = self.list_states.playlist_selected_state.selected().unwrap();
         let playlist = self.database.get_mut_playlist(playlist_id.as_str());
         playlist.song_list_mut().remove(song_index);
@@ -1558,6 +1559,23 @@ impl App {
         Ok(())
     }
 
+    pub fn remove_albums_missing_in_server(&mut self) {
+        let missing_albums = self
+            .database
+            .albums()
+            .iter()
+            .filter(|(album_id, _)| !self.result_list_alphabetical.contains(album_id))
+            .map(|(album_id, _)| album_id.clone())
+            .collect::<Vec<_>>();
+        for album_id in missing_albums {
+            debug!(
+                "Album {} not found in server, deleting",
+                album_id
+            );
+            self.database.remove_album(album_id.as_str());
+        }
+    }
+
     pub fn process_pending_requests(&mut self) {
         self.server.process_async_operations();
 
@@ -1687,6 +1705,13 @@ impl App {
                                 .get_album_list_alphabetical_async(force_update, new_offset);
                         } else {
                             debug!("Alphabetical list was empty, finishing operation");
+                            if self.database.get_number_of_albums()
+                                > self.result_list_alphabetical.len()
+                            {
+                                debug!("Number of albums in database ({}) is greater than alphabetical list ({}), albums have been deleted!",
+                                    self.database.get_number_of_albums(), self.result_list_alphabetical.len());
+                                self.remove_albums_missing_in_server()
+                            }
                             self.database
                                 .set_alphabetical_albums(self.result_list_alphabetical.clone());
                             self.app_flags.updating_alphabetical_albums = false;
