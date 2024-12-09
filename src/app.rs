@@ -1564,7 +1564,7 @@ impl App {
             .database
             .albums()
             .iter()
-            .filter(|(album_id, _)| !self.result_list_alphabetical.contains(album_id))
+            .filter(|(album_id, _)| !self.database.alphabetical_list_albums().contains(album_id))
             .map(|(album_id, _)| album_id.clone())
             .collect::<Vec<_>>();
         for album_id in missing_albums {
@@ -1705,13 +1705,6 @@ impl App {
                                 .get_album_list_alphabetical_async(force_update, new_offset);
                         } else {
                             debug!("Alphabetical list was empty, finishing operation");
-                            if self.database.get_number_of_albums()
-                                > self.result_list_alphabetical.len()
-                            {
-                                debug!("Number of albums in database ({}) is greater than alphabetical list ({}), albums have been deleted!",
-                                    self.database.get_number_of_albums(), self.result_list_alphabetical.len());
-                                self.remove_albums_missing_in_server()
-                            }
                             self.database
                                 .set_alphabetical_albums(self.result_list_alphabetical.clone());
                             self.app_flags.updating_alphabetical_albums = false;
@@ -1883,6 +1876,13 @@ impl App {
     }
 
     fn finish_database_update(&mut self) {
+        if self.database.get_number_of_albums()
+            > self.database.alphabetical_list_albums().len()
+        {
+            debug!("Number of albums in database ({}) is greater than alphabetical list ({}), albums have been deleted!",
+                                    self.database.get_number_of_albums(), self.database.alphabetical_list_albums().len());
+            self.remove_albums_missing_in_server()
+        }
         self.process_filtered_album_list().unwrap();
         self.database
             .set_most_listened_tracks(sort_songs_by_play_count(self.database.songs()));
