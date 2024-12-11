@@ -1110,6 +1110,7 @@ impl App {
     fn play_current(&mut self, check_next_song: bool) {
         if check_next_song && self.app_flags.next_is_in_player_queue {
             self.app_flags.next_is_in_player_queue = false;
+            self.app_flags.is_current_song_scrobbled = false;
         } else {
             self.player.play_song(
                 self.server
@@ -1117,6 +1118,7 @@ impl App {
                     .as_str(),
             );
             self.app_flags.next_is_in_player_queue = false;
+            self.app_flags.is_current_song_scrobbled = false;
         }
         self.event_sender
             .as_ref()
@@ -1568,10 +1570,7 @@ impl App {
             .map(|(album_id, _)| album_id.clone())
             .collect::<Vec<_>>();
         for album_id in missing_albums {
-            debug!(
-                "Album {} not found in server, deleting",
-                album_id
-            );
+            debug!("Album {} not found in server, deleting", album_id);
             self.database.remove_album(album_id.as_str());
         }
     }
@@ -1738,7 +1737,7 @@ impl App {
                             self.database.insert_album(album_id.to_string(), album);
                         }
                         // If we do not have artist in database, create and insert. Otherwise, add
-                        // album to it.
+                        // album to it if it did not have it already.
                         if !self.database.contains_artist(artist.id()) {
                             debug!("Artist {} not in database, inserting", artist.name());
                             let artist_id = artist.id().to_string();
@@ -1746,7 +1745,12 @@ impl App {
                             self.database
                                 .get_artist_mut(artist_id.as_str())
                                 .insert_album(album_id.clone(), album_genres);
-                        } else {
+                        } else if !self
+                            .database
+                            .get_artist(artist.id())
+                            .albums()
+                            .contains(album_id)
+                        {
                             debug!(
                                 "Artist {} already in database. Adding album {} to it",
                                 artist.name(),
@@ -1755,6 +1759,8 @@ impl App {
                             self.database
                                 .get_artist_mut(artist.id())
                                 .insert_album(album_id.clone(), album_genres);
+                        } else {
+                            debug!("Artist {} already had album {}", artist.name(), album_id);
                         }
                         self.albums_being_updated -= 1;
                         operation.set_processed(true);
@@ -1763,7 +1769,6 @@ impl App {
                         if self.albums_being_updated == 0
                             && !self.app_flags.updating_alphabetical_albums
                         {
-                            self.finish_database_update();
                             self.app_flags.updating_albums = false;
                         }
                     }
@@ -1876,9 +1881,7 @@ impl App {
     }
 
     fn finish_database_update(&mut self) {
-        if self.database.get_number_of_albums()
-            > self.database.alphabetical_list_albums().len()
-        {
+        if self.database.get_number_of_albums() > self.database.alphabetical_list_albums().len() {
             debug!("Number of albums in database ({}) is greater than alphabetical list ({}), albums have been deleted!",
                                     self.database.get_number_of_albums(), self.database.alphabetical_list_albums().len());
             self.remove_albums_missing_in_server()
