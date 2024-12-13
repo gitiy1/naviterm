@@ -126,9 +126,7 @@ pub struct App {
     pub album_year_filter: String,
     pub album_sorting_mode: String,
     pub album_sorting_direction: String,
-    pub search_string: String,
-    pub index_in_search: usize,
-    pub search_results_indexes: Vec<usize>,
+    pub search_data: SearchData,
     pub status: AppStatus,
     pub result_list_alphabetical: Vec<String>,
     pub result_list_most_listened: Vec<String>,
@@ -144,6 +142,22 @@ pub struct ItemToBeAdded {
     pub id: String,
     pub parent_id: String,
     pub media_type: MediaType,
+}
+
+pub struct SearchData {
+    pub search_string: String,
+    pub index_in_search: usize,
+    pub search_results_indexes: Vec<usize>,
+}
+
+impl Default for SearchData {
+    fn default() -> Self {
+        SearchData {
+            search_string: String::from(""),
+            index_in_search: usize::MAX,
+            search_results_indexes: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -212,9 +226,7 @@ impl Default for App {
             album_year_filter: String::from("any"),
             album_sorting_mode: String::from("alphabetically"),
             album_sorting_direction: String::from("descending"),
-            index_in_search: usize::MAX,
-            search_string: String::from(""),
-            search_results_indexes: vec![],
+            search_data: SearchData::default(),
             status: AppStatus::Connected,
             result_list_most_listened: vec![],
             result_list_alphabetical: vec![],
@@ -1435,7 +1447,7 @@ impl App {
         };
 
         self.app_flags.upper_case_search = false;
-        for char in self.search_string.chars() {
+        for char in self.search_data.search_string.chars() {
             self.app_flags.upper_case_search = char.is_uppercase();
             if self.app_flags.upper_case_search {
                 break;
@@ -1449,12 +1461,12 @@ impl App {
             } else {
                 album.name().to_lowercase()
             };
-            if album_name_to_search.contains(self.search_string.as_str()) {
+            if album_name_to_search.contains(self.search_data.search_string.as_str()) {
                 debug!(
                     "album name: {}, matched string: {}",
-                    album_name_to_search, self.search_string
+                    album_name_to_search, self.search_data.search_string
                 );
-                self.search_results_indexes.push(index);
+                self.search_data.search_results_indexes.push(index);
             }
         }
 
@@ -1462,59 +1474,67 @@ impl App {
     }
     pub fn go_next_in_search(&mut self) -> AppResult<()> {
         let list_selected_state = match self.current_screen {
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::Top => {self.list_states.home_tab_top.selected().unwrap()},
+                HomePane::TopLeft => {self.list_states.home_tab_top_left.selected().unwrap()},
+                HomePane::TopRight => {self.list_states.home_tab_top_right.selected().unwrap()},
+                HomePane::Bottom => {self.list_states.home_tab_bottom.selected().unwrap()},
+                HomePane::BottomLeft => {self.list_states.home_tab_bottom_left.selected().unwrap()},
+                HomePane::BottomRight => {self.list_states.home_tab_bottom_right.selected().unwrap()},
+            }
             CurrentScreen::Albums => self.list_states.album_state.selected().unwrap(),
             _ => 0,
         };
-        if self.search_results_indexes.is_empty() {
+        if self.search_data.search_results_indexes.is_empty() {
             return Ok(());
         }
-        if self.index_in_search == usize::MAX {
+        if self.search_data.index_in_search == usize::MAX {
             // If we index is equal to MAX, we are starting search
             // We will try to get the search result after the current cursor position
-            self.index_in_search = 0;
-            while self.search_results_indexes[self.index_in_search] < list_selected_state {
-                if self.index_in_search < self.search_results_indexes.len() - 1 {
-                    self.index_in_search += 1;
+            self.search_data.index_in_search = 0;
+            while self.search_data.search_results_indexes[self.search_data.index_in_search] < list_selected_state {
+                if self.search_data.index_in_search < self.search_data.search_results_indexes.len() - 1 {
+                    self.search_data.index_in_search += 1;
                 } else {
                     break;
                 }
             }
-        } else if self.index_in_search == self.search_results_indexes.len() - 1 {
+        } else if self.search_data.index_in_search == self.search_data.search_results_indexes.len() - 1 {
             // If we are at the end, go back to beginning
-            self.index_in_search = 0;
+            self.search_data.index_in_search = 0;
         } else {
             // Else go to next result
-            self.index_in_search += 1;
+            self.search_data.index_in_search += 1;
         }
         self.app_flags.move_to_next_in_search = true;
         Ok(())
     }
 
     pub fn go_previous_in_search(&mut self) -> AppResult<()> {
-        if self.search_results_indexes.is_empty() {
+        if self.search_data.search_results_indexes.is_empty() {
             return Ok(());
         }
-        if self.index_in_search == usize::MAX || self.index_in_search == 0 {
-            self.index_in_search = self.search_results_indexes.len() - 1;
+        if self.search_data.index_in_search == usize::MAX || self.search_data.index_in_search == 0 {
+            self.search_data.index_in_search = self.search_data.search_results_indexes.len() - 1;
         } else {
-            self.index_in_search -= 1;
+            self.search_data.index_in_search -= 1;
         }
         self.app_flags.move_to_next_in_search = true;
         Ok(())
     }
 
     pub fn clear_search(&mut self) -> AppResult<()> {
-        self.search_string = "".to_string();
-        self.search_results_indexes.clear();
-        self.index_in_search = usize::MAX;
+        self.search_data.search_string = "".to_string();
+        self.search_data.search_results_indexes.clear();
+        self.search_data.index_in_search = usize::MAX;
         self.app_flags.move_to_next_in_search = false;
 
         Ok(())
     }
 
     pub fn clear_search_results(&mut self) -> AppResult<()> {
-        self.search_results_indexes.clear();
-        self.index_in_search = usize::MAX;
+        self.search_data.search_results_indexes.clear();
+        self.search_data.index_in_search = usize::MAX;
 
         Ok(())
     }

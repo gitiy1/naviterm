@@ -1,13 +1,13 @@
 use crate::app::{App, AppResult};
-use log::debug;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::prelude::Modifier;
-use ratatui::style::Color::{Black, Gray, Yellow};
+use ratatui::style::Color::{Yellow};
 use ratatui::style::Style;
-use ratatui::text::{Line, Span, Text};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::BorderType::Rounded;
-use ratatui::widgets::{Block, HighlightSpacing, List};
+use ratatui::widgets::{Block, HighlightSpacing, List, ListItem};
 use ratatui::Frame;
+use crate::ui::utils::get_text_for_album_item;
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let chunks = Layout::default()
@@ -93,82 +93,18 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         app.database.filtered_albums()
     };
 
-    let mut album_vector = Vec::new();
+    let mut items: Vec<ListItem> = Vec::new();
     for (index, album_id) in list.iter().enumerate() {
-        let album = app.database.get_album(album_id);
-        let album_name_to_search = if app.app_flags.upper_case_search {
-            album.name().to_string()
-        } else {
-            album.name().to_lowercase()
-        };
-        let mut album_first_line_vector: Vec<Span> = vec![];
-        let mut album_second_line_vector: Vec<Span> = vec![];
-        if !app.search_results_indexes.is_empty()
-            && index == *app.search_results_indexes.get(app.index_in_search).unwrap()
-        {
-            debug!("album: {}, search string: {}, album index: {}, app search index: {}, search matches indexes: {:?}", album_name_to_search, app.search_string, index, app.index_in_search, app.search_results_indexes);
-            let match_indices: Vec<_> = album_name_to_search
-                .match_indices(app.search_string.as_str())
-                .collect();
-            debug!("match: {:?}", match_indices);
-            let (first_index, first_match) = match_indices[0];
-            let first_slice = &album.name()[0..first_index];
-            let matched_slice = &album.name()[first_index..first_index + first_match.len()];
-            let last_slice = &album.name()[first_index + first_match.len()..];
-            album_first_line_vector.push(
-                Span::from(first_slice)
-                    .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
-            );
-            album_first_line_vector.push(
-                Span::from(matched_slice).style(
-                    Style::default()
-                        .fg(Black)
-                        .bg(Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-            );
-            album_first_line_vector.push(
-                Span::from(last_slice)
-                    .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
-            );
-        } else {
-            album_first_line_vector.push(
-                Span::from(album.name())
-                    .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
-            )
-        }
-        album_first_line_vector.push(Span {
-            content: " from ".into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-        });
-        album_first_line_vector.push(Span {
-            content: app.database.get_album(album_id).artist().into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-        });
-        album_second_line_vector.push(Span {
-            content: app.database.get_album(album_id).genres().join(", ").into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-        });
-        album_second_line_vector.push(Span {
-            content: ", ".into(),
-            style: Style::default(),
-        });
-        album_second_line_vector.push(Span {
-            content: app.database.get_album(album_id).song_count().into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-        });
-        album_second_line_vector.push(Span {
-            content: " songs".into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-        });
-        let album_item = Text::from(vec![
-            Line::from(album_first_line_vector),
-            Line::from(album_second_line_vector),
-        ]);
-        album_vector.push(album_item);
+        items.push(get_text_for_album_item(
+            &app.database,
+            &app.app_flags,
+            index,
+            album_id,
+            &app.search_data,
+            &app.home_pane,
+        ));
     }
-
-    let list = List::new(album_vector)
+    let list = List::new(items)
         .block(results_block)
         .highlight_symbol("-> ")
         .highlight_spacing(HighlightSpacing::Always);
@@ -178,7 +114,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     } else if app.app_flags.move_to_next_in_search {
         app.app_flags.move_to_next_in_search = false;
         app.list_states.album_state.select(Some(
-            *app.search_results_indexes.get(app.index_in_search).unwrap(),
+            *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),
         ));
     }
     frame.render_stateful_widget(list, chunks[1], &mut app.list_states.album_state);

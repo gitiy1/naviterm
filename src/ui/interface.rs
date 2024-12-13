@@ -61,26 +61,26 @@ fn draw_title(app: &mut App, title_area: Rect, frame: &mut Frame) {
     let horizontal = Layout::horizontal([Percentage(50), Percentage(50)]);
     let [search_area, status_area] = horizontal.areas(title_area);
     let mut search_line: Vec<Span> = vec![];
-    if !app.search_string.is_empty() || app.app_flags.getting_search_string {
+    if !app.search_data.search_string.is_empty() || app.app_flags.getting_search_string {
         search_line.push(Span::from("Searching: "));
         search_line.push(
-            Span::from(app.search_string.clone())
+            Span::from(app.search_data.search_string.clone())
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::ITALIC)),
         );
     }
-    if app.index_in_search != usize::MAX {
+    if app.search_data.index_in_search != usize::MAX {
         search_line.push(
             Span::from(format!(
                 " ({}/{})",
-                app.index_in_search + 1,
-                app.search_results_indexes.len()
+                app.search_data.index_in_search + 1,
+                app.search_data.search_results_indexes.len()
             ))
             .style(Style::default().fg(Gray).add_modifier(Modifier::ITALIC)),
         );
     }
-    if !app.search_string.is_empty()
+    if !app.search_data.search_string.is_empty()
         && !app.app_flags.getting_search_string
-        && app.search_results_indexes.is_empty()
+        && app.search_data.search_results_indexes.is_empty()
     {
         search_line.push(
             Span::from(" (Not found)")

@@ -19,13 +19,13 @@ pub async fn handle_key_events(
     if app.app_flags.getting_search_string {
         match key_event.code {
             KeyCode::Backspace => {
-                if !app.search_string.is_empty() {
-                    let mut chars = app.search_string.chars().collect::<Vec<char>>();
+                if !app.search_data.search_string.is_empty() {
+                    let mut chars = app.search_data.search_string.chars().collect::<Vec<char>>();
                     chars.pop();
-                    app.search_string = chars.iter().collect::<String>();
+                    app.search_data.search_string = chars.iter().collect::<String>();
                 }
                 app.clear_search_results()?;
-                if app.search_string.len() > 2 {
+                if app.search_data.search_string.len() > 2 {
                     app.search_in_current_list()?;
                     app.go_next_in_search()?;
                 }
@@ -34,8 +34,8 @@ pub async fn handle_key_events(
                 app.app_flags.getting_search_string = false;
             }
             KeyCode::Char(c) => {
-                app.search_string.push(c);
-                if app.search_string.len() > 2 {
+                app.search_data.search_string.push(c);
+                if app.search_data.search_string.len() > 2 {
                     app.clear_search_results()?;
                     app.search_in_current_list()?;
                     app.go_next_in_search()?;
@@ -53,7 +53,7 @@ pub async fn handle_key_events(
     if app.app_flags.is_introducing_new_playlist_name {
         match key_event.code {
             KeyCode::Backspace => {
-                if !app.search_string.is_empty() {
+                if !app.search_data.search_string.is_empty() {
                     let mut chars = app.new_name.chars().collect::<Vec<char>>();
                     chars.pop();
                     app.new_name = chars.iter().collect::<String>();
@@ -109,6 +109,12 @@ pub async fn handle_key_events(
                         app.set_item_to_be_added(MediaType::Album)?;
                     }
                     app.add_queue_immediately()?;
+                }
+                KeyCode::Char('n') => {
+                    app.go_next_in_search()?;
+                }
+                KeyCode::Char('N') => {
+                    app.go_previous_in_search()?;
                 }
                 // Other handlers you could add here.
                 _ => {}
@@ -252,6 +258,7 @@ pub async fn handle_key_events(
             app.app_flags.getting_search_string = true;
         }
         if key_event.code == KeyCode::Tab {
+            app.clear_search()?;
             app.cycle_pane()?;
         }
         if key_event.code == KeyCode::Char('p') || key_event.code == KeyCode::Char(' ') {
@@ -395,6 +402,7 @@ pub async fn handle_key_events(
     // Keycodes that should be considered not matter if in popup or not
     if key_event.code == KeyCode::Char('j') {
         if key_event.modifiers == KeyModifiers::CONTROL {
+            app.clear_search()?;
             app.try_go_down_pane()?
         } else {
             app.move_in_list(AppMovementInList::Next)?
@@ -402,15 +410,18 @@ pub async fn handle_key_events(
     }
     if key_event.code == KeyCode::Char('k') {
         if key_event.modifiers == KeyModifiers::CONTROL {
+            app.clear_search()?;
             app.try_go_up_pane()?
         } else {
             app.move_in_list(AppMovementInList::Previous)?
         }
     }
     if key_event.code == KeyCode::Char('h') && key_event.modifiers == KeyModifiers::CONTROL {
+        app.clear_search()?;
         app.try_go_left_pane()?;
     }
     if key_event.code == KeyCode::Char('l') && key_event.modifiers == KeyModifiers::CONTROL {
+        app.clear_search()?;
         app.try_go_right_pane()?;
     }
     if key_event.code == KeyCode::Char('d') {

@@ -1,4 +1,5 @@
 use crate::app::{App, AppHomeTabMode, AppResult, HomePane};
+use crate::ui::utils::{duration_to_hhmmss, get_text_for_album_item};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::{Modifier, Style};
@@ -6,7 +7,6 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
 use ratatui::Frame;
-use crate::ui::utils::duration_to_hhmmss;
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let chunks = Layout::default()
@@ -78,38 +78,17 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             chunks_top[0],
         );
     } else {
-        let items = recent_albums.iter().enumerate().map(|(_i, album_id)| {
-            let album = app.database.get_album(album_id);
-            let album_item = Text::from(vec![
-                Line::from(Span {
-                    content: album.name().into(),
-                    style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
-                }),
-                Line::from(vec![
-                    Span {
-                        content: "from ".into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: album.artist().into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: ", ".into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: album.song_count().into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: " songs".into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                ]),
-            ]);
-            ListItem::from(album_item)
-        });
+        let mut items: Vec<ListItem> = Vec::new();
+        for (index, album_id) in recent_albums.iter().enumerate() {
+            items.push(get_text_for_album_item(
+                &app.database,
+                &app.app_flags,
+                index,
+                album_id,
+                &app.search_data,
+                &app.home_pane,
+            ));
+        }
         let list = List::new(items)
             .block(block_recents)
             .highlight_symbol("-> ")
@@ -128,6 +107,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &mut app.list_states.home_tab_top_left
             }
         };
+        if app.app_flags.move_to_next_in_search && app.home_pane == HomePane::TopLeft {
+            app.app_flags.move_to_next_in_search = false;
+            list_state.select(Some(
+                *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),
+            ));
+        }
         frame.render_stateful_widget(list, chunks_top[0], list_state);
     }
 
@@ -240,7 +225,11 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         if app.list_states.home_tab_bottom_right.selected().is_none() {
             app.list_states.home_tab_bottom_right.select_first()
         }
-        frame.render_stateful_widget(list, chunks_bottom[1], &mut app.list_states.home_tab_bottom_right);
+        frame.render_stateful_widget(
+            list,
+            chunks_bottom[1],
+            &mut app.list_states.home_tab_bottom_right,
+        );
     }
 
     if recently_added_albums.is_empty() {
