@@ -20,7 +20,9 @@ pub async fn handle_key_events(
         match key_event.code {
             KeyCode::Backspace => {
                 if !app.search_string.is_empty() {
-                    app.search_string.remove(app.search_string.len() - 1);
+                    let mut chars = app.search_string.chars().collect::<Vec<char>>();
+                    chars.pop();
+                    app.search_string = chars.iter().collect::<String>();
                 }
                 app.clear_search_results()?;
                 if app.search_string.len() > 2 {
@@ -52,7 +54,9 @@ pub async fn handle_key_events(
         match key_event.code {
             KeyCode::Backspace => {
                 if !app.search_string.is_empty() {
-                    app.new_name.remove(app.new_name.len() - 1);
+                    let mut chars = app.new_name.chars().collect::<Vec<char>>();
+                    chars.pop();
+                    app.new_name = chars.iter().collect::<String>();
                 }
             }
             KeyCode::Enter => {
@@ -250,6 +254,9 @@ pub async fn handle_key_events(
         if key_event.code == KeyCode::Tab {
             app.cycle_pane()?;
         }
+        if key_event.code == KeyCode::Char('p') || key_event.code == KeyCode::Char(' ') {
+            handle_toggle_play_pause(app, iface_ref).await?
+        };
     } else {
         match app.current_popup {
             Popup::ConnectionTest => match key_event.code {
@@ -424,9 +431,6 @@ pub async fn handle_key_events(
     if key_event.code == KeyCode::Char('G') {
         app.move_in_list(AppMovementInList::Last)?;
     }
-    if key_event.code == KeyCode::Char('p') || key_event.code == KeyCode::Char(' ') {
-        handle_toggle_play_pause(app, iface_ref).await?
-    };
     if key_event.code == KeyCode::Char('r') {
         handle_shuffle_update(app, iface_ref).await?
     };
