@@ -1,5 +1,5 @@
 use crate::app::{App, AppResult, TwoPaneVertical};
-use crate::ui::utils::duration_to_hhmmss;
+use crate::ui::utils::{get_text_for_song_item};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::{Modifier, Style};
@@ -72,7 +72,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
 
         frame.render_stateful_widget(list, chunks[0], &mut app.list_states.playlist_state);
 
-        let song_items = app
+        let selected_playlist_songs = app
             .database
             .playlists()
             .get(
@@ -82,38 +82,36 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                     .unwrap(),
             )
             .unwrap()
-            .song_list()
-            .iter()
-            .enumerate()
-            .map(|(_i, song_id)| {
-                let song = app.database.get_song(song_id);
-                let song_item = Text::from(vec![Line::from(vec![
-                    Span {
-                        content: song.title().into(),
-                        style: Style::default().fg(Yellow),
-                    },
-                    Span {
-                        content: " (".into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: duration_to_hhmmss(song.duration()).into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: ")".into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                ])]);
-                ListItem::from(song_item)
-            });
-        let list = List::new(song_items)
+            .song_list();
+        
+        let mut items: Vec<ListItem> = Vec::new();
+        for (index, song_id) in selected_playlist_songs.iter().enumerate() {
+            items.push(get_text_for_song_item(
+                &app.database,
+                &app.app_flags,
+                index,
+                song_id,
+                &app.search_data,
+                app.playlist_pane.to_u8(),
+                TwoPaneVertical::Right as u8,
+            ));
+        }
+        
+        let list = List::new(items)
             .block(block_playlist_selected)
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
 
         if app.list_states.playlist_selected_state.selected().is_none() {
             app.list_states.playlist_selected_state.select_first()
+        } else if app.app_flags.move_to_next_in_search && app.playlist_pane == TwoPaneVertical::Right {
+            app.app_flags.move_to_next_in_search = false;
+            app.list_states.playlist_selected_state.select(Some(
+                *app.search_data
+                    .search_results_indexes
+                    .get(app.search_data.index_in_search)
+                    .unwrap(),
+            ));
         }
 
         frame.render_stateful_widget(

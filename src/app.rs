@@ -68,11 +68,33 @@ pub enum HomePane {
     BottomLeft,
     BottomRight,
 }
+// Implement a method to cast the enum to a u8
+impl HomePane {
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            HomePane::Top => 0,
+            HomePane::TopLeft => 1,
+            HomePane::TopRight => 2,
+            HomePane::Bottom => 3,
+            HomePane::BottomLeft => 4,
+            HomePane::BottomRight => 5,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum TwoPaneVertical {
     Left,
     Right,
+}
+
+impl TwoPaneVertical {
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            TwoPaneVertical::Left => 0,
+            TwoPaneVertical::Right => 1,
+        }
+    }
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -1425,24 +1447,86 @@ impl App {
         let list_to_be_searched = match self.current_screen {
             CurrentScreen::Home => match self.home_tab_mode {
                 AppHomeTabMode::OneColumn => match self.home_pane {
-                    HomePane::Top => self.database.recent_albums(),
-                    HomePane::Bottom => self.database.most_listened_albums(),
+                    HomePane::Top => self
+                        .database
+                        .recent_albums()
+                        .iter()
+                        .map(|album_id| self.database.get_album(album_id).name().to_string())
+                        .collect::<Vec<String>>(),
+                    HomePane::Bottom => self
+                        .database
+                        .most_listened_albums()
+                        .iter()
+                        .map(|album_id| self.database.get_album(album_id).name().to_string())
+                        .collect::<Vec<String>>(),
                     _ => {
                         panic!("Should not reach")
                     }
                 },
                 AppHomeTabMode::TwoColumns => match self.home_pane {
-                    HomePane::TopLeft => self.database.recent_albums(),
-                    HomePane::TopRight => self.database.recently_added_albums(),
-                    HomePane::BottomLeft => self.database.most_listened_albums(),
-                    HomePane::BottomRight => self.database.most_listened_tracks(),
+                    HomePane::TopLeft => self
+                        .database
+                        .recent_albums()
+                        .iter()
+                        .map(|album_id| self.database.get_album(album_id).name().to_string())
+                        .collect::<Vec<String>>(),
+                    HomePane::TopRight => self
+                        .database
+                        .recently_added_albums()
+                        .iter()
+                        .map(|album_id| self.database.get_album(album_id).name().to_string())
+                        .collect::<Vec<String>>(),
+                    HomePane::BottomLeft => self
+                        .database
+                        .most_listened_albums()
+                        .iter()
+                        .map(|album_id| self.database.get_album(album_id).name().to_string())
+                        .collect::<Vec<String>>(),
+                    HomePane::BottomRight => self
+                        .database
+                        .most_listened_tracks()
+                        .iter()
+                        .map(|song_id| self.database.get_song(song_id).title().to_string())
+                        .collect::<Vec<String>>(),
                     _ => {
                         panic!("Should not reach")
                     }
                 },
             },
-            CurrentScreen::Albums => self.database.filtered_albums(),
-            CurrentScreen::Queue => &self.queue,
+            CurrentScreen::Albums => self
+                .database
+                .filtered_albums()
+                .iter()
+                .map(|album_id| self.database.get_album(album_id).name().to_string())
+                .collect::<Vec<String>>(),
+            CurrentScreen::Playlists => match self.playlist_pane {
+                TwoPaneVertical::Left => self
+                    .database
+                    .alphabetical_playlists()
+                    .iter()
+                    .map(|playlist_id| self.database.get_playlist(playlist_id).name().to_string())
+                    .collect::<Vec<String>>(),
+                TwoPaneVertical::Right => {
+                    self.database
+                        .playlists()
+                        .get(
+                            self.database
+                                .alphabetical_playlists()
+                                .get(self.list_states.playlist_state.selected().unwrap())
+                                .unwrap(),
+                        )
+                        .unwrap()
+                        .song_list()
+                        .iter()
+                        .map(|song_id| self.database.get_song(song_id).title().to_string())
+                        .collect::<Vec<String>>()
+                }
+            },
+            CurrentScreen::Queue => self
+                .queue
+                .iter()
+                .map(|song_id| self.database.get_song(song_id).title().to_string())
+                .collect::<Vec<String>>(),
             _ => return Ok(()),
         };
 
@@ -1454,17 +1538,16 @@ impl App {
             }
         }
 
-        for (index, id) in list_to_be_searched.iter().enumerate() {
-            let album = self.database.get_album(id.as_str());
-            let album_name_to_search = if self.app_flags.upper_case_search {
-                album.name().to_string()
+        for (index, string) in list_to_be_searched.iter().enumerate() {
+            let string_to_search = if self.app_flags.upper_case_search {
+                string
             } else {
-                album.name().to_lowercase()
+                &string.to_lowercase()
             };
-            if album_name_to_search.contains(self.search_data.search_string.as_str()) {
+            if string_to_search.contains(self.search_data.search_string.as_str()) {
                 debug!(
-                    "album name: {}, matched string: {}",
-                    album_name_to_search, self.search_data.search_string
+                    "song title: {}, matched string: {}",
+                    string_to_search, self.search_data.search_string
                 );
                 self.search_data.search_results_indexes.push(index);
             }
@@ -1475,14 +1558,20 @@ impl App {
     pub fn go_next_in_search(&mut self) -> AppResult<()> {
         let list_selected_state = match self.current_screen {
             CurrentScreen::Home => match self.home_pane {
-                HomePane::Top => {self.list_states.home_tab_top.selected().unwrap()},
-                HomePane::TopLeft => {self.list_states.home_tab_top_left.selected().unwrap()},
-                HomePane::TopRight => {self.list_states.home_tab_top_right.selected().unwrap()},
-                HomePane::Bottom => {self.list_states.home_tab_bottom.selected().unwrap()},
-                HomePane::BottomLeft => {self.list_states.home_tab_bottom_left.selected().unwrap()},
-                HomePane::BottomRight => {self.list_states.home_tab_bottom_right.selected().unwrap()},
-            }
+                HomePane::Top => self.list_states.home_tab_top.selected().unwrap(),
+                HomePane::TopLeft => self.list_states.home_tab_top_left.selected().unwrap(),
+                HomePane::TopRight => self.list_states.home_tab_top_right.selected().unwrap(),
+                HomePane::Bottom => self.list_states.home_tab_bottom.selected().unwrap(),
+                HomePane::BottomLeft => self.list_states.home_tab_bottom_left.selected().unwrap(),
+                HomePane::BottomRight => self.list_states.home_tab_bottom_right.selected().unwrap(),
+            },
             CurrentScreen::Albums => self.list_states.album_state.selected().unwrap(),
+            CurrentScreen::Playlists => match self.playlist_pane {
+                TwoPaneVertical::Left => self.list_states.playlist_state.selected().unwrap(),
+                TwoPaneVertical::Right => {
+                    self.list_states.playlist_selected_state.selected().unwrap()
+                }
+            },
             _ => 0,
         };
         if self.search_data.search_results_indexes.is_empty() {
@@ -1492,14 +1581,20 @@ impl App {
             // If we index is equal to MAX, we are starting search
             // We will try to get the search result after the current cursor position
             self.search_data.index_in_search = 0;
-            while self.search_data.search_results_indexes[self.search_data.index_in_search] < list_selected_state {
-                if self.search_data.index_in_search < self.search_data.search_results_indexes.len() - 1 {
+            while self.search_data.search_results_indexes[self.search_data.index_in_search]
+                < list_selected_state
+            {
+                if self.search_data.index_in_search
+                    < self.search_data.search_results_indexes.len() - 1
+                {
                     self.search_data.index_in_search += 1;
                 } else {
                     break;
                 }
             }
-        } else if self.search_data.index_in_search == self.search_data.search_results_indexes.len() - 1 {
+        } else if self.search_data.index_in_search
+            == self.search_data.search_results_indexes.len() - 1
+        {
             // If we are at the end, go back to beginning
             self.search_data.index_in_search = 0;
         } else {

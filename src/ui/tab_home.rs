@@ -1,9 +1,9 @@
 use crate::app::{App, AppHomeTabMode, AppResult, HomePane};
-use crate::ui::utils::{duration_to_hhmmss, get_text_for_album_item};
+use crate::ui::utils::{get_text_for_album_item, get_text_for_song_item};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
-use ratatui::style::{Modifier, Style};
-use ratatui::text::{Line, Span, Text};
+use ratatui::style::{Style};
+use ratatui::text::{Line};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
 use ratatui::Frame;
@@ -87,6 +87,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 album_id,
                 &app.search_data,
                 &app.home_pane,
+                &HomePane::TopLeft,
             ));
         }
         let list = List::new(items)
@@ -110,7 +111,10 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         if app.app_flags.move_to_next_in_search && app.home_pane == HomePane::TopLeft {
             app.app_flags.move_to_next_in_search = false;
             list_state.select(Some(
-                *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),
+                *app.search_data
+                    .search_results_indexes
+                    .get(app.search_data.index_in_search)
+                    .unwrap(),
             ));
         }
         frame.render_stateful_widget(list, chunks_top[0], list_state);
@@ -124,41 +128,18 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             chunks_bottom[0],
         );
     } else {
-        let items = most_listened_albums
-            .iter()
-            .enumerate()
-            .map(|(_i, album_id)| {
-                let album = app.database.get_album(album_id);
-                let album_item = Text::from(vec![
-                    Line::from(Span {
-                        content: album.name().into(),
-                        style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
-                    }),
-                    Line::from(vec![
-                        Span {
-                            content: "from ".into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                        Span {
-                            content: album.artist().into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                        Span {
-                            content: ", ".into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                        Span {
-                            content: album.song_count().into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                        Span {
-                            content: " songs".into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                    ]),
-                ]);
-                ListItem::from(album_item)
-            });
+        let mut items: Vec<ListItem> = Vec::new();
+        for (index, album_id) in most_listened_albums.iter().enumerate() {
+            items.push(get_text_for_album_item(
+                &app.database,
+                &app.app_flags,
+                index,
+                album_id,
+                &app.search_data,
+                &app.home_pane,
+                &HomePane::BottomLeft,
+            ));
+        }
         let list = List::new(items)
             .block(block_most_listened)
             .highlight_symbol("-> ")
@@ -177,6 +158,15 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &mut app.list_states.home_tab_bottom_left
             }
         };
+        if app.app_flags.move_to_next_in_search && app.home_pane == HomePane::BottomLeft {
+            app.app_flags.move_to_next_in_search = false;
+            list_state.select(Some(
+                *app.search_data
+                    .search_results_indexes
+                    .get(app.search_data.index_in_search)
+                    .unwrap(),
+            ));
+        }
         frame.render_stateful_widget(list, chunks_bottom[0], list_state);
     }
 
@@ -188,42 +178,32 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             chunks_bottom[1],
         );
     } else {
-        let items = app.database.most_listened_tracks().iter().map(|song_id| {
-            let song = app.database.get_song(song_id);
-            let song_item = Text::from(vec![Line::from(vec![
-                Span {
-                    content: song.play_count().into(),
-                    style: Style::default().fg(Yellow),
-                },
-                Span {
-                    content: " plays - ".into(),
-                    style: Style::default(),
-                },
-                Span {
-                    content: song.title().into(),
-                    style: Style::default().fg(Yellow),
-                },
-                Span {
-                    content: " (".into(),
-                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                },
-                Span {
-                    content: duration_to_hhmmss(song.duration()).into(),
-                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                },
-                Span {
-                    content: ")".into(),
-                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                },
-            ])]);
-            ListItem::from(song_item)
-        });
+        let mut items: Vec<ListItem> = Vec::new();
+        for (index, song_id) in most_listened_tracks.iter().enumerate() {
+            items.push(get_text_for_song_item(
+                &app.database,
+                &app.app_flags,
+                index,
+                song_id,
+                &app.search_data,
+                app.home_pane.to_u8(),
+                HomePane::BottomRight as u8,
+            ));
+        }
         let list = List::new(items)
             .block(block_most_listened_tracks)
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
         if app.list_states.home_tab_bottom_right.selected().is_none() {
             app.list_states.home_tab_bottom_right.select_first()
+        } else if app.app_flags.move_to_next_in_search && app.home_pane == HomePane::BottomRight {
+            app.app_flags.move_to_next_in_search = false;
+            app.list_states.home_tab_bottom_right.select(Some(
+                *app.search_data
+                    .search_results_indexes
+                    .get(app.search_data.index_in_search)
+                    .unwrap(),
+            ));
         }
         frame.render_stateful_widget(
             list,
@@ -240,41 +220,18 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             chunks_top[1],
         );
     } else {
-        let items = recently_added_albums
-            .iter()
-            .enumerate()
-            .map(|(_i, album_id)| {
-                let album = app.database.get_album(album_id);
-                let album_item = Text::from(vec![
-                    Line::from(Span {
-                        content: album.name().into(),
-                        style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
-                    }),
-                    Line::from(vec![
-                        Span {
-                            content: "from ".into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                        Span {
-                            content: album.artist().into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                        Span {
-                            content: ", ".into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                        Span {
-                            content: album.song_count().into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                        Span {
-                            content: " songs".into(),
-                            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                        },
-                    ]),
-                ]);
-                ListItem::from(album_item)
-            });
+        let mut items: Vec<ListItem> = Vec::new();
+        for (index, album_id) in recently_added_albums.iter().enumerate() {
+            items.push(get_text_for_album_item(
+                &app.database,
+                &app.app_flags,
+                index,
+                album_id,
+                &app.search_data,
+                &app.home_pane,
+                &HomePane::TopRight,
+            ));
+        }
         let list = List::new(items)
             .block(block_recently_added)
             .highlight_symbol("-> ")
@@ -294,6 +251,15 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &mut app.list_states.home_tab_top_right
             }
         };
+        if app.app_flags.move_to_next_in_search && app.home_pane == HomePane::TopRight {
+            app.app_flags.move_to_next_in_search = false;
+            list_state.select(Some(
+                *app.search_data
+                    .search_results_indexes
+                    .get(app.search_data.index_in_search)
+                    .unwrap(),
+            ));
+        }
         frame.render_stateful_widget(list, chunks_top[1], list_state);
     }
 

@@ -76,7 +76,8 @@ pub fn get_text_for_album_item<'a>(
     index: usize,
     album_id: &str,
     search_data: &SearchData,
-    home_pane: &HomePane
+    home_pane: &HomePane,
+    current_pane: &HomePane,
 ) -> ListItem<'a> {
     let album = database.get_album(album_id);
     let album_name_to_search = if app_flags.upper_case_search {
@@ -88,7 +89,7 @@ pub fn get_text_for_album_item<'a>(
     let mut album_second_line_vector: Vec<Span> = vec![];
     if !search_data.search_results_indexes.is_empty()
         && index == *search_data.search_results_indexes.get(search_data.index_in_search).unwrap()
-        && *home_pane == HomePane::TopLeft
+        && *home_pane == *current_pane
     {
         debug!("album: {}, search string: {}, album index: {}, app search index: {}, search matches indexes: {:?}", album_name_to_search, search_data.search_string, index, search_data.index_in_search, search_data.search_results_indexes);
         let match_indices: Vec<_> = album_name_to_search
@@ -145,6 +146,85 @@ pub fn get_text_for_album_item<'a>(
     ListItem::from(Text::from(vec![
         Line::from(album_first_line_vector.clone()),
         Line::from(album_second_line_vector.clone()),
+    ]))
+}
+
+pub fn get_text_for_song_item<'a>(
+    database: &'a MusicDatabase,
+    app_flags: &AppFlags,
+    index: usize,
+    song_id: &str,
+    search_data: &SearchData,
+    searched_pane: u8,
+    current_pane: u8,
+) -> ListItem<'a> {
+    let song = database.get_song(song_id);
+    let song_name_to_search = if app_flags.upper_case_search {
+        song.title().to_string()
+    } else {
+        song.title().to_lowercase()
+    };
+    let mut song_first_line_vector: Vec<Span> = vec![];
+    let mut song_second_line_vector: Vec<Span> = vec![];
+    if !search_data.search_results_indexes.is_empty()
+        && index == *search_data.search_results_indexes.get(search_data.index_in_search).unwrap()
+        && searched_pane == current_pane
+    {
+        debug!("song: {}, search string: {}, album index: {}, app search index: {}, search matches indexes: {:?}", song_name_to_search, search_data.search_string, index, search_data.index_in_search, search_data.search_results_indexes);
+        let match_indices: Vec<_> = song_name_to_search
+            .match_indices(&search_data.search_string)
+            .collect();
+        debug!("match: {:?}", match_indices);
+        let (first_index, first_match) = match_indices[0];
+        let first_slice = &song.title()[0..first_index];
+        let matched_slice = &song.title()[first_index..first_index + first_match.len()];
+        let last_slice = &song.title()[first_index + first_match.len()..];
+        song_first_line_vector.push(
+            Span::from(first_slice.to_string())
+                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+        );
+        song_first_line_vector.push(
+            Span::from(matched_slice.to_string()).style(
+                Style::default()
+                    .fg(Black)
+                    .bg(Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+        song_first_line_vector.push(
+            Span::from(last_slice.to_string())
+                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+        );
+    } else {
+        song_first_line_vector.push(
+            Span::from(song.title())
+                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+        )
+    }
+    song_second_line_vector.push(Span {
+        content: duration_to_hhmmss(song.duration()).into(),
+        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+    });
+    song_second_line_vector.push(Span {
+        content: " - played ".into(),
+        style: Style::default().fg(Gray),
+    });
+    song_second_line_vector.push(Span {
+        content: song.play_count().into(),
+        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+    });
+    song_second_line_vector.push(Span {
+        content: " times, by ".into(),
+        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+    });
+    song_second_line_vector.push(Span {
+        content: song.artist().into(),
+        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+    });
+    
+    ListItem::from(Text::from(vec![
+        Line::from(song_first_line_vector.clone()),
+        Line::from(song_second_line_vector.clone()),
     ]))
 }
 
