@@ -399,3 +399,66 @@ pub fn get_text_for_playlist_item<'a>(
         playlist_first_line_vector.clone(),
     )]))
 }
+
+pub fn get_text_for_artist_item<'a>(
+    database: &'a MusicDatabase,
+    app_flags: &AppFlags,
+    index: usize,
+    artist_id: &str,
+    search_data: &SearchData,
+    searched_pane: u8,
+    current_pane: u8,
+) -> ListItem<'a> {
+    let artist = database.get_artist(artist_id);
+    let mut artist_first_line_vector: Vec<Span> = vec![];
+
+    if !search_data.search_results_indexes.is_empty()
+        && index
+        == *search_data
+        .search_results_indexes
+        .get(search_data.index_in_search)
+        .unwrap()
+        && searched_pane == current_pane
+    {
+        let artist_name_to_search = if app_flags.upper_case_search {
+            artist.name().to_string()
+        } else {
+            artist.name().to_lowercase()
+        };
+        debug!("playlist: {}, search string: {}, song index: {}, app search index: {}, search matches indexes: {:?}", artist_name_to_search, search_data.search_string, index, search_data.index_in_search, search_data.search_results_indexes);
+        let match_indices: Vec<_> = artist_name_to_search
+            .match_indices(&search_data.search_string)
+            .collect();
+        debug!("match: {:?}", match_indices);
+        let (first_index, first_match) = match_indices[0];
+        let first_slice = &artist.name()[0..first_index];
+        let matched_slice = &artist.name()[first_index..first_index + first_match.len()];
+        let last_slice = &artist.name()[first_index + first_match.len()..];
+        
+        artist_first_line_vector.push(
+            Span::from(first_slice.to_string())
+                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+        );
+        artist_first_line_vector.push(
+            Span::from(matched_slice.to_string()).style(
+                Style::default()
+                    .fg(Black)
+                    .bg(Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+        artist_first_line_vector.push(
+            Span::from(last_slice.to_string())
+                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+        );
+    } else { 
+        artist_first_line_vector.push(Span {
+            content: artist.name().into(),
+            style: Style::default().fg(Yellow),
+        })
+    }
+
+    ListItem::from(Text::from(vec![Line::from(
+        artist_first_line_vector.clone(),
+    )]))
+}

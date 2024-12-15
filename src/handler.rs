@@ -192,6 +192,12 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Artists => match key_event.code {
+                KeyCode::Char('n') => {
+                    app.go_next_in_search()?;
+                }
+                KeyCode::Char('N') => {
+                    app.go_previous_in_search()?;
+                }
                 KeyCode::Char('a') => {
                     app.current_popup = Popup::AddTo;
                     if app.artist_pane == TwoPaneVertical::Left {

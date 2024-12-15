@@ -1506,20 +1506,43 @@ impl App {
                     .iter()
                     .map(|playlist_id| self.database.get_playlist(playlist_id).name().to_string())
                     .collect::<Vec<String>>(),
+                TwoPaneVertical::Right => self
+                    .database
+                    .playlists()
+                    .get(
+                        self.database
+                            .alphabetical_playlists()
+                            .get(self.list_states.playlist_state.selected().unwrap())
+                            .unwrap(),
+                    )
+                    .unwrap()
+                    .song_list()
+                    .iter()
+                    .map(|song_id| self.database.get_song(song_id).title().to_string())
+                    .collect::<Vec<String>>(),
+            },
+            CurrentScreen::Artists => match self.artist_pane {
+                TwoPaneVertical::Left => self
+                    .database
+                    .alphabetical_artists()
+                    .iter()
+                    .map(|artist_id| self.database.get_artist(artist_id).name().to_string())
+                    .collect::<Vec<String>>(),
                 TwoPaneVertical::Right => {
-                    self.database
-                        .playlists()
-                        .get(
-                            self.database
-                                .alphabetical_playlists()
-                                .get(self.list_states.playlist_state.selected().unwrap())
-                                .unwrap(),
-                        )
-                        .unwrap()
-                        .song_list()
-                        .iter()
-                        .map(|song_id| self.database.get_song(song_id).title().to_string())
-                        .collect::<Vec<String>>()
+                    let mut result: Vec<String> = vec![];
+                    let selected_artist = self.database.get_artist(
+                        self.database
+                            .alphabetical_artists()
+                            .get(self.list_states.artist_state.selected().unwrap())
+                            .unwrap(),
+                    );
+                    for album_id in selected_artist.albums() {
+                        result.push(self.database.get_album(album_id).name().to_string());
+                        for song_id in self.database.get_album(album_id).songs() {
+                            result.push(self.database.get_song(song_id).title().to_string());
+                        }
+                    }
+                    result
                 }
             },
             CurrentScreen::Queue => self
@@ -1527,7 +1550,6 @@ impl App {
                 .iter()
                 .map(|song_id| self.database.get_song(song_id).title().to_string())
                 .collect::<Vec<String>>(),
-            _ => return Ok(()),
         };
 
         self.app_flags.upper_case_search = false;
@@ -1572,7 +1594,11 @@ impl App {
                     self.list_states.playlist_selected_state.selected().unwrap()
                 }
             },
-            _ => 0,
+            CurrentScreen::Artists => match self.artist_pane {
+                TwoPaneVertical::Left => self.list_states.artist_state.selected().unwrap(),
+                TwoPaneVertical::Right => self.list_states.artist_selected_state.selected().unwrap(),
+            }
+            CurrentScreen::Queue => self.list_states.queue_list_state.selected().unwrap(),
         };
         if self.search_data.search_results_indexes.is_empty() {
             return Ok(());

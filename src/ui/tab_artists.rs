@@ -1,5 +1,5 @@
 use crate::app::{App, AppResult, TwoPaneVertical};
-use crate::ui::utils::duration_to_hhmmss;
+use crate::ui::utils::{duration_to_hhmmss, get_text_for_artist_item};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::{Modifier, Style};
@@ -41,13 +41,16 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         );
     } else {
         let mut artists_items: Vec<ListItem> = Vec::new();
-        for artist_id in app.database.alphabetical_artists() {
-            let artist = app.database.get_artist(artist_id);
-            let artist_item = Text::from(vec![Line::from(vec![Span {
-                content: artist.name().into(),
-                style: Style::default().fg(Yellow),
-            }])]);
-            artists_items.push(ListItem::from(artist_item));
+        for (index, artist_id) in app.database.alphabetical_artists().iter().enumerate() {
+            artists_items.push(get_text_for_artist_item(
+               &app.database,
+               &app.app_flags,
+               index,
+               artist_id,
+               &app.search_data,
+               app.artist_pane.to_u8(),
+               TwoPaneVertical::Left as u8
+            ));
         }
         let list = List::new(artists_items)
             .block(block_artists)
@@ -56,6 +59,11 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         
         if app.list_states.artist_state.selected().is_none() {
             app.list_states.artist_state.select_first()
+        } else if app.app_flags.move_to_next_in_search {
+            app.app_flags.move_to_next_in_search = false;
+            app.list_states.artist_state.select(Some(
+                *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),
+            ));
         }
 
         frame.render_stateful_widget(list, chunks[0], &mut app.list_states.artist_state);
@@ -138,6 +146,11 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
 
         if app.list_states.artist_selected_state.selected().is_none() {
             app.list_states.artist_selected_state.select_first();
+        } else if app.app_flags.move_to_next_in_search {
+            app.app_flags.move_to_next_in_search = false;
+            app.list_states.artist_selected_state.select(Some(
+                *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),
+            ));
         }
 
         frame.render_stateful_widget(
