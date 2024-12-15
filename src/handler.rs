@@ -217,6 +217,12 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Queue => match key_event.code {
+                KeyCode::Char('n') => {
+                    app.go_next_in_search()?;
+                }
+                KeyCode::Char('N') => {
+                    app.go_previous_in_search()?;
+                }
                 KeyCode::Char('>') => app.play_next()?,
                 KeyCode::Char('<') => app.play_previous()?,
                 KeyCode::Char('c') => {
