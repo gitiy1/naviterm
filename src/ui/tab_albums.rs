@@ -101,8 +101,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             index,
             album_id,
             &app.search_data,
-            &app.home_pane,
-            &app.home_pane,
+            app.home_pane.to_u8(),
+            app.home_pane.to_u8(),
+            true
         ));
     }
     let list = List::new(items)

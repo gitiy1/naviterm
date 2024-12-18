@@ -89,6 +89,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &app.search_data,
                 app.playlist_pane.to_u8(),
                 TwoPaneVertical::Right as u8,
+                true,
+                false
             ));
         }
         

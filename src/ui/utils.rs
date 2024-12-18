@@ -1,4 +1,4 @@
-use crate::app::{AppFlags, HomePane, SearchData};
+use crate::app::{AppFlags, SearchData};
 use crate::music_database::MusicDatabase;
 use log::debug;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -76,8 +76,9 @@ pub fn get_text_for_album_item<'a>(
     index: usize,
     album_id: &str,
     search_data: &SearchData,
-    home_pane: &HomePane,
-    current_pane: &HomePane,
+    searched_pane: u8,
+    current_pane: u8,
+    include_artist: bool,
 ) -> ListItem<'a> {
     let album = database.get_album(album_id);
     let album_name_to_search = if app_flags.upper_case_search {
@@ -93,7 +94,7 @@ pub fn get_text_for_album_item<'a>(
                 .search_results_indexes
                 .get(search_data.index_in_search)
                 .unwrap()
-        && *home_pane == *current_pane
+        && searched_pane == current_pane
     {
         debug!("album: {}, search string: {}, album index: {}, app search index: {}, search matches indexes: {:?}", album_name_to_search, search_data.search_string, index, search_data.index_in_search, search_data.search_results_indexes);
         let match_indices: Vec<_> = album_name_to_search
@@ -126,16 +127,30 @@ pub fn get_text_for_album_item<'a>(
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
         )
     }
+    if include_artist {
+        album_second_line_vector.push(Span {
+            content: database.get_album(album_id).artist().into(),
+            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        });
+        album_second_line_vector.push(Span {
+            content: " - ".into(),
+            style: Style::default(),
+        });
+    }
     album_second_line_vector.push(Span {
-        content: "from ".into(),
+        content: duration_to_hhmmss(album.duration()).into(),
         style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
-        content: database.get_album(album_id).artist().into(),
+        content: " - ".into(),
+        style: Style::default(),
+    });
+    album_second_line_vector.push(Span {
+        content: album.genres().join(", ").into(),
         style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
-        content: ", ".into(),
+        content: " - ".into(),
         style: Style::default(),
     });
     album_second_line_vector.push(Span {
@@ -249,10 +264,16 @@ pub fn get_text_for_song_item<'a>(
     search_data: &SearchData,
     searched_pane: u8,
     current_pane: u8,
+    include_artist: bool,
+    indent: bool
 ) -> ListItem<'a> {
     let song = database.get_song(song_id);
     let mut song_first_line_vector: Vec<Span> = vec![];
     let mut song_second_line_vector: Vec<Span> = vec![];
+    if indent { 
+        song_first_line_vector.push(Span::from("  "));
+        song_second_line_vector.push(Span::from("  "));
+    }
     if !search_data.search_results_indexes.is_empty()
         && index
         == *search_data
@@ -277,7 +298,7 @@ pub fn get_text_for_song_item<'a>(
         let last_slice = &song.title()[first_index + first_match.len()..];
         song_first_line_vector.push(
             Span::from(first_slice.to_string())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+                .style(Style::default()),
         );
         song_first_line_vector.push(
             Span::from(matched_slice.to_string()).style(
@@ -289,12 +310,12 @@ pub fn get_text_for_song_item<'a>(
         );
         song_first_line_vector.push(
             Span::from(last_slice.to_string())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+                .style(Style::default()),
         );
     } else {
         song_first_line_vector.push(
             Span::from(song.title())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+                .style(Style::default()),
         )
     }
     song_second_line_vector.push(Span {
@@ -310,13 +331,19 @@ pub fn get_text_for_song_item<'a>(
         style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
     song_second_line_vector.push(Span {
-        content: " times, by ".into(),
+        content: " times".into(),
         style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
-    song_second_line_vector.push(Span {
-        content: song.artist().into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-    });
+    if include_artist {
+        song_second_line_vector.push(Span {
+            content: " - ".into(),
+            style: Style::default().fg(Gray),
+        });
+        song_second_line_vector.push(Span {
+            content: song.artist().into(),
+            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        });
+    }
 
     ListItem::from(Text::from(vec![
         Line::from(song_first_line_vector.clone()),

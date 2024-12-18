@@ -1,9 +1,9 @@
 use crate::app::{App, AppResult, TwoPaneVertical};
-use crate::ui::utils::{duration_to_hhmmss, get_text_for_artist_item};
+use crate::ui::utils::{get_text_for_album_item, get_text_for_artist_item, get_text_for_song_item};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
-use ratatui::style::{Modifier, Style};
-use ratatui::text::{Line, Span, Text};
+use ratatui::style::{Style};
+use ratatui::text::{Line};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
 use ratatui::Frame;
@@ -59,7 +59,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         
         if app.list_states.artist_state.selected().is_none() {
             app.list_states.artist_state.select_first()
-        } else if app.app_flags.move_to_next_in_search {
+        } else if app.app_flags.move_to_next_in_search && app.artist_pane == TwoPaneVertical::Left {
             app.app_flags.move_to_next_in_search = false;
             app.list_states.artist_state.select(Some(
                 *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),
@@ -76,67 +76,35 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         );
 
         let mut album_items: Vec<ListItem> = vec![];
+        let mut index = 0;
         for album_id in selected_artist.albums() {
             let album = app.database.get_album(album_id);
-            let album_item = Text::from(vec![
-                Line::from(vec![Span {
-                    content: album.name().into(),
-                    style: Style::default().fg(Yellow),
-                }]),
-                Line::from(vec![
-                    Span {
-                        content: duration_to_hhmmss(album.duration()).into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: " - ".into(),
-                        style: Style::default(),
-                    },
-                    Span {
-                        content: album.genres().join(", ").into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: " - ".into(),
-                        style: Style::default(),
-                    },
-                    Span {
-                        content: album.song_count().into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: " songs".into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                ]),
-            ]);
-            album_items.push(ListItem::from(album_item));
+            album_items.push(get_text_for_album_item(
+                    &app.database,
+                    &app.app_flags,
+                    index,
+                    album_id,
+                    &app.search_data,
+                    app.artist_pane.to_u8(),
+                    TwoPaneVertical::Right as u8,
+                    false
+                )
+            );
             for song_id in album.songs() {
-                let song = app.database.get_song(song_id);
-                let song_item = Text::from(Line::from(vec![
-                    Span {
-                        content: "  ".into(),
-                        style: Style::default(),
-                    },
-                    Span {
-                        content: song.title().into(),
-                        style: Style::default(),
-                    },
-                    Span {
-                        content: " (".into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: duration_to_hhmmss(song.duration()).into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                    Span {
-                        content: ")".into(),
-                        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                    },
-                ]));
-                album_items.push(ListItem::from(song_item));
+                index += 1;
+                album_items.push(get_text_for_song_item(
+                    &app.database,
+                    &app.app_flags,
+                    index,
+                    song_id,
+                    &app.search_data,
+                    app.artist_pane.to_u8(),
+                    TwoPaneVertical::Right as u8,
+                    false,
+                    true
+                ));
             }
+            index += 1;
         }
 
         let list = List::new(album_items)
@@ -146,7 +114,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
 
         if app.list_states.artist_selected_state.selected().is_none() {
             app.list_states.artist_selected_state.select_first();
-        } else if app.app_flags.move_to_next_in_search {
+        } else if app.app_flags.move_to_next_in_search && app.artist_pane == TwoPaneVertical::Right {
             app.app_flags.move_to_next_in_search = false;
             app.list_states.artist_selected_state.select(Some(
                 *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),

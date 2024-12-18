@@ -86,8 +86,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 index,
                 album_id,
                 &app.search_data,
-                &app.home_pane,
-                &HomePane::TopLeft,
+                app.home_pane.to_u8(),
+                HomePane::TopLeft as u8,
+                false
             ));
         }
         let list = List::new(items)
@@ -136,8 +137,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 index,
                 album_id,
                 &app.search_data,
-                &app.home_pane,
-                &HomePane::BottomLeft,
+                app.home_pane.to_u8(),
+                HomePane::BottomLeft as u8,
+                false
             ));
         }
         let list = List::new(items)
@@ -188,6 +190,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &app.search_data,
                 app.home_pane.to_u8(),
                 HomePane::BottomRight as u8,
+                true,
+                false
             ));
         }
         let list = List::new(items)
@@ -228,8 +232,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 index,
                 album_id,
                 &app.search_data,
-                &app.home_pane,
-                &HomePane::TopRight,
+                app.home_pane.to_u8(),
+                HomePane::TopRight as u8,
+                false
             ));
         }
         let list = List::new(items)
