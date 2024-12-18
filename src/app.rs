@@ -1334,6 +1334,37 @@ impl App {
         Ok(())
     }
 
+    pub fn try_move_selection_down(&mut self) -> AppResult<()> {
+        let current_index = self.list_states.playlist_selected_state.selected().unwrap();
+        let playlist_id = self.database
+            .alphabetical_playlists()
+            .get(self.list_states.playlist_state.selected().unwrap())
+            .unwrap().clone();
+        let playlist = self.database.get_mut_playlist(playlist_id.as_str());
+        let max_index = playlist.song_list_mut().len();
+        if current_index < max_index - 1 {
+            playlist.song_list_mut().swap(current_index, current_index + 1);
+            playlist.set_modified(true);
+            self.list_states.playlist_selected_state.select(Some(current_index + 1));
+        }
+        Ok(())
+    }
+
+    pub fn try_move_selection_up(&mut self) -> AppResult<()> {
+        let current_index = self.list_states.playlist_selected_state.selected().unwrap();
+        let playlist_id = self.database
+            .alphabetical_playlists()
+            .get(self.list_states.playlist_state.selected().unwrap())
+            .unwrap().clone();
+        let playlist = self.database.get_mut_playlist(playlist_id.as_str());
+        if current_index > 0  {
+            playlist.song_list_mut().swap(current_index, current_index - 1);
+            playlist.set_modified(true);
+            self.list_states.playlist_selected_state.select(Some(current_index - 1));
+        }
+        Ok(())
+    }
+
     pub fn set_volume(&mut self, new_volume: f64) -> AppResult<()> {
         self.player
             .set_volume((new_volume * 100.0).floor() as usize);
@@ -1596,8 +1627,10 @@ impl App {
             },
             CurrentScreen::Artists => match self.artist_pane {
                 TwoPaneVertical::Left => self.list_states.artist_state.selected().unwrap(),
-                TwoPaneVertical::Right => self.list_states.artist_selected_state.selected().unwrap(),
-            }
+                TwoPaneVertical::Right => {
+                    self.list_states.artist_selected_state.selected().unwrap()
+                }
+            },
             CurrentScreen::Queue => self.list_states.queue_list_state.selected().unwrap(),
         };
         if self.search_data.search_results_indexes.is_empty() {

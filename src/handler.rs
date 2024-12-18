@@ -153,6 +153,16 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Playlists => match key_event.code {
+                KeyCode::Char('K') => {
+                    if app.playlist_pane == TwoPaneVertical::Right {
+                        app.try_move_selection_up()?;
+                    }
+                }
+                KeyCode::Char('J') => {
+                    if app.playlist_pane == TwoPaneVertical::Right {
+                        app.try_move_selection_down()?;
+                    }
+                }
                 KeyCode::Char('n') => {
                     app.go_next_in_search()?;
                 }
