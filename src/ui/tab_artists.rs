@@ -45,6 +45,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             artists_items.push(get_text_for_artist_item(
                &app.database,
                &app.app_flags,
+               app.list_states.artist_state.selected().unwrap(),
                index,
                artist_id,
                &app.search_data,
@@ -57,9 +58,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
         
-        if app.list_states.artist_state.selected().is_none() {
-            app.list_states.artist_state.select_first()
-        } else if app.app_flags.move_to_next_in_search && app.artist_pane == TwoPaneVertical::Left {
+        if app.app_flags.move_to_next_in_search && app.artist_pane == TwoPaneVertical::Left {
             app.app_flags.move_to_next_in_search = false;
             app.list_states.artist_state.select(Some(
                 *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),
@@ -82,6 +81,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             album_items.push(get_text_for_album_item(
                     &app.database,
                     &app.app_flags,
+                    app.list_states.artist_selected_state.selected().unwrap(),
                     index,
                     album_id,
                     &app.search_data,
@@ -95,6 +95,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 album_items.push(get_text_for_song_item(
                     &app.database,
                     &app.app_flags,
+                    app.list_states.artist_selected_state.selected().unwrap(),
                     index,
                     song_id,
                     &app.search_data,
@@ -112,9 +113,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .highlight_symbol("-> ")
             .highlight_spacing(HighlightSpacing::Always);
 
-        if app.list_states.artist_selected_state.selected().is_none() {
-            app.list_states.artist_selected_state.select_first();
-        } else if app.app_flags.move_to_next_in_search && app.artist_pane == TwoPaneVertical::Right {
+        if app.app_flags.move_to_next_in_search && app.artist_pane == TwoPaneVertical::Right {
             app.app_flags.move_to_next_in_search = false;
             app.list_states.artist_selected_state.select(Some(
                 *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),

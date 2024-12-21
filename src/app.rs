@@ -204,7 +204,6 @@ pub struct NowPlaying {
     pub duration: String,
 }
 
-#[derive(Default)]
 pub struct AppListStates {
     pub home_tab_top: ListState,
     pub home_tab_top_left: ListState,
@@ -221,6 +220,34 @@ pub struct AppListStates {
     pub playlist_selected_state: ListState,
     pub artist_state: ListState,
     pub artist_selected_state: ListState,
+}
+
+impl AppListStates {
+    fn default() -> AppListStates {
+        AppListStates {
+            home_tab_top: AppListStates::initialize(),
+            home_tab_top_left: AppListStates::initialize(),
+            home_tab_top_right: AppListStates::initialize(),
+            home_tab_bottom: AppListStates::initialize(),
+            home_tab_bottom_left: AppListStates::initialize(),
+            home_tab_bottom_right: AppListStates::initialize(),
+            queue_list_state: AppListStates::initialize(),
+            popup_list_state: AppListStates::initialize(),
+            popup_genre_list_state: AppListStates::initialize(),
+            popup_select_playlist_list_state: AppListStates::initialize(),
+            album_state: AppListStates::initialize(),
+            playlist_state: AppListStates::initialize(),
+            playlist_selected_state: AppListStates::initialize(),
+            artist_state: AppListStates::initialize(),
+            artist_selected_state: AppListStates::initialize(),
+        }
+    }
+    
+    fn initialize() -> ListState {
+        let mut list_state = ListState::default();
+        list_state.select_first();
+        list_state
+    }
 }
 
 impl Default for App {

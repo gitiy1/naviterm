@@ -98,6 +98,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         items.push(get_text_for_album_item(
             &app.database,
             &app.app_flags,
+            app.list_states.album_state.selected().unwrap(),
             index,
             album_id,
             &app.search_data,
@@ -111,9 +112,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         .highlight_symbol("-> ")
         .highlight_spacing(HighlightSpacing::Always);
 
-    if app.list_states.album_state.selected().is_none() {
-        app.list_states.album_state.select_first()
-    } else if app.app_flags.move_to_next_in_search {
+    if app.app_flags.move_to_next_in_search {
         app.app_flags.move_to_next_in_search = false;
         app.list_states.album_state.select(Some(
             *app.search_data.search_results_indexes.get(app.search_data.index_in_search).unwrap(),

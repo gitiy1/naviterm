@@ -73,6 +73,7 @@ pub fn ellipse_line(line: &str, max_width: usize) -> String {
 pub fn get_text_for_album_item<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    selected_index: usize,
     index: usize,
     album_id: &str,
     search_data: &SearchData,
@@ -119,12 +120,17 @@ pub fn get_text_for_album_item<'a>(
         );
         album_first_line_vector.push(
             Span::from(last_slice.to_string())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+                .style(Style::default().fg(Yellow)),
         );
-    } else {
+    } else if index == selected_index {
         album_first_line_vector.push(
             Span::from(album.name())
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+        )
+    } else {
+        album_first_line_vector.push(
+            Span::from(album.name())
+                .style(Style::default()),
         )
     }
     if include_artist {
@@ -134,7 +140,7 @@ pub fn get_text_for_album_item<'a>(
         });
         album_second_line_vector.push(Span {
             content: " - ".into(),
-            style: Style::default(),
+            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
         });
     }
     album_second_line_vector.push(Span {
@@ -143,7 +149,7 @@ pub fn get_text_for_album_item<'a>(
     });
     album_second_line_vector.push(Span {
         content: " - ".into(),
-        style: Style::default(),
+        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
         content: album.genres().join(", ").into(),
@@ -151,7 +157,7 @@ pub fn get_text_for_album_item<'a>(
     });
     album_second_line_vector.push(Span {
         content: " - ".into(),
-        style: Style::default(),
+        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
         content: database.get_album(album_id).song_count().into(),
@@ -171,6 +177,7 @@ pub fn get_text_for_album_item<'a>(
 pub fn get_text_for_song_item_queue<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    selected_index: usize,
     index: usize,
     song_id: &str,
     search_data: &SearchData,
@@ -181,9 +188,12 @@ pub fn get_text_for_song_item_queue<'a>(
     let mut song_first_line_vector: Vec<Span> = vec![];
     let mut song_second_line_vector: Vec<Span> = vec![];
     let style_playing = if index == *queue_order.get(index_in_queue).unwrap() {
-        Style::default().fg(Green)
-    } else {
-        Style::default().fg(Yellow)
+        Style::default().fg(Green).add_modifier(Modifier::BOLD)
+    } else if index == selected_index {
+        Style::default().fg(Yellow).add_modifier(Modifier::BOLD)
+    }
+    else {
+        Style::default()
     };
     if !search_data.search_results_indexes.is_empty()
         && index
@@ -223,10 +233,15 @@ pub fn get_text_for_song_item_queue<'a>(
             Span::from(last_slice.to_string())
                 .style(style_playing).add_modifier(Modifier::BOLD),
         );
+    } else if index == selected_index {
+        song_first_line_vector.push(
+            Span::from(song.title())
+                .style(style_playing),
+        )
     } else {
         song_first_line_vector.push(
             Span::from(song.title())
-                .style(style_playing).add_modifier(Modifier::BOLD),
+                .style(style_playing),
         )
     }
     song_second_line_vector.push(Span {
@@ -235,7 +250,7 @@ pub fn get_text_for_song_item_queue<'a>(
     });
     song_second_line_vector.push(Span {
         content: " - played ".into(),
-        style: Style::default().fg(Gray),
+        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
     song_second_line_vector.push(Span {
         content: song.play_count().into(),
@@ -259,6 +274,7 @@ pub fn get_text_for_song_item_queue<'a>(
 pub fn get_text_for_song_item<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    selected_index: usize,
     index: usize,
     song_id: &str,
     search_data: &SearchData,
@@ -312,6 +328,11 @@ pub fn get_text_for_song_item<'a>(
             Span::from(last_slice.to_string())
                 .style(Style::default()),
         );
+    } else if index == selected_index {
+        song_first_line_vector.push(
+            Span::from(song.title())
+                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+        )
     } else {
         song_first_line_vector.push(
             Span::from(song.title())
@@ -324,7 +345,7 @@ pub fn get_text_for_song_item<'a>(
     });
     song_second_line_vector.push(Span {
         content: " - played ".into(),
-        style: Style::default().fg(Gray),
+        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
     song_second_line_vector.push(Span {
         content: song.play_count().into(),
@@ -337,7 +358,7 @@ pub fn get_text_for_song_item<'a>(
     if include_artist {
         song_second_line_vector.push(Span {
             content: " - ".into(),
-            style: Style::default().fg(Gray),
+            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
         });
         song_second_line_vector.push(Span {
             content: song.artist().into(),
@@ -354,6 +375,7 @@ pub fn get_text_for_song_item<'a>(
 pub fn get_text_for_playlist_item<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    selected_index: usize,
     index: usize,
     playlist_id: &str,
     search_data: &SearchData,
@@ -410,10 +432,15 @@ pub fn get_text_for_playlist_item<'a>(
             Span::from(last_slice.to_string())
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
         );
+    } else if index == selected_index {
+        playlist_first_line_vector.push(Span {
+            content: playlist.name().into(),
+            style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+        });
     } else {
         playlist_first_line_vector.push(Span {
             content: playlist.name().into(),
-            style: Style::default().fg(Yellow),
+            style: Style::default(),
         });
     }
     
@@ -430,6 +457,7 @@ pub fn get_text_for_playlist_item<'a>(
 pub fn get_text_for_artist_item<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    selected_index: usize,
     index: usize,
     artist_id: &str,
     search_data: &SearchData,
@@ -452,7 +480,7 @@ pub fn get_text_for_artist_item<'a>(
         } else {
             artist.name().to_lowercase()
         };
-        debug!("playlist: {}, search string: {}, song index: {}, app search index: {}, search matches indexes: {:?}", artist_name_to_search, search_data.search_string, index, search_data.index_in_search, search_data.search_results_indexes);
+        debug!("artist_item: {}, search string: {}, song index: {}, app search index: {}, search matches indexes: {:?}", artist_name_to_search, search_data.search_string, index, search_data.index_in_search, search_data.search_results_indexes);
         let match_indices: Vec<_> = artist_name_to_search
             .match_indices(&search_data.search_string)
             .collect();
@@ -478,10 +506,15 @@ pub fn get_text_for_artist_item<'a>(
             Span::from(last_slice.to_string())
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
         );
+    } else if index == selected_index {
+        artist_first_line_vector.push(Span {
+            content: artist.name().into(),
+            style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+        })
     } else { 
         artist_first_line_vector.push(Span {
             content: artist.name().into(),
-            style: Style::default().fg(Yellow),
+            style: Style::default(),
         })
     }
 
