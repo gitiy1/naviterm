@@ -344,16 +344,6 @@ impl Server {
         self.operations.push(operation);
     }
 
-    pub async fn get_album_songs(&mut self, album_id: &str) -> AppResult<Vec<Song>> {
-        let parameters = vec![SubsonicParameter::AlbumId(String::from(album_id))];
-        let url = self.build_url(SubsonicOperation::GetAlbum, parameters);
-        let response_text = self.make_request_text(url).await?;
-
-        let parsed_media = Parser::parse_album_songs(response_text);
-
-        Ok(parsed_media)
-    }
-
     pub fn get_song_url(&mut self, id: String) -> String {
         self.build_url(
             SubsonicOperation::DownloadSong,
