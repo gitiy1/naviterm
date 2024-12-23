@@ -4,14 +4,16 @@ use crate::model::song::Song;
 use crate::server::async_operation::{AsyncOperation, Operation};
 use crate::server::parser::Parser;
 use chrono;
-use log::{debug, error};
+use log::{debug, error, warn};
 use md5;
 use rand::distributions::{Alphanumeric, DistString};
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
 use reqwest::Client;
 use std::fmt::Display;
+use std::time::Duration;
 use std::vec;
 use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::time::sleep;
 
 #[derive(Clone, Copy)]
 pub enum SubsonicOperation {
@@ -596,12 +598,27 @@ fn process_atomic_operations(operation: &mut AsyncOperation) -> isize {
 
 async fn perform_request_async(url: String, sender: UnboundedSender<String>) {
     let client = Client::new();
-    let response = client
+    let mut response = client
         .get(&url)
         .header(CONTENT_TYPE, "application/json")
         .header(ACCEPT, "application/json")
         .send()
         .await;
+    
+    let mut retries = 1;
+    
+    while response.is_err() && retries <= 3 {
+        sleep(Duration::from_millis(100)).await;
+        warn!("Error while doing request: {:?}", response.err().unwrap());
+        warn!("Retrying request {}/3", retries);
+        retries += 1;
+        response = client
+            .get(&url)
+            .header(CONTENT_TYPE, "application/json")
+            .header(ACCEPT, "application/json")
+            .send()
+            .await;
+    }
 
     let result = match response {
         Ok(success_response) => match success_response.status() {
@@ -615,15 +632,10 @@ async fn perform_request_async(url: String, sender: UnboundedSender<String>) {
                     Err(_) => "error".into(),
                 }
             }
-            reqwest::StatusCode::UNAUTHORIZED => {
-                println!("Need to grab a new token\n");
-                "error".into()
-            }
             _ => "error".into(),
         },
         Err(err) => {
-            error!("Error while doing request: {:?}", err);
-            "error".into()
+            panic!("Error while doing request: {:?}", err);
         }
     };
 
