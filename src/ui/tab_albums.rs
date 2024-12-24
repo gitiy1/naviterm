@@ -7,7 +7,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem};
 use ratatui::Frame;
-use crate::ui::utils::get_text_for_album_item;
+use crate::ui::utils::{get_text_for_album_item, FormatFlags};
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let chunks = Layout::default()
@@ -94,6 +94,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     };
 
     let mut items: Vec<ListItem> = Vec::new();
+    let format_flags = FormatFlags {
+        include_artist: true,
+        include_track: false,
+        indent: false,
+        highlight_title: false,
+    };
     for (index, album_id) in list.iter().enumerate() {
         items.push(get_text_for_album_item(
             &app.database,
@@ -104,7 +110,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             &app.search_data,
             app.home_pane.to_u8(),
             app.home_pane.to_u8(),
-            true
+            &format_flags
         ));
     }
     let list = List::new(items)

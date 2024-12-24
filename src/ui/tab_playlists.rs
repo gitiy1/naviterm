@@ -1,5 +1,5 @@
 use crate::app::{App, AppResult, TwoPaneVertical};
-use crate::ui::utils::{get_text_for_playlist_item, get_text_for_song_item};
+use crate::ui::utils::{get_text_for_playlist_item, get_text_for_song_item, FormatFlags};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::Style;
@@ -83,6 +83,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .song_list();
 
         let mut items: Vec<ListItem> = Vec::new();
+        let format_flags = FormatFlags {
+            include_artist: true,
+            include_track: false,
+            indent: false,
+            highlight_title: true,
+        };
         for (index, song_id) in selected_playlist_songs.iter().enumerate() {
             items.push(get_text_for_song_item(
                 &app.database,
@@ -93,8 +99,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &app.search_data,
                 app.playlist_pane.to_u8(),
                 TwoPaneVertical::Right as u8,
-                true,
-                false,
+                &format_flags
             ));
         }
 

@@ -1,5 +1,5 @@
 use crate::app::{App, AppHomeTabMode, AppResult, HomePane};
-use crate::ui::utils::{get_text_for_album_item, get_text_for_song_item};
+use crate::ui::utils::{get_text_for_album_item, get_text_for_song_item, FormatFlags};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::{Style};
@@ -79,6 +79,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         );
     } else {
         let mut items: Vec<ListItem> = Vec::new();
+        let format_flags = FormatFlags {
+            include_artist: true,
+            include_track: false,
+            indent: false,
+            highlight_title: false,
+        };
         for (index, album_id) in recent_albums.iter().enumerate() {
             items.push(get_text_for_album_item(
                 &app.database,
@@ -89,7 +95,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &app.search_data,
                 app.home_pane.to_u8(),
                 HomePane::TopLeft as u8,
-                false
+                &format_flags
             ));
         }
         let list = List::new(items)
@@ -125,6 +131,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         );
     } else {
         let mut items: Vec<ListItem> = Vec::new();
+        let format_flags = FormatFlags {
+            include_artist: true,
+            include_track: false,
+            indent: false,
+            highlight_title: false,
+        };
         for (index, album_id) in most_listened_albums.iter().enumerate() {
             items.push(get_text_for_album_item(
                 &app.database,
@@ -135,7 +147,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &app.search_data,
                 app.home_pane.to_u8(),
                 HomePane::BottomLeft as u8,
-                false
+                &format_flags
             ));
         }
         let list = List::new(items)
@@ -171,6 +183,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         );
     } else {
         let mut items: Vec<ListItem> = Vec::new();
+        let format_flags = FormatFlags {
+            include_artist: true,
+            include_track: false,
+            indent: false,
+            highlight_title: false,
+        };
         for (index, song_id) in most_listened_tracks.iter().enumerate() {
             items.push(get_text_for_song_item(
                 &app.database,
@@ -181,8 +199,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &app.search_data,
                 app.home_pane.to_u8(),
                 HomePane::BottomRight as u8,
-                true,
-                false
+                &format_flags
             ));
         }
         let list = List::new(items)
@@ -214,6 +231,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         );
     } else {
         let mut items: Vec<ListItem> = Vec::new();
+        let format_flags = FormatFlags {
+            include_artist: true,
+            include_track: false,
+            indent: false,
+            highlight_title: false,
+        };
         for (index, album_id) in recently_added_albums.iter().enumerate() {
             items.push(get_text_for_album_item(
                 &app.database,
@@ -224,7 +247,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 &app.search_data,
                 app.home_pane.to_u8(),
                 HomePane::TopRight as u8,
-                false
+                &format_flags
             ));
         }
         let list = List::new(items)

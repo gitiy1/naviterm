@@ -1,5 +1,5 @@
 use crate::app::{App, AppResult, TwoPaneVertical};
-use crate::ui::utils::{get_text_for_album_item, get_text_for_artist_item, get_text_for_song_item};
+use crate::ui::utils::{get_text_for_album_item, get_text_for_artist_item, get_text_for_song_item, FormatFlags};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::{Style};
@@ -78,6 +78,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         let mut index = 0;
         for album_id in selected_artist.albums() {
             let album = app.database.get_album(album_id);
+            let format_flags = FormatFlags {
+                include_artist: false,
+                include_track: true,
+                indent: true,
+                highlight_title: true,
+            };
             album_items.push(get_text_for_album_item(
                     &app.database,
                     &app.app_flags,
@@ -87,7 +93,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                     &app.search_data,
                     app.artist_pane.to_u8(),
                     TwoPaneVertical::Right as u8,
-                    false
+                    &format_flags
                 )
             );
             for song_id in album.songs() {
@@ -101,8 +107,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                     &app.search_data,
                     app.artist_pane.to_u8(),
                     TwoPaneVertical::Right as u8,
-                    false,
-                    true
+                    &format_flags
                 ));
             }
             index += 1;

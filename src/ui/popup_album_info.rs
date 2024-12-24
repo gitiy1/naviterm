@@ -1,6 +1,6 @@
 use crate::app::{App, AppResult, CurrentScreen, HomePane};
 use crate::ui::utils;
-use crate::ui::utils::duration_to_hhmmss;
+use crate::ui::utils::{duration_to_hhmmss, get_text_for_song_item, FormatFlags};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::{Color, Modifier, Style};
@@ -108,58 +108,28 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             },
         ]),
     ]);
+    
+    let format_flags = FormatFlags {
+        include_artist: false,
+        include_track: true,
+        indent: false,
+        highlight_title: true,
+    };
 
-    let items = album.songs().iter().enumerate().map(|(_i, song_id)| {
-        let song = app.database.get_song(song_id);
-        let song_item = if song.track().is_empty() {
-            Text::from(Line::from(vec![
-                Span {
-                    content: song.title().into(),
-                    style: Style::default().fg(Yellow),
-                },
-                Span {
-                    content: " (".into(),
-                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                },
-                Span {
-                    content: duration_to_hhmmss(song.duration()).into(),
-                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                },
-                Span {
-                    content: ")".into(),
-                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                },
-            ]))
-        } else {
-            Text::from(Line::from(vec![
-                Span {
-                    content: format!("{:>3}", song.track()).into(),
-                    style: Style::default().fg(Gray),
-                },
-                Span {
-                    content: ". ".into(),
-                    style: Style::default().fg(Gray),
-                },
-                Span {
-                    content: song.title().into(),
-                    style: Style::default().fg(Yellow),
-                },
-                Span {
-                    content: " (".into(),
-                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                },
-                Span {
-                    content: duration_to_hhmmss(song.duration()).into(),
-                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                },
-                Span {
-                    content: ")".into(),
-                    style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-                },
-            ]))
-        };
-        ListItem::from(song_item)
-    });
+    let mut items: Vec<ListItem> = Vec::new();
+    for (index, song_id) in album.songs().iter().enumerate() {
+        items.push(get_text_for_song_item(
+            &app.database,
+            &app.app_flags,
+            app.list_states.popup_list_state.selected().unwrap(),
+            index,
+            song_id,
+            &app.search_data,
+            app.home_pane.to_u8(),
+            HomePane::BottomRight as u8,
+            &format_flags
+        ));
+    }
 
     if app.list_states.popup_list_state.selected().is_none() {
         app.list_states.popup_list_state.select_first()

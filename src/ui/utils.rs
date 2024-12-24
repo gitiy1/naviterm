@@ -7,6 +7,14 @@ use ratatui::prelude::{Line, Modifier, Span, Style, Stylize, Text};
 use ratatui::widgets::ListItem;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[derive(Default)]
+pub struct FormatFlags {
+    pub include_artist: bool,
+    pub include_track: bool,
+    pub indent: bool,
+    pub highlight_title: bool,
+}
+
 pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     // Cut the given rectangle into three vertical pieces
     let popup_layout = Layout::default()
@@ -79,7 +87,7 @@ pub fn get_text_for_album_item<'a>(
     search_data: &SearchData,
     searched_pane: u8,
     current_pane: u8,
-    include_artist: bool,
+    format_flags: &FormatFlags
 ) -> ListItem<'a> {
     let album = database.get_album(album_id);
     let album_name_to_search = if app_flags.upper_case_search {
@@ -127,13 +135,19 @@ pub fn get_text_for_album_item<'a>(
             Span::from(album.name())
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
         )
-    } else {
+    } else if format_flags.highlight_title {
+        album_first_line_vector.push(
+            Span::from(album.name())
+                .style(Style::default().fg(Yellow)),
+        )
+    }
+    else {
         album_first_line_vector.push(
             Span::from(album.name())
                 .style(Style::default()),
         )
     }
-    if include_artist {
+    if format_flags.include_artist {
         album_second_line_vector.push(Span {
             content: database.get_album(album_id).artist().into(),
             style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
@@ -280,16 +294,25 @@ pub fn get_text_for_song_item<'a>(
     search_data: &SearchData,
     searched_pane: u8,
     current_pane: u8,
-    include_artist: bool,
-    indent: bool
+    format_flags: &FormatFlags
 ) -> ListItem<'a> {
     let song = database.get_song(song_id);
     let mut song_first_line_vector: Vec<Span> = vec![];
     let mut song_second_line_vector: Vec<Span> = vec![];
-    if indent { 
+    
+    if format_flags.indent { 
         song_first_line_vector.push(Span::from("  "));
         song_second_line_vector.push(Span::from("  "));
     }
+    if format_flags.include_track {
+        if song.track().len() == 1 {
+            song_first_line_vector.push(Span::from(" ").style(Style::default().fg(Gray)));
+        }
+        song_first_line_vector.push(Span::from(song.track()).style(Style::default().fg(Gray)));
+        song_first_line_vector.push(Span::from(". ").style(Style::default().fg(Gray)));
+        song_second_line_vector.push(Span::from(" "));
+    }
+    
     if !search_data.search_results_indexes.is_empty()
         && index
         == *search_data
@@ -355,7 +378,7 @@ pub fn get_text_for_song_item<'a>(
         content: " times".into(),
         style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
-    if include_artist {
+    if format_flags.include_artist {
         song_second_line_vector.push(Span {
             content: " - ".into(),
             style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),

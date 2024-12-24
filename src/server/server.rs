@@ -1,6 +1,5 @@
 use crate::app::AppResult;
 use crate::constants::{ALBUM_LIST_CHUNK_SIZE, MAX_SIMULTANEOUS_OPERATIONS};
-use crate::model::song::Song;
 use crate::server::async_operation::{AsyncOperation, Operation};
 use crate::server::parser::Parser;
 use chrono;
