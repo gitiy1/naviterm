@@ -156,6 +156,7 @@ pub struct App {
     pub artist_pane: TwoPaneVertical,
     pub playlist_pane: TwoPaneVertical,
     pub new_name: String,
+    pub queue_data: QueueData,
 }
 
 #[derive(Default, Debug)]
@@ -242,12 +243,18 @@ impl AppListStates {
             artist_selected_state: AppListStates::initialize(),
         }
     }
-    
+
     fn initialize() -> ListState {
         let mut list_state = ListState::default();
         list_state.select_first();
         list_state
     }
+}
+
+#[derive(Default)]
+pub struct QueueData {
+    pub duration_total: String,
+    pub duration_left: String,
 }
 
 impl Default for App {
@@ -283,6 +290,7 @@ impl Default for App {
             artist_pane: TwoPaneVertical::Left,
             playlist_pane: TwoPaneVertical::Left,
             new_name: String::from(""),
+            queue_data: QueueData::default(),
         }
     }
 }
@@ -508,6 +516,7 @@ impl App {
                 self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
             }
         }
+        self.update_queue_data();
         self.play_current(false);
         Ok(())
     }
@@ -574,6 +583,7 @@ impl App {
         if was_empty {
             self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
         }
+        self.update_queue_data();
         Ok(())
     }
 
@@ -625,6 +635,7 @@ impl App {
         if was_empty {
             self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
         }
+        self.update_queue_data();
         Ok(())
     }
 
@@ -736,7 +747,29 @@ impl App {
                 playlist.set_modified(true);
             }
         }
+        self.update_queue_data();
         Ok(())
+    }
+
+    fn update_queue_data(&mut self) {
+        let mut duration_total = 0;
+        let mut duration_left = 0;
+
+        // Walk the queue and add songs duration to the total duration field. If the loop index is
+        // greater than the index in queue, we add that song duration to the remaining duration as
+        // well.
+        for (i, index_in_order_queue) in self.queue_order.iter().enumerate() {
+            let song = self
+                .database
+                .get_song(self.queue.get(*index_in_order_queue).unwrap());
+            duration_total += song.duration().parse::<usize>().unwrap();
+            if i >= self.index_in_queue {
+                duration_left += song.duration().parse::<usize>().unwrap();
+            }
+        }
+        
+        self.queue_data.duration_total = duration_total.to_string();
+        self.queue_data.duration_left = duration_left.to_string();
     }
 
     pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
@@ -992,6 +1025,7 @@ impl App {
             }
         }
         self.app_flags.random_playback = !self.app_flags.random_playback;
+        self.update_queue_data();
         Ok(())
     }
 
@@ -1096,12 +1130,14 @@ impl App {
         self.index_in_queue += 1;
         let next_index = self.queue_order.get(self.index_in_queue).unwrap();
         self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
+        self.update_queue_data();
     }
 
     fn go_previous_queue(&mut self) {
         self.index_in_queue -= 1;
         let next_index = self.queue_order.get(self.index_in_queue).unwrap();
         self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
+        self.update_queue_data();
     }
 
     pub fn play_queue_song(&mut self) -> AppResult<()> {
@@ -1124,6 +1160,7 @@ impl App {
             self.index_in_queue = 0;
         }
         self.play_current(false);
+        self.update_queue_data();
         Ok(())
     }
 
@@ -1363,31 +1400,43 @@ impl App {
 
     pub fn try_move_selection_down(&mut self) -> AppResult<()> {
         let current_index = self.list_states.playlist_selected_state.selected().unwrap();
-        let playlist_id = self.database
+        let playlist_id = self
+            .database
             .alphabetical_playlists()
             .get(self.list_states.playlist_state.selected().unwrap())
-            .unwrap().clone();
+            .unwrap()
+            .clone();
         let playlist = self.database.get_mut_playlist(playlist_id.as_str());
         let max_index = playlist.song_list_mut().len();
         if current_index < max_index - 1 {
-            playlist.song_list_mut().swap(current_index, current_index + 1);
+            playlist
+                .song_list_mut()
+                .swap(current_index, current_index + 1);
             playlist.set_modified(true);
-            self.list_states.playlist_selected_state.select(Some(current_index + 1));
+            self.list_states
+                .playlist_selected_state
+                .select(Some(current_index + 1));
         }
         Ok(())
     }
 
     pub fn try_move_selection_up(&mut self) -> AppResult<()> {
         let current_index = self.list_states.playlist_selected_state.selected().unwrap();
-        let playlist_id = self.database
+        let playlist_id = self
+            .database
             .alphabetical_playlists()
             .get(self.list_states.playlist_state.selected().unwrap())
-            .unwrap().clone();
+            .unwrap()
+            .clone();
         let playlist = self.database.get_mut_playlist(playlist_id.as_str());
-        if current_index > 0  {
-            playlist.song_list_mut().swap(current_index, current_index - 1);
+        if current_index > 0 {
+            playlist
+                .song_list_mut()
+                .swap(current_index, current_index - 1);
             playlist.set_modified(true);
-            self.list_states.playlist_selected_state.select(Some(current_index - 1));
+            self.list_states
+                .playlist_selected_state
+                .select(Some(current_index - 1));
         }
         Ok(())
     }

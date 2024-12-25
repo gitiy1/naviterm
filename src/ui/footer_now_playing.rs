@@ -1,6 +1,6 @@
 use ratatui::layout::Constraint::{Length, Percentage};
 use ratatui::layout::{Layout, Rect};
-use ratatui::prelude::Text;
+use ratatui::prelude::{Text};
 use ratatui::style::Color::{DarkGray, Gray, Yellow};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -84,6 +84,7 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
     let current_song_info = if app.now_playing.id.is_empty() {
         ratio = 0f64;
         Paragraph::new("Nothing in the playing queue")
+            .style(Style::default().fg(Gray))
     } else {
         let song = app.database.get_song(app.now_playing.id.as_str());
         ratio = (app.ticks_during_playing_state / 4) as f64

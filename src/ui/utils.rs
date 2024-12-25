@@ -87,7 +87,7 @@ pub fn get_text_for_album_item<'a>(
     search_data: &SearchData,
     searched_pane: u8,
     current_pane: u8,
-    format_flags: &FormatFlags
+    format_flags: &FormatFlags,
 ) -> ListItem<'a> {
     let album = database.get_album(album_id);
     let album_name_to_search = if app_flags.upper_case_search {
@@ -126,26 +126,17 @@ pub fn get_text_for_album_item<'a>(
                     .add_modifier(Modifier::BOLD),
             ),
         );
-        album_first_line_vector.push(
-            Span::from(last_slice.to_string())
-                .style(Style::default().fg(Yellow)),
-        );
+        album_first_line_vector
+            .push(Span::from(last_slice.to_string()).style(Style::default().fg(Yellow)));
     } else if index == selected_index {
         album_first_line_vector.push(
             Span::from(album.name())
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
         )
     } else if format_flags.highlight_title {
-        album_first_line_vector.push(
-            Span::from(album.name())
-                .style(Style::default().fg(Yellow)),
-        )
-    }
-    else {
-        album_first_line_vector.push(
-            Span::from(album.name())
-                .style(Style::default()),
-        )
+        album_first_line_vector.push(Span::from(album.name()).style(Style::default().fg(Yellow)))
+    } else {
+        album_first_line_vector.push(Span::from(album.name()).style(Style::default()))
     }
     if format_flags.include_artist {
         album_second_line_vector.push(Span {
@@ -200,13 +191,11 @@ pub fn get_text_for_song_item_queue<'a>(
 ) -> ListItem<'a> {
     let song = database.get_song(song_id);
     let mut song_first_line_vector: Vec<Span> = vec![];
-    let mut song_second_line_vector: Vec<Span> = vec![];
     let style_playing = if index == *queue_order.get(index_in_queue).unwrap() {
         Style::default().fg(Green).add_modifier(Modifier::BOLD)
     } else if index == selected_index {
         Style::default().fg(Yellow).add_modifier(Modifier::BOLD)
-    }
-    else {
+    } else {
         Style::default()
     };
     if !search_data.search_results_indexes.is_empty()
@@ -233,7 +222,8 @@ pub fn get_text_for_song_item_queue<'a>(
 
         song_first_line_vector.push(
             Span::from(first_slice.to_string())
-                .style(style_playing).add_modifier(Modifier::BOLD),
+                .style(style_playing)
+                .add_modifier(Modifier::BOLD),
         );
         song_first_line_vector.push(
             Span::from(matched_slice.to_string()).style(
@@ -245,44 +235,26 @@ pub fn get_text_for_song_item_queue<'a>(
         );
         song_first_line_vector.push(
             Span::from(last_slice.to_string())
-                .style(style_playing).add_modifier(Modifier::BOLD),
+                .style(style_playing)
+                .add_modifier(Modifier::BOLD),
         );
-    } else if index == selected_index {
-        song_first_line_vector.push(
-            Span::from(song.title())
-                .style(style_playing),
-        )
     } else {
-        song_first_line_vector.push(
-            Span::from(song.title())
-                .style(style_playing),
-        )
+        song_first_line_vector.push(Span::from(song.title()).style(style_playing))
     }
-    song_second_line_vector.push(Span {
+    song_first_line_vector.push(Span {
+        content: " (".into(),
+        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+    });
+    song_first_line_vector.push(Span {
         content: duration_to_hhmmss(song.duration()).into(),
         style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
-    song_second_line_vector.push(Span {
-        content: " - played ".into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-    });
-    song_second_line_vector.push(Span {
-        content: song.play_count().into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-    });
-    song_second_line_vector.push(Span {
-        content: " times, by ".into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-    });
-    song_second_line_vector.push(Span {
-        content: song.artist().into(),
+    song_first_line_vector.push(Span {
+        content: ")".into(),
         style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
     });
 
-    ListItem::from(Text::from(vec![
-        Line::from(song_first_line_vector.clone()),
-        Line::from(song_second_line_vector.clone()),
-    ]))
+    ListItem::from(Text::from(Line::from(song_first_line_vector.clone())))
 }
 
 pub fn get_text_for_song_item<'a>(
@@ -294,13 +266,13 @@ pub fn get_text_for_song_item<'a>(
     search_data: &SearchData,
     searched_pane: u8,
     current_pane: u8,
-    format_flags: &FormatFlags
+    format_flags: &FormatFlags,
 ) -> ListItem<'a> {
     let song = database.get_song(song_id);
     let mut song_first_line_vector: Vec<Span> = vec![];
     let mut song_second_line_vector: Vec<Span> = vec![];
-    
-    if format_flags.indent { 
+
+    if format_flags.indent {
         song_first_line_vector.push(Span::from("  "));
         song_second_line_vector.push(Span::from("  "));
     }
@@ -312,13 +284,13 @@ pub fn get_text_for_song_item<'a>(
         song_first_line_vector.push(Span::from(". ").style(Style::default().fg(Gray)));
         song_second_line_vector.push(Span::from(" "));
     }
-    
+
     if !search_data.search_results_indexes.is_empty()
         && index
-        == *search_data
-        .search_results_indexes
-        .get(search_data.index_in_search)
-        .unwrap()
+            == *search_data
+                .search_results_indexes
+                .get(search_data.index_in_search)
+                .unwrap()
         && searched_pane == current_pane
     {
         let song_name_to_search = if app_flags.upper_case_search {
@@ -335,10 +307,7 @@ pub fn get_text_for_song_item<'a>(
         let first_slice = &song.title()[0..first_index];
         let matched_slice = &song.title()[first_index..first_index + first_match.len()];
         let last_slice = &song.title()[first_index + first_match.len()..];
-        song_first_line_vector.push(
-            Span::from(first_slice.to_string())
-                .style(Style::default()),
-        );
+        song_first_line_vector.push(Span::from(first_slice.to_string()).style(Style::default()));
         song_first_line_vector.push(
             Span::from(matched_slice.to_string()).style(
                 Style::default()
@@ -347,20 +316,14 @@ pub fn get_text_for_song_item<'a>(
                     .add_modifier(Modifier::BOLD),
             ),
         );
-        song_first_line_vector.push(
-            Span::from(last_slice.to_string())
-                .style(Style::default()),
-        );
+        song_first_line_vector.push(Span::from(last_slice.to_string()).style(Style::default()));
     } else if index == selected_index {
         song_first_line_vector.push(
             Span::from(song.title())
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
         )
     } else {
-        song_first_line_vector.push(
-            Span::from(song.title())
-                .style(Style::default()),
-        )
+        song_first_line_vector.push(Span::from(song.title()).style(Style::default()))
     }
     song_second_line_vector.push(Span {
         content: duration_to_hhmmss(song.duration()).into(),
@@ -466,7 +429,7 @@ pub fn get_text_for_playlist_item<'a>(
             style: Style::default(),
         });
     }
-    
+
     playlist_first_line_vector.push(Span {
         content: modified_indicator.into(),
         style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
@@ -492,10 +455,10 @@ pub fn get_text_for_artist_item<'a>(
 
     if !search_data.search_results_indexes.is_empty()
         && index
-        == *search_data
-        .search_results_indexes
-        .get(search_data.index_in_search)
-        .unwrap()
+            == *search_data
+                .search_results_indexes
+                .get(search_data.index_in_search)
+                .unwrap()
         && searched_pane == current_pane
     {
         let artist_name_to_search = if app_flags.upper_case_search {
@@ -512,7 +475,7 @@ pub fn get_text_for_artist_item<'a>(
         let first_slice = &artist.name()[0..first_index];
         let matched_slice = &artist.name()[first_index..first_index + first_match.len()];
         let last_slice = &artist.name()[first_index + first_match.len()..];
-        
+
         artist_first_line_vector.push(
             Span::from(first_slice.to_string())
                 .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
@@ -534,7 +497,7 @@ pub fn get_text_for_artist_item<'a>(
             content: artist.name().into(),
             style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
         })
-    } else { 
+    } else {
         artist_first_line_vector.push(Span {
             content: artist.name().into(),
             style: Style::default(),
