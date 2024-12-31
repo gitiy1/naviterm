@@ -110,12 +110,6 @@ pub async fn handle_key_events(
                     }
                     app.add_queue_immediately()?;
                 }
-                KeyCode::Char('n') => {
-                    app.go_next_in_search()?;
-                }
-                KeyCode::Char('N') => {
-                    app.go_previous_in_search()?;
-                }
                 // Other handlers you could add here.
                 _ => {}
             },
@@ -133,12 +127,6 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Char('e') => {
                     app.current_popup = Popup::GenreFilter;
-                }
-                KeyCode::Char('n') => {
-                    app.go_next_in_search()?;
-                }
-                KeyCode::Char('N') => {
-                    app.go_previous_in_search()?;
                 }
                 KeyCode::Char('m') => {
                     app.album_sorting_mode = if app.album_sorting_mode == "alphabetically" {
@@ -162,12 +150,6 @@ pub async fn handle_key_events(
                     if app.playlist_pane == TwoPaneVertical::Right {
                         app.try_move_selection_down()?;
                     }
-                }
-                KeyCode::Char('n') => {
-                    app.go_next_in_search()?;
-                }
-                KeyCode::Char('N') => {
-                    app.go_previous_in_search()?;
                 }
                 KeyCode::Char('a') => {
                     app.current_popup = Popup::AddTo;
@@ -193,21 +175,19 @@ pub async fn handle_key_events(
                     app.add_queue_immediately()?;
                 }
                 KeyCode::Char('d') => {
-                    if app.playlist_pane == TwoPaneVertical::Left && key_event.modifiers != KeyModifiers::CONTROL {
+                    if app.playlist_pane == TwoPaneVertical::Left
+                        && key_event.modifiers != KeyModifiers::CONTROL
+                    {
                         app.current_popup = Popup::ConfirmPlaylistDeletion;
-                    } else if app.playlist_pane == TwoPaneVertical::Right && key_event.modifiers != KeyModifiers::CONTROL {
+                    } else if app.playlist_pane == TwoPaneVertical::Right
+                        && key_event.modifiers != KeyModifiers::CONTROL
+                    {
                         app.delete_selected_song_from_playlist()?;
                     }
                 }
                 _ => {}
             },
             CurrentScreen::Artists => match key_event.code {
-                KeyCode::Char('n') => {
-                    app.go_next_in_search()?;
-                }
-                KeyCode::Char('N') => {
-                    app.go_previous_in_search()?;
-                }
                 KeyCode::Char('a') => {
                     app.current_popup = Popup::AddTo;
                     if app.artist_pane == TwoPaneVertical::Left {
@@ -233,12 +213,7 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Queue => match key_event.code {
-                KeyCode::Char('n') => {
-                    app.go_next_in_search()?;
-                }
-                KeyCode::Char('N') => {
-                    app.go_previous_in_search()?;
-                }
+                KeyCode::Char('z') => app.center_queue_cursor()?,
                 KeyCode::Char('>') => app.play_next()?,
                 KeyCode::Char('<') => app.play_previous()?,
                 KeyCode::Char('c') => {
@@ -260,38 +235,33 @@ pub async fn handle_key_events(
         {
             debug!("Starting app shutdown");
             app.quit();
-        }
-
-        if key_event.code == KeyCode::Char('1') {
+        } else if key_event.code == KeyCode::Char('1') {
             app.clear_search()?;
             app.current_screen = CurrentScreen::Home;
-        }
-        if key_event.code == KeyCode::Char('2') {
+        } else if key_event.code == KeyCode::Char('2') {
             app.clear_search()?;
             app.current_screen = CurrentScreen::Albums;
-        }
-        if key_event.code == KeyCode::Char('3') {
+        } else if key_event.code == KeyCode::Char('3') {
             app.clear_search()?;
             app.current_screen = CurrentScreen::Playlists;
-        }
-        if key_event.code == KeyCode::Char('4') {
+        } else if key_event.code == KeyCode::Char('4') {
             app.clear_search()?;
             app.current_screen = CurrentScreen::Artists;
-        }
-        if key_event.code == KeyCode::Char('5') {
+        } else if key_event.code == KeyCode::Char('5') {
             app.clear_search()?;
             app.current_screen = CurrentScreen::Queue;
-        }
-        if key_event.code == KeyCode::Char('/') {
+        } else if key_event.code == KeyCode::Char('/') {
             app.app_flags.getting_search_string = true;
-        }
-        if key_event.code == KeyCode::Tab {
+        } else if key_event.code == KeyCode::Tab {
             app.clear_search()?;
             app.cycle_pane()?;
-        }
-        if key_event.code == KeyCode::Char('p') || key_event.code == KeyCode::Char(' ') {
+        } else if key_event.code == KeyCode::Char('p') || key_event.code == KeyCode::Char(' ') {
             handle_toggle_play_pause(app, iface_ref).await?
-        };
+        } else if key_event.code == KeyCode::Char('n') {
+            app.go_next_in_search()?;
+        } else if key_event.code == KeyCode::Char('N') {
+            app.go_previous_in_search()?;
+        }
     } else {
         match app.current_popup {
             Popup::ConnectionTest => match key_event.code {
@@ -384,30 +354,30 @@ pub async fn handle_key_events(
                 _ => {}
             },
             Popup::SynchronizePlaylist => {
-               if app.is_selected_playlist_local()? {
-                   match key_event.code {
-                       KeyCode::Char('y') => {
-                           app.push_local_playlist()?;
-                           app.current_popup = Popup::None;
-                       }
-                       KeyCode::Char('n') => {
-                           app.current_popup = Popup::None;
-                       }
-                       _ => {}
-                   }
-               } else {
-                   match key_event.code {
-                       KeyCode::Char('l') => {
-                           app.push_local_playlist()?;
-                           app.current_popup = Popup::None;
-                       }
-                       KeyCode::Char('r') => {
-                           app.pull_remote_playlist()?;
-                           app.current_popup = Popup::None;
-                       }
-                       _ => {}
-                   }
-               }
+                if app.is_selected_playlist_local()? {
+                    match key_event.code {
+                        KeyCode::Char('y') => {
+                            app.push_local_playlist()?;
+                            app.current_popup = Popup::None;
+                        }
+                        KeyCode::Char('n') => {
+                            app.current_popup = Popup::None;
+                        }
+                        _ => {}
+                    }
+                } else {
+                    match key_event.code {
+                        KeyCode::Char('l') => {
+                            app.push_local_playlist()?;
+                            app.current_popup = Popup::None;
+                        }
+                        KeyCode::Char('r') => {
+                            app.pull_remote_playlist()?;
+                            app.current_popup = Popup::None;
+                        }
+                        _ => {}
+                    }
+                }
             }
             Popup::ConfirmPlaylistDeletion => match key_event.code {
                 KeyCode::Char('y') => {
@@ -418,7 +388,7 @@ pub async fn handle_key_events(
                     app.current_popup = Popup::None;
                 }
                 _ => {}
-            }
+            },
             Popup::None => {}
         }
         // Exit popup no matter the current_popup

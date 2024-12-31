@@ -1466,6 +1466,11 @@ impl App {
             };
         Ok(())
     }
+    
+    pub fn center_queue_cursor(&mut self) -> AppResult<()> {
+        self.list_states.queue_list_state.select(Some(self.queue_order[self.index_in_queue]));
+        Ok(())
+    }
 
     pub fn process_filtered_album_list(&mut self) -> AppResult<()> {
         let mut new_filtered_list: Vec<String> = vec![];
