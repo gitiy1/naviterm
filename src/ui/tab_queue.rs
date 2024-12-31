@@ -37,6 +37,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(2), Constraint::Percentage(100)])
             .split(queue_block_inner);
+        
+        let seconds_left = app.queue_data.duration_left.parse::<usize>().unwrap() - app.ticks_during_playing_state / 4;
 
         let queue_info = Paragraph::new(
             Line::from(format!(
@@ -44,7 +46,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 duration_to_hhmmss(&app.queue_data.duration_total),
                 app.index_in_queue + 1,
                 app.queue.len() + 1,
-                duration_to_hhmmss(&app.queue_data.duration_left)
+                duration_to_hhmmss(seconds_left.to_string().as_str())
             ))
             .style(Style::default().fg(Gray)),
         )
