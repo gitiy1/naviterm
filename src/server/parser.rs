@@ -13,7 +13,7 @@ impl Parser {
     const NAMESPACE: &'static str = "http://subsonic.org/restapi";
 
     pub fn parse_connection_status(response: String) -> AppResult<ConnectionStatus> {
-        let root: minidom::Element = response.parse().unwrap();
+        let root: minidom::Element = response.parse()?;
         let mut connection_status: ConnectionStatus = ConnectionStatus::default();
 
         for attribute in root.attrs() {
@@ -39,20 +39,19 @@ impl Parser {
 
     pub fn parse_genres_list(response: String) -> AppResult<Vec<String>> {
         let mut genres_list: Vec<String> = Vec::new();
-        let root: minidom::Element = response.parse().unwrap();
+        let root: minidom::Element = response.parse()?;
 
         let list = root.get_child("genres", Self::NAMESPACE).unwrap();
         for genre in list.children() {
             let chars = ISO_8859_1
-                .encode(genre.text().as_str(), EncoderTrap::Ignore)
-                .unwrap();
+                .encode(genre.text().as_str(), EncoderTrap::Ignore)?;
             genres_list.push(String::from_utf8(chars).unwrap());
         }
         Ok(genres_list)
     }
 
     pub fn parse_album_list_simple(response: String) -> AppResult<Vec<String>> {
-        let root: minidom::Element = response.parse().unwrap();
+        let root: minidom::Element = response.parse()?;
         let mut album_list = Vec::new();
 
         let list = root.get_child("albumList", Self::NAMESPACE).unwrap();
@@ -69,8 +68,8 @@ impl Parser {
         Ok(album_list)
     }
 
-    pub fn parse_album(response: String) -> (Album, Vec<Song>, Artist) {
-        let root: minidom::Element = response.parse().unwrap();
+    pub fn parse_album(response: String) -> AppResult<(Album, Vec<Song>, Artist)> {
+        let root: minidom::Element = response.parse()?;
         let mut song_list = Vec::new();
         let mut song_ids_list = Vec::new();
 
@@ -84,11 +83,11 @@ impl Parser {
             match attribute.0 {
                 "id" => new_album.set_id(attribute.1.to_string()),
                 "name" => {
-                    let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                    let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
                     new_album.set_name(String::from_utf8(chars).unwrap());
                 }
                 "artist" => {
-                    let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                    let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
                     let name = String::from_utf8(chars).unwrap();
                     new_album.set_artist(name.clone());
                     new_artist.set_name(name);
@@ -107,8 +106,8 @@ impl Parser {
                     match attribute.0 {
                         "name" => {
                             let chars =
-                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
-                            album_genres.push(String::from_utf8(chars).unwrap());
+                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
+                            album_genres.push(String::from_utf8(chars)?);
                         }
                         &_ => {}
                     }
@@ -121,20 +120,20 @@ impl Parser {
                         "id" => new_song.set_id(attribute.1.to_string()),
                         "title" => {
                             let chars =
-                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
-                            new_song.set_title(String::from_utf8(chars).unwrap());
+                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
+                            new_song.set_title(String::from_utf8(chars)?);
                         }
                         "album" => {
                             let chars =
-                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
-                            new_song.set_album(String::from_utf8(chars).unwrap());
+                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
+                            new_song.set_album(String::from_utf8(chars)?);
                         }
                         "albumId" => {
                             new_song.set_album_id(attribute.1.to_string());
                         }
                         "artist" => {
                             let chars =
-                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore).unwrap();
+                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
                             new_song.set_artist(String::from_utf8(chars).unwrap())
                         }
                         "artistId" => new_song.set_artist_id(attribute.1.to_string()),
@@ -164,7 +163,7 @@ impl Parser {
                                     let chars = ISO_8859_1
                                         .encode(attribute.1, EncoderTrap::Ignore)
                                         .unwrap();
-                                    song_genres.push(String::from_utf8(chars).unwrap());
+                                    song_genres.push(String::from_utf8(chars)?);
                                 }
                                 &_ => {}
                             }
@@ -186,12 +185,12 @@ impl Parser {
         new_album.set_genres(album_genres.clone());
         new_artist.set_genres(album_genres);
 
-        (new_album, song_list, new_artist)
+        Ok((new_album, song_list, new_artist))
     }
 
     pub fn parse_playlist_list(response: String) -> AppResult<Vec<Playlist>> {
         let mut playlist_list: Vec<Playlist> = vec![]; 
-        let root: minidom::Element = response.parse().unwrap();
+        let root: minidom::Element = response.parse()?;
 
         let playlists = root.get_child("playlists", Self::NAMESPACE).unwrap();
         
@@ -214,7 +213,7 @@ impl Parser {
 
     pub fn parse_playlist(response: String) -> AppResult<Vec<String>> {
         let mut playlists_songs: Vec<String> = vec![];
-        let root: minidom::Element = response.parse().unwrap();
+        let root: minidom::Element = response.parse()?;
 
         let list = root.get_child("playlist", Self::NAMESPACE).unwrap();
         for album in list.children() {
@@ -231,7 +230,7 @@ impl Parser {
     }
 
     pub fn parse_playlist_id(response: String) -> AppResult<String> {
-        let root: minidom::Element = response.parse().unwrap();
+        let root: minidom::Element = response.parse()?;
 
         let playlist = root.get_child("playlist", Self::NAMESPACE).unwrap();
         for attribute in playlist.attrs() {

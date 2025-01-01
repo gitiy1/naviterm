@@ -1,6 +1,4 @@
-use crate::app::{
-    App, AppMovementInList, AppResult, CurrentScreen, HomePane, MediaType, Popup, TwoPaneVertical,
-};
+use crate::app::{App, AppConnectionMode, AppMovementInList, AppResult, AppStatus, CurrentScreen, HomePane, MediaType, Popup, TwoPaneVertical};
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
@@ -389,6 +387,19 @@ pub async fn handle_key_events(
                 }
                 _ => {}
             },
+            Popup::ConnectionError => match key_event.code {
+                KeyCode::Char('r') => {
+                    app.clear_errors_in_operations()?;
+                    app.status = AppStatus::Updating;
+                    app.current_popup = Popup::None;
+                }
+                KeyCode::Char('o') => {
+                    app.mode = AppConnectionMode::Offline;
+                    app.clear_queue()?;
+                    app.current_popup = Popup::None;
+                }
+                _ => {}
+            }
             Popup::None => {}
         }
         // Exit popup no matter the current_popup

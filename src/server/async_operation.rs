@@ -24,6 +24,7 @@ pub struct AsyncOperation {
     started: bool,
     finished: bool,
     processed: bool,
+    error: bool,
     thread_rx_handle: UnboundedReceiver<String>,
     thread_tx_handle: UnboundedSender<String>,
 }
@@ -43,6 +44,7 @@ impl AsyncOperation {
             started: false,
             finished: false,
             processed: false,
+            error: false,
             operation_id,
         }
     }
@@ -90,5 +92,13 @@ impl AsyncOperation {
 
     pub fn result(&self) -> &str {
         &self.result
+    }
+
+    pub fn set_error(&mut self, error: bool) {
+        self.error = error;
+    }
+
+    pub fn error(&self) -> bool {
+        self.error
     }
 }

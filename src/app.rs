@@ -33,6 +33,7 @@ pub enum CurrentScreen {
     Queue,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum AppStatus {
     Connected,
     Disconnected,
@@ -118,6 +119,7 @@ pub enum Popup {
     SynchronizePlaylist,
     ConfirmPlaylistDeletion,
     None,
+    ConnectionError,
 }
 
 /// Application result type.
@@ -303,7 +305,9 @@ impl App {
 
     /// Handles the tick event of the terminal.
     pub fn tick(&mut self) {
-        self.process_pending_requests();
+        if self.status != AppStatus::Disconnected && self.mode != AppConnectionMode::Offline {
+            self.process_pending_requests();
+        }
         self.process_player_events();
         if *self.player.player_status() == PlayerStatus::Playing {
             self.ticks_during_playing_state += 1;
@@ -767,7 +771,7 @@ impl App {
                 duration_left += song.duration().parse::<usize>().unwrap();
             }
         }
-        
+
         self.queue_data.duration_total = duration_total.to_string();
         self.queue_data.duration_left = duration_left.to_string();
     }
@@ -1466,9 +1470,11 @@ impl App {
             };
         Ok(())
     }
-    
+
     pub fn center_queue_cursor(&mut self) -> AppResult<()> {
-        self.list_states.queue_list_state.select(Some(self.queue_order[self.index_in_queue]));
+        self.list_states
+            .queue_list_state
+            .select(Some(self.queue_order[self.index_in_queue]));
         Ok(())
     }
 
@@ -1830,6 +1836,17 @@ impl App {
         }
     }
 
+    pub fn clear_errors_in_operations(&mut self) -> AppResult<()> {
+        for operation in &mut self.server.operations {
+            if operation.error() {
+                operation.set_error(false);
+                // We also clear the started flag to force retrying
+                operation.set_started(false);
+            }
+        }
+        Ok(())
+    }
+    
     pub fn process_pending_requests(&mut self) {
         self.server.process_async_operations();
 
@@ -1851,6 +1868,12 @@ impl App {
         // before anything else
         for i in 0..pending_operations_number {
             let operation = &mut self.server.operations[i];
+            if operation.error() {
+                debug!("Operation {:?} failed", operation.operation_id());
+                self.status = AppStatus::Disconnected;
+                self.current_popup = Popup::ConnectionError;
+                break;
+            }
             if operation.finished() && !operation.processed() {
                 debug!(
                     "Processing finished operation {:?}, updating_albums: {}, updating_alphabetical_list: {}",
@@ -1973,7 +1996,7 @@ impl App {
                     }
                     Operation::GetAlbum(album_id) => {
                         let (album, songs, artist) =
-                            Parser::parse_album(operation.result().to_string());
+                            Parser::parse_album(operation.result().to_string()).unwrap();
                         for song in songs {
                             if !self.database.contains_song(song.id()) {
                                 self.database.insert_song(song.id().to_string(), song);

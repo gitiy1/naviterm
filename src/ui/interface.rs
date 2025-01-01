@@ -7,9 +7,9 @@ use ratatui::text::Span;
 use ratatui::widgets::Tabs;
 use ratatui::{symbols, Frame};
 use ratatui::prelude::Color::Red;
-use crate::app::{App, AppStatus, CurrentScreen, Popup};
+use crate::app::{App, AppConnectionMode, AppStatus, CurrentScreen, Popup};
 use crate::ui::footer_now_playing::draw_footer;
-use crate::ui::{popup_add_to, popup_album_info, popup_connection_test, popup_deletion_playlist, popup_genre_filter, popup_select_playlist, popup_synchronize_playlist, popup_update, tab_albums, tab_artists, tab_home, tab_playlists, tab_queue};
+use crate::ui::{popup_add_to, popup_album_info, popup_connection_error, popup_connection_test, popup_deletion_playlist, popup_genre_filter, popup_select_playlist, popup_synchronize_playlist, popup_update, tab_albums, tab_artists, tab_home, tab_playlists, tab_queue};
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -50,7 +50,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         Popup::SelectPlaylist => {popup_select_playlist::draw_popup(app, frame).unwrap()},
         Popup::SynchronizePlaylist => {popup_synchronize_playlist::draw_popup(app, frame).unwrap()},
         Popup::ConfirmPlaylistDeletion => {popup_deletion_playlist::draw_popup(app, frame).unwrap()},
-        Popup::None => {}
+        Popup::ConnectionError => {popup_connection_error::draw_popup(frame).unwrap()},
+        Popup::None => {},
     }
 
     draw_title(app, title_area, frame);
@@ -88,15 +89,19 @@ fn draw_title(app: &mut App, title_area: Rect, frame: &mut Frame) {
         );
     }
     let pending_operations = app.server.operations.len().to_string();
-    let status_span = match app.status {
-        AppStatus::Connected => {
-            Span::from("Connected").style(Style::default().fg(Green).add_modifier(Modifier::BOLD))
-        }
-        AppStatus::Disconnected => {
-            Span::from("Disconnected").style(Style::default().fg(Red).add_modifier(Modifier::BOLD))
-        }
-        AppStatus::Updating => {
-            Span::from("Updating (".to_owned() + pending_operations.as_str() + ")").style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD))
+    let status_span = if app.mode == AppConnectionMode::Offline {
+        Span::from("Offline").style(Style::default().fg(Gray).add_modifier(Modifier::BOLD))
+    } else {
+        match app.status {
+            AppStatus::Connected => {
+                Span::from("Connected").style(Style::default().fg(Green).add_modifier(Modifier::BOLD))
+            }
+            AppStatus::Disconnected => {
+                Span::from("Disconnected").style(Style::default().fg(Red).add_modifier(Modifier::BOLD))
+            }
+            AppStatus::Updating => {
+                Span::from("Updating (".to_owned() + pending_operations.as_str() + ")").style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD))
+            }
         }
     };
     let status_line = Line::from(vec![

@@ -18,6 +18,7 @@ use std::fs::{copy, remove_file, File};
 use std::io;
 use std::io::{Read, Write};
 use std::path::Path;
+use std::process::exit;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -111,6 +112,10 @@ async fn main() -> AppResult<()> {
         app.app_flags.updating_database = true;
         // If we ha not loaded a database, fetch it whole
         app.populate_db(!loaded)?;
+    } else if !loaded && app.mode == AppConnectionMode::Offline {
+        error!("Cannot start offline if no database is present.");
+        println!("Cannot start offline if no database is present.");
+        exit(0)
     }
 
     // Initialize ipc stream

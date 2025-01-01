@@ -45,7 +45,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 "Total duration: {} - Playing song {}/{} ({} left)",
                 duration_to_hhmmss(&app.queue_data.duration_total),
                 app.index_in_queue + 1,
-                app.queue.len() + 1,
+                app.queue.len(),
                 duration_to_hhmmss(seconds_left.to_string().as_str())
             ))
             .style(Style::default().fg(Gray)),

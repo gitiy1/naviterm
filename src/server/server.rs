@@ -568,13 +568,18 @@ fn process_atomic_operations(operation: &mut AsyncOperation) -> isize {
             perform_request_async(url, sender).await;
         });
         new_requests += 1;
-    } else if operation.started() && !operation.finished() {
+    } else if operation.started() && !operation.finished() &&!operation.error() {
         match operation.thread_rx_handle().try_recv() {
             Ok(message) => {
                 debug!("Received message from thread_rx_handle");
                 operation.set_result(message);
-                operation.set_finished(true);
-                operation.thread_rx_handle().close();
+                if operation.result().starts_with("error:") {
+                    debug!("Operation had server error!");
+                    operation.set_error(true);
+                } else {
+                    operation.set_finished(true);
+                    operation.thread_rx_handle().close();
+                }
                 new_requests -= 1;
             }
             Err(e) => {
@@ -624,7 +629,8 @@ async fn perform_request_async(url: String, sender: UnboundedSender<String>) {
             _ => "error".into(),
         },
         Err(err) => {
-            panic!("Error while doing request: {:?}", err);
+            error!("Error while doing request: {:?}", err);
+            format!("error: {:?}", err)
         }
     };
 
