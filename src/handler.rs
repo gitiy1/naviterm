@@ -116,8 +116,19 @@ pub async fn handle_key_events(
                     app.current_popup = Popup::AlbumInformation;
                 }
                 KeyCode::Char('a') => {
-                    app.current_popup = Popup::AddTo;
-                    app.set_item_to_be_added(MediaType::Album)?;
+                    if app.album_pane == TwoPaneVertical::Left {
+                        app.current_popup = Popup::AddTo;
+                        app.set_item_to_be_added(MediaType::Album)?;
+                    } else {
+                        app.current_popup = Popup::AddTo;
+                        app.set_item_to_be_added(MediaType::Song)?;
+                    }
+                }
+                KeyCode::Char('A') => {
+                    if app.album_pane == TwoPaneVertical::Right {
+                        app.current_popup = Popup::AddTo;
+                        app.set_item_to_be_added(MediaType::Album)?;
+                    }
                 }
                 KeyCode::Enter => {
                     app.set_item_to_be_added(MediaType::Album)?;

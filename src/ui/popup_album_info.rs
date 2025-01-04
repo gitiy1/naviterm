@@ -1,10 +1,9 @@
 use crate::app::{App, AppResult, CurrentScreen, HomePane};
 use crate::ui::utils;
-use crate::ui::utils::{duration_to_hhmmss, get_text_for_song_item, FormatFlags};
+use crate::ui::utils::{get_text_for_album_info, get_text_for_song_item, FormatFlags};
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::style::Color::{Gray, Yellow};
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span, Text};
+use ratatui::style::{Color, Style};
+use ratatui::text::{Line};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, Clear, HighlightSpacing, List, ListItem, Padding, Paragraph};
 use ratatui::Frame;
@@ -17,7 +16,6 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         .constraints([Constraint::Min(5), Constraint::Length(1)])
         .split(area);
 
-    //let album = app.get_current_album().unwrap();
     let album = match app.current_screen {
         CurrentScreen::Home => match app.home_pane {
             HomePane::Top => app.database.get_album(
@@ -72,42 +70,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         }
     };
 
-    let album_info = Text::from(vec![
-        Line::from(vec![Span {
-            content: album.name().into(),
-            style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
-        }]),
-        Line::from(vec![Span {
-            content: album.artist().into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-        }]),
-        Line::from(vec![
-            Span {
-                content: duration_to_hhmmss(album.duration()).into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-            },
-            Span {
-                content: " - ".into(),
-                style: Style::default(),
-            },
-            Span {
-                content: album.genres().join(", ").into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-            },
-            Span {
-                content: " - ".into(),
-                style: Style::default(),
-            },
-            Span {
-                content: album.song_count().into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-            },
-            Span {
-                content: " songs".into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
-            },
-        ]),
-    ]);
+    let album_info = get_text_for_album_info(album);
     
     let format_flags = FormatFlags {
         include_artist: false,

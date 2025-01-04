@@ -4,8 +4,9 @@ use log::debug;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::prelude::Color::{Black, Gray, Green, Yellow};
 use ratatui::prelude::{Line, Modifier, Span, Style, Stylize, Text};
-use ratatui::widgets::ListItem;
+use ratatui::widgets::{ListItem};
 use unicode_segmentation::UnicodeSegmentation;
+use crate::model::album::Album;
 
 #[derive(Default)]
 pub struct FormatFlags {
@@ -507,4 +508,57 @@ pub fn get_text_for_artist_item<'a>(
     ListItem::from(Text::from(vec![Line::from(
         artist_first_line_vector.clone(),
     )]))
+}
+
+pub fn get_text_for_album_info<'a>(album: &'a Album) -> Text<'a> {
+
+    Text::from(vec![
+        Line::from(vec![Span {
+            content: album.name().into(),
+            style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+        }]),
+        Line::from(vec![Span {
+            content: album.artist().into(),
+            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        }]),
+        Line::from(vec![
+            Span {
+                content: duration_to_hhmmss(album.duration()).into(),
+                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            },
+            Span {
+                content: " - ".into(),
+                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            },
+            Span {
+                content: album.genres().join(", ").into(),
+                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            },
+            Span {
+                content: " - ".into(),
+                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            },
+            Span {
+                content: album.song_count().into(),
+                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            },
+            Span {
+                content: " songs".into(),
+                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            },
+            Span {
+                content: " - Played ".into(),
+                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            },
+            Span {
+                content: album.play_count().into(),
+                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            },
+            Span {
+                content: " times".into(),
+                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            },
+        ]),
+    ])
+    
 }

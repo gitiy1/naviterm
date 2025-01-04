@@ -155,6 +155,7 @@ pub struct App {
     pub result_list_alphabetical: Vec<String>,
     pub result_list_most_listened: Vec<String>,
     pub albums_being_updated: usize,
+    pub album_pane: TwoPaneVertical,
     pub artist_pane: TwoPaneVertical,
     pub playlist_pane: TwoPaneVertical,
     pub new_name: String,
@@ -219,6 +220,7 @@ pub struct AppListStates {
     pub popup_genre_list_state: ListState,
     pub popup_select_playlist_list_state: ListState,
     pub album_state: ListState,
+    pub album_selected_state: ListState,
     pub playlist_state: ListState,
     pub playlist_selected_state: ListState,
     pub artist_state: ListState,
@@ -239,6 +241,7 @@ impl AppListStates {
             popup_genre_list_state: AppListStates::initialize(),
             popup_select_playlist_list_state: AppListStates::initialize(),
             album_state: AppListStates::initialize(),
+            album_selected_state: AppListStates::initialize(),
             playlist_state: AppListStates::initialize(),
             playlist_selected_state: AppListStates::initialize(),
             artist_state: AppListStates::initialize(),
@@ -289,6 +292,7 @@ impl Default for App {
             result_list_most_listened: vec![],
             result_list_alphabetical: vec![],
             albums_being_updated: 0,
+            album_pane: TwoPaneVertical::Left,
             artist_pane: TwoPaneVertical::Left,
             playlist_pane: TwoPaneVertical::Left,
             new_name: String::from(""),
@@ -883,6 +887,12 @@ impl App {
                             .get(self.list_states.home_tab_bottom_right.selected().unwrap())
                             .unwrap(),
                     )
+                } else if self.current_screen == CurrentScreen::Albums {
+                    self.database.get_song(
+                        songs_ids
+                            .get(self.list_states.album_selected_state.selected().unwrap())
+                            .unwrap(),
+                    )
                 } else if self.current_screen == CurrentScreen::Artists {
                     self.database.get_song(
                         songs_ids
@@ -1300,6 +1310,13 @@ impl App {
                     }
                 },
             },
+            CurrentScreen::Albums => {
+                if self.album_pane == TwoPaneVertical::Left {
+                    self.album_pane = TwoPaneVertical::Right
+                } else {
+                    self.album_pane = TwoPaneVertical::Left
+                }
+            }
             CurrentScreen::Playlists => {
                 if self.playlist_pane == TwoPaneVertical::Left {
                     self.playlist_pane = TwoPaneVertical::Right
@@ -1514,7 +1531,10 @@ impl App {
                     HomePane::BottomLeft => &mut self.list_states.home_tab_bottom_left,
                     HomePane::BottomRight => &mut self.list_states.home_tab_bottom_right,
                 },
-                CurrentScreen::Albums => &mut self.list_states.album_state,
+                CurrentScreen::Albums => match self.album_pane {
+                    TwoPaneVertical::Left => &mut self.list_states.album_state,
+                    TwoPaneVertical::Right => &mut self.list_states.album_selected_state,
+                },
                 CurrentScreen::Playlists => {
                     if self.playlist_pane == TwoPaneVertical::Left {
                         &mut self.list_states.playlist_state
@@ -1611,12 +1631,26 @@ impl App {
                     }
                 },
             },
-            CurrentScreen::Albums => self
-                .database
-                .filtered_albums()
-                .iter()
-                .map(|album_id| self.database.get_album(album_id).name().to_string())
-                .collect::<Vec<String>>(),
+            CurrentScreen::Albums => match self.album_pane {
+                TwoPaneVertical::Left => self
+                    .database
+                    .filtered_albums()
+                    .iter()
+                    .map(|album_id| self.database.get_album(album_id).name().to_string())
+                    .collect::<Vec<String>>(),
+                TwoPaneVertical::Right => self
+                    .database
+                    .get_album(
+                        self.database
+                            .filtered_albums()
+                            .get(self.list_states.album_state.selected().unwrap())
+                            .unwrap(),
+                    )
+                    .songs()
+                    .iter()
+                    .map(|song_id| self.database.get_song(song_id).title().to_string())
+                    .collect::<Vec<String>>(),
+            },
             CurrentScreen::Playlists => match self.playlist_pane {
                 TwoPaneVertical::Left => self
                     .database
@@ -1705,7 +1739,10 @@ impl App {
                 HomePane::BottomLeft => self.list_states.home_tab_bottom_left.selected().unwrap(),
                 HomePane::BottomRight => self.list_states.home_tab_bottom_right.selected().unwrap(),
             },
-            CurrentScreen::Albums => self.list_states.album_state.selected().unwrap(),
+            CurrentScreen::Albums => match self.album_pane {
+                TwoPaneVertical::Left => self.list_states.album_state.selected().unwrap(),
+                TwoPaneVertical::Right => self.list_states.album_selected_state.selected().unwrap(),
+            },
             CurrentScreen::Playlists => match self.playlist_pane {
                 TwoPaneVertical::Left => self.list_states.playlist_state.selected().unwrap(),
                 TwoPaneVertical::Right => {
@@ -1846,7 +1883,7 @@ impl App {
         }
         Ok(())
     }
-    
+
     pub fn process_pending_requests(&mut self) {
         self.server.process_async_operations();
 
