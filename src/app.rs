@@ -58,6 +58,21 @@ impl SortOrder {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum SortMode {
+    Frequent,
+    Alphabetical,
+}
+
+impl SortMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SortMode::Frequent => "frequent",
+            SortMode::Alphabetical => "alphabetical",
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum AppConnectionMode {
     Online,
     Offline,
@@ -165,7 +180,7 @@ pub struct App {
     pub ticks_during_playing_state: usize,
     pub album_genre_filter: String,
     pub album_year_filter: String,
-    pub album_sorting_mode: String,
+    pub album_sorting_mode: SortMode,
     pub album_sorting_direction: SortOrder,
     pub search_data: SearchData,
     pub status: AppStatus,
@@ -325,7 +340,7 @@ impl Default for App {
             ticks_during_playing_state: 0,
             album_genre_filter: String::from("any"),
             album_year_filter: String::from("any"),
-            album_sorting_mode: String::from("alphabetically"),
+            album_sorting_mode: SortMode::Alphabetical,
             album_sorting_direction: SortOrder::Descending,
             search_data: SearchData::default(),
             status: AppStatus::Connected,
@@ -1571,7 +1586,7 @@ impl App {
 
     pub fn process_filtered_album_list(&mut self) -> AppResult<()> {
         let mut new_filtered_list: Vec<String> = vec![];
-        let list = if self.album_sorting_mode == "frequent" {
+        let list = if self.album_sorting_mode == SortMode::Frequent {
             self.database.most_listened_albums()
         } else {
             self.database.alphabetical_list_albums()

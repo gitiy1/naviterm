@@ -1,4 +1,7 @@
-use crate::app::{App, AppConnectionMode, AppMovementInList, AppResult, AppStatus, CurrentScreen, HomePane, MediaType, Popup, TwoPaneVertical};
+use crate::app::{
+    App, AppConnectionMode, AppMovementInList, AppResult, AppStatus, CurrentScreen, HomePane,
+    MediaType, Popup, SortMode, TwoPaneVertical,
+};
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
@@ -138,10 +141,10 @@ pub async fn handle_key_events(
                     app.current_popup = Popup::GenreFilter;
                 }
                 KeyCode::Char('m') => {
-                    app.album_sorting_mode = if app.album_sorting_mode == "alphabetically" {
-                        "frequent".to_string()
+                    app.album_sorting_mode = if app.album_sorting_mode == SortMode::Alphabetical {
+                        SortMode::Frequent
                     } else {
-                        "alphabetically".to_string()
+                        SortMode::Alphabetical
                     };
                     app.clear_search()?;
                     app.list_states.album_state.select_first();
@@ -414,7 +417,7 @@ pub async fn handle_key_events(
                     app.current_popup = Popup::None;
                 }
                 _ => {}
-            }
+            },
             Popup::None => {}
         }
         // Exit popup no matter the current_popup

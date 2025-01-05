@@ -1,4 +1,4 @@
-use crate::app::{App, AppResult, TwoPaneVertical};
+use crate::app::{App, AppResult, SortMode, TwoPaneVertical};
 use crate::ui::utils::{
     get_text_for_album_info, get_text_for_album_item, get_text_for_song_item, FormatFlags,
 };
@@ -62,11 +62,11 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             style: Style::default(),
         },
         Span {
-            content: app.album_sorting_mode.clone().into(),
+            content: app.album_sorting_mode.as_str().into(),
             style: Style::default().fg(app.app_colors.primary_accent),
         },
         Span {
-            content: ", direction: ".into(),
+            content: ", order: ".into(),
             style: Style::default(),
         },
         Span {
@@ -107,7 +107,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     }
 
     let list = if app.album_genre_filter == "any" {
-        if app.album_sorting_mode == "frequent" {
+        if app.album_sorting_mode == SortMode::Frequent {
             app.database.most_listened_albums()
         } else {
             app.database.alphabetical_list_albums()
