@@ -15,6 +15,7 @@ use config::Config;
 use log::{debug, error, info, warn};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use ratatui::prelude::Color;
 use ratatui::widgets::ListState;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
@@ -22,7 +23,6 @@ use std::error;
 use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
-use ratatui::prelude::Color;
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum with applications screens
@@ -40,6 +40,21 @@ pub enum AppStatus {
     Connected,
     Disconnected,
     Updating,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum SortOrder {
+    Ascending,
+    Descending,
+}
+
+impl SortOrder {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SortOrder::Ascending => "ascending",
+            SortOrder::Descending => "descending",
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -151,7 +166,7 @@ pub struct App {
     pub album_genre_filter: String,
     pub album_year_filter: String,
     pub album_sorting_mode: String,
-    pub album_sorting_direction: String,
+    pub album_sorting_direction: SortOrder,
     pub search_data: SearchData,
     pub status: AppStatus,
     pub result_list_alphabetical: Vec<String>,
@@ -179,7 +194,7 @@ pub struct AppColors {
     pub connected: Color,
     pub updating: Color,
     pub error: Color,
-    pub now_playing: Color
+    pub now_playing: Color,
 }
 
 impl AppColors {
@@ -311,7 +326,7 @@ impl Default for App {
             album_genre_filter: String::from("any"),
             album_year_filter: String::from("any"),
             album_sorting_mode: String::from("alphabetically"),
-            album_sorting_direction: String::from("descending"),
+            album_sorting_direction: SortOrder::Descending,
             search_data: SearchData::default(),
             status: AppStatus::Connected,
             result_list_most_listened: vec![],
@@ -420,7 +435,7 @@ impl App {
                 exit(1)
             }
         }
-        if let Ok(color) = config.get::<String>("primary_accent") { 
+        if let Ok(color) = config.get::<String>("primary_accent") {
             match parse_color(color.as_str()) {
                 Ok(parsed_color) => self.app_colors.primary_accent = parsed_color,
                 Err(_) => warn!("Could not parse primary color from {}", color),
@@ -1579,6 +1594,18 @@ impl App {
         Ok(())
     }
 
+    pub fn toggle_sort_order(&mut self) -> AppResult<()> {
+        self.database.filtered_albums_mut().reverse();
+        self.database.alphabetical_list_albums_mut().reverse();
+        self.database.most_listened_albums_mut().reverse();
+        if self.album_sorting_direction == SortOrder::Descending {
+            self.album_sorting_direction = SortOrder::Ascending;
+        } else {
+            self.album_sorting_direction = SortOrder::Descending;
+        }
+        Ok(())
+    }
+
     pub fn move_in_list(&mut self, move_operation: AppMovementInList) -> AppResult<()> {
         let list_state_item = if self.current_popup == Popup::None {
             match self.current_screen {
@@ -2307,7 +2334,7 @@ fn sort_playlists_by_name(playlists: &HashMap<String, Playlist>) -> Vec<String> 
 }
 
 fn parse_color(string_color: &str) -> AppResult<Color> {
-    match string_color.to_lowercase().as_str() { 
+    match string_color.to_lowercase().as_str() {
         "yellow" => Ok(Color::Yellow),
         "red" => Ok(Color::Red),
         "green" => Ok(Color::Green),
@@ -2317,5 +2344,4 @@ fn parse_color(string_color: &str) -> AppResult<Color> {
         "white" => Ok(Color::White),
         &_ => Err(Box::from("Could not parse color")),
     }
-
 }

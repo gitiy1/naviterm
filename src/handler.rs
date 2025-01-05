@@ -147,6 +147,10 @@ pub async fn handle_key_events(
                     app.list_states.album_state.select_first();
                     app.process_filtered_album_list()?;
                 }
+                KeyCode::Char('r') => {
+                    app.clear_search()?;
+                    app.toggle_sort_order()?
+                }
                 _ => {}
             },
             CurrentScreen::Playlists => match key_event.code {
@@ -462,7 +466,7 @@ pub async fn handle_key_events(
     if key_event.code == KeyCode::Char('G') {
         app.move_in_list(AppMovementInList::Last)?;
     }
-    if key_event.code == KeyCode::Char('r') {
+    if key_event.code == KeyCode::Char('z') {
         handle_shuffle_update(app, iface_ref).await?
     };
     if key_event.code == KeyCode::Right {

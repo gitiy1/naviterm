@@ -41,12 +41,24 @@ impl MusicDatabase {
         &self.most_listened_albums
     }
 
+    pub fn most_listened_albums_mut(&mut self) -> &mut Vec<String> {
+        &mut self.most_listened_albums
+    }
+
     pub fn alphabetical_list_albums(&self) -> &Vec<String> {
         &self.alphabetical_albums
     }
 
+    pub fn alphabetical_list_albums_mut(&mut self) -> &mut Vec<String> {
+        &mut self.alphabetical_albums
+    }
+
     pub fn filtered_albums(&self) -> &Vec<String> {
         &self.filtered_albums
+    }
+
+    pub fn filtered_albums_mut(&mut self) -> &mut Vec<String> {
+        &mut self.filtered_albums
     }
 
     pub fn expand_filtered_albums(&mut self, mut list: Vec<String>) {

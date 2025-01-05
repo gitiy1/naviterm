@@ -70,7 +70,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             style: Style::default(),
         },
         Span {
-            content: app.album_sorting_direction.clone().into(),
+            content: app.album_sorting_direction.as_str().into(),
             style: Style::default().fg(app.app_colors.primary_accent),
         },
     ])
