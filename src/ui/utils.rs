@@ -1,12 +1,12 @@
-use crate::app::{AppFlags, SearchData};
+use crate::app::{AppColors, AppFlags, SearchData};
+use crate::model::album::Album;
 use crate::music_database::MusicDatabase;
 use log::debug;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::prelude::Color::{Black, Gray, Green, Yellow};
 use ratatui::prelude::{Line, Modifier, Span, Style, Stylize, Text};
-use ratatui::widgets::{ListItem};
+use ratatui::prelude::Color::Black;
+use ratatui::widgets::ListItem;
 use unicode_segmentation::UnicodeSegmentation;
-use crate::model::album::Album;
 
 #[derive(Default)]
 pub struct FormatFlags {
@@ -82,6 +82,7 @@ pub fn ellipse_line(line: &str, max_width: usize) -> String {
 pub fn get_text_for_album_item<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    app_colors: &AppColors,
     selected_index: usize,
     index: usize,
     album_id: &str,
@@ -116,62 +117,87 @@ pub fn get_text_for_album_item<'a>(
         let matched_slice = &album.name()[first_index..first_index + first_match.len()];
         let last_slice = &album.name()[first_index + first_match.len()..];
         album_first_line_vector.push(
-            Span::from(first_slice.to_string())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+            Span::from(first_slice.to_string()).style(
+                Style::default()
+                    .fg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
         );
         album_first_line_vector.push(
             Span::from(matched_slice.to_string()).style(
                 Style::default()
                     .fg(Black)
-                    .bg(Yellow)
+                    .bg(app_colors.primary_accent)
                     .add_modifier(Modifier::BOLD),
             ),
         );
-        album_first_line_vector
-            .push(Span::from(last_slice.to_string()).style(Style::default().fg(Yellow)));
+        album_first_line_vector.push(
+            Span::from(last_slice.to_string())
+                .style(Style::default().fg(app_colors.primary_accent)),
+        );
     } else if index == selected_index {
         album_first_line_vector.push(
-            Span::from(album.name())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+            Span::from(album.name()).style(
+                Style::default()
+                    .fg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
         )
     } else if format_flags.highlight_title {
-        album_first_line_vector.push(Span::from(album.name()).style(Style::default().fg(Yellow)))
+        album_first_line_vector
+            .push(Span::from(album.name()).style(Style::default().fg(app_colors.primary_accent)))
     } else {
         album_first_line_vector.push(Span::from(album.name()).style(Style::default()))
     }
     if format_flags.include_artist {
         album_second_line_vector.push(Span {
             content: database.get_album(album_id).artist().into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            style: Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
         });
         album_second_line_vector.push(Span {
             content: " - ".into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            style: Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
         });
     }
     album_second_line_vector.push(Span {
         content: duration_to_hhmmss(album.duration()).into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
         content: " - ".into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
         content: album.genres().join(", ").into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
         content: " - ".into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
         content: database.get_album(album_id).song_count().into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
         content: " songs".into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
 
     ListItem::from(Text::from(vec![
@@ -183,6 +209,7 @@ pub fn get_text_for_album_item<'a>(
 pub fn get_text_for_song_item_queue<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    app_colors: &AppColors,
     selected_index: usize,
     index: usize,
     song_id: &str,
@@ -193,9 +220,11 @@ pub fn get_text_for_song_item_queue<'a>(
     let song = database.get_song(song_id);
     let mut song_first_line_vector: Vec<Span> = vec![];
     let style_playing = if index == *queue_order.get(index_in_queue).unwrap() {
-        Style::default().fg(Green).add_modifier(Modifier::BOLD)
+        Style::default().fg(app_colors.now_playing).add_modifier(Modifier::BOLD)
     } else if index == selected_index {
-        Style::default().fg(Yellow).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(app_colors.primary_accent)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default()
     };
@@ -230,7 +259,7 @@ pub fn get_text_for_song_item_queue<'a>(
             Span::from(matched_slice.to_string()).style(
                 Style::default()
                     .fg(Black)
-                    .bg(Yellow)
+                    .bg(app_colors.primary_accent)
                     .add_modifier(Modifier::BOLD),
             ),
         );
@@ -244,15 +273,21 @@ pub fn get_text_for_song_item_queue<'a>(
     }
     song_first_line_vector.push(Span {
         content: " (".into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     song_first_line_vector.push(Span {
         content: duration_to_hhmmss(song.duration()).into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     song_first_line_vector.push(Span {
         content: ")".into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
 
     ListItem::from(Text::from(Line::from(song_first_line_vector.clone())))
@@ -261,6 +296,7 @@ pub fn get_text_for_song_item_queue<'a>(
 pub fn get_text_for_song_item<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    app_colors: &AppColors,
     selected_index: usize,
     index: usize,
     song_id: &str,
@@ -279,10 +315,13 @@ pub fn get_text_for_song_item<'a>(
     }
     if format_flags.include_track {
         if song.track().len() == 1 {
-            song_first_line_vector.push(Span::from(" ").style(Style::default().fg(Gray)));
+            song_first_line_vector
+                .push(Span::from(" ").style(Style::default().fg(app_colors.secondary_accent)));
         }
-        song_first_line_vector.push(Span::from(song.track()).style(Style::default().fg(Gray)));
-        song_first_line_vector.push(Span::from(". ").style(Style::default().fg(Gray)));
+        song_first_line_vector
+            .push(Span::from(song.track()).style(Style::default().fg(app_colors.secondary_accent)));
+        song_first_line_vector
+            .push(Span::from(". ").style(Style::default().fg(app_colors.secondary_accent)));
         song_second_line_vector.push(Span::from(" "));
     }
 
@@ -313,43 +352,58 @@ pub fn get_text_for_song_item<'a>(
             Span::from(matched_slice.to_string()).style(
                 Style::default()
                     .fg(Black)
-                    .bg(Yellow)
+                    .bg(app_colors.primary_accent)
                     .add_modifier(Modifier::BOLD),
             ),
         );
         song_first_line_vector.push(Span::from(last_slice.to_string()).style(Style::default()));
     } else if index == selected_index {
         song_first_line_vector.push(
-            Span::from(song.title())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+            Span::from(song.title()).style(
+                Style::default()
+                    .fg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
         )
     } else {
         song_first_line_vector.push(Span::from(song.title()).style(Style::default()))
     }
     song_second_line_vector.push(Span {
         content: duration_to_hhmmss(song.duration()).into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     song_second_line_vector.push(Span {
         content: " - played ".into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     song_second_line_vector.push(Span {
         content: song.play_count().into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     song_second_line_vector.push(Span {
         content: " times".into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
     if format_flags.include_artist {
         song_second_line_vector.push(Span {
             content: " - ".into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            style: Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
         });
         song_second_line_vector.push(Span {
             content: song.artist().into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            style: Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
         });
     }
 
@@ -362,6 +416,7 @@ pub fn get_text_for_song_item<'a>(
 pub fn get_text_for_playlist_item<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    app_colors: &AppColors,
     selected_index: usize,
     index: usize,
     playlist_id: &str,
@@ -404,25 +459,33 @@ pub fn get_text_for_playlist_item<'a>(
         let last_slice = &playlist.name()[first_index + first_match.len()..];
 
         playlist_first_line_vector.push(
-            Span::from(first_slice.to_string())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+            Span::from(first_slice.to_string()).style(
+                Style::default()
+                    .fg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
         );
         playlist_first_line_vector.push(
             Span::from(matched_slice.to_string()).style(
                 Style::default()
                     .fg(Black)
-                    .bg(Yellow)
+                    .bg(app_colors.primary_accent)
                     .add_modifier(Modifier::BOLD),
             ),
         );
         playlist_first_line_vector.push(
-            Span::from(last_slice.to_string())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+            Span::from(last_slice.to_string()).style(
+                Style::default()
+                    .fg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
         );
     } else if index == selected_index {
         playlist_first_line_vector.push(Span {
             content: playlist.name().into(),
-            style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+            style: Style::default()
+                .fg(app_colors.primary_accent)
+                .add_modifier(Modifier::BOLD),
         });
     } else {
         playlist_first_line_vector.push(Span {
@@ -433,7 +496,9 @@ pub fn get_text_for_playlist_item<'a>(
 
     playlist_first_line_vector.push(Span {
         content: modified_indicator.into(),
-        style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
     });
 
     ListItem::from(Text::from(vec![Line::from(
@@ -444,6 +509,7 @@ pub fn get_text_for_playlist_item<'a>(
 pub fn get_text_for_artist_item<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
+    app_colors: &AppColors,
     selected_index: usize,
     index: usize,
     artist_id: &str,
@@ -478,25 +544,33 @@ pub fn get_text_for_artist_item<'a>(
         let last_slice = &artist.name()[first_index + first_match.len()..];
 
         artist_first_line_vector.push(
-            Span::from(first_slice.to_string())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+            Span::from(first_slice.to_string()).style(
+                Style::default()
+                    .fg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
         );
         artist_first_line_vector.push(
             Span::from(matched_slice.to_string()).style(
                 Style::default()
                     .fg(Black)
-                    .bg(Yellow)
+                    .bg(app_colors.primary_accent)
                     .add_modifier(Modifier::BOLD),
             ),
         );
         artist_first_line_vector.push(
-            Span::from(last_slice.to_string())
-                .style(Style::default().fg(Yellow).add_modifier(Modifier::BOLD)),
+            Span::from(last_slice.to_string()).style(
+                Style::default()
+                    .fg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
         );
     } else if index == selected_index {
         artist_first_line_vector.push(Span {
             content: artist.name().into(),
-            style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+            style: Style::default()
+                .fg(app_colors.primary_accent)
+                .add_modifier(Modifier::BOLD),
         })
     } else {
         artist_first_line_vector.push(Span {
@@ -510,55 +584,75 @@ pub fn get_text_for_artist_item<'a>(
     )]))
 }
 
-pub fn get_text_for_album_info<'a>(album: &'a Album) -> Text<'a> {
-
+pub fn get_text_for_album_info<'a>(album: &'a Album, app_colors: &AppColors) -> Text<'a> {
     Text::from(vec![
         Line::from(vec![Span {
             content: album.name().into(),
-            style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+            style: Style::default()
+                .fg(app_colors.primary_accent)
+                .add_modifier(Modifier::BOLD),
         }]),
         Line::from(vec![Span {
             content: album.artist().into(),
-            style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+            style: Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
         }]),
         Line::from(vec![
             Span {
                 content: duration_to_hhmmss(album.duration()).into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             },
             Span {
                 content: " - ".into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             },
             Span {
                 content: album.genres().join(", ").into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             },
             Span {
                 content: " - ".into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             },
             Span {
                 content: album.song_count().into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             },
             Span {
                 content: " songs".into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             },
             Span {
                 content: " - Played ".into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             },
             Span {
                 content: album.play_count().into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             },
             Span {
                 content: " times".into(),
-                style: Style::default().fg(Gray).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             },
         ]),
     ])
-    
 }

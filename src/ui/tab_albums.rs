@@ -1,14 +1,14 @@
 use crate::app::{App, AppResult, TwoPaneVertical};
-use crate::ui::utils::{get_text_for_album_info, get_text_for_album_item, get_text_for_song_item, FormatFlags};
+use crate::ui::utils::{
+    get_text_for_album_info, get_text_for_album_item, get_text_for_song_item, FormatFlags,
+};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::prelude::{Color, Modifier};
-use ratatui::style::Color::Yellow;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Padding, Paragraph, Wrap};
 use ratatui::Frame;
-use ratatui::prelude::Color::Gray;
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let chunks = Layout::default()
@@ -34,7 +34,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         },
         Span {
             content: app.album_genre_filter.clone().into(),
-            style: Style::default().fg(Yellow),
+            style: Style::default().fg(app.app_colors.primary_accent),
         },
         Span {
             content: ", year: ".into(),
@@ -42,7 +42,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         },
         Span {
             content: app.album_year_filter.clone().into(),
-            style: Style::default().fg(Yellow),
+            style: Style::default().fg(app.app_colors.primary_accent),
         },
     ])
     .style(Style::default().add_modifier(Modifier::ITALIC));
@@ -63,7 +63,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         },
         Span {
             content: app.album_sorting_mode.clone().into(),
-            style: Style::default().fg(Yellow),
+            style: Style::default().fg(app.app_colors.primary_accent),
         },
         Span {
             content: ", direction: ".into(),
@@ -71,7 +71,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         },
         Span {
             content: app.album_sorting_direction.clone().into(),
-            style: Style::default().fg(Yellow),
+            style: Style::default().fg(app.app_colors.primary_accent),
         },
     ])
     .style(Style::default().add_modifier(Modifier::ITALIC));
@@ -87,15 +87,15 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let mut results_block = Block::bordered()
         .title(Line::raw("Albums").left_aligned())
         .border_type(Rounded)
-        .border_style(Style::default().fg(Gray));
+        .border_style(Style::default().fg(app.app_colors.secondary_accent));
 
     let mut info_block = Block::bordered()
         .title(Line::raw("Album Information").left_aligned())
         .border_type(Rounded)
-        .border_style(Style::default().fg(Gray))
+        .border_style(Style::default().fg(app.app_colors.secondary_accent))
         .padding(Padding::new(2, 2, 1, 1));
 
-    let active_pane_style = Style::default().fg(Yellow);
+    let active_pane_style = Style::default().fg(app.app_colors.primary_accent);
 
     match app.album_pane {
         TwoPaneVertical::Left => {
@@ -105,7 +105,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             info_block = info_block.border_style(active_pane_style);
         }
     }
-    
+
     let list = if app.album_genre_filter == "any" {
         if app.album_sorting_mode == "frequent" {
             app.database.most_listened_albums()
@@ -127,6 +127,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         items.push(get_text_for_album_item(
             &app.database,
             &app.app_flags,
+            &app.app_colors,
             app.list_states.album_state.selected().unwrap(),
             index,
             album_id,
@@ -153,20 +154,20 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     frame.render_stateful_widget(album_list, albums_area[0], &mut app.list_states.album_state);
 
     let info_block_inner = info_block.inner(albums_area[1]);
-    
+
     let chunks_info = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(4), Constraint::Percentage(100)])
         .split(info_block_inner);
-    
+
     let selected_album = app.database.get_album(
         list.get(app.list_states.album_state.selected().unwrap())
             .unwrap(),
     );
 
     let album_info =
-        Paragraph::new(get_text_for_album_info(selected_album)).wrap(Wrap { trim: true });
-    
+        Paragraph::new(get_text_for_album_info(selected_album, &app.app_colors)).wrap(Wrap { trim: true });
+
     frame.render_widget(album_info, chunks_info[0]);
 
     let mut song_items: Vec<ListItem> = Vec::new();
@@ -174,13 +175,14 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         song_items.push(get_text_for_song_item(
             &app.database,
             &app.app_flags,
+            &app.app_colors,
             app.list_states.album_selected_state.selected().unwrap(),
             index,
             song_id,
             &app.search_data,
             app.album_pane.to_u8(),
             TwoPaneVertical::Right as u8,
-            &format_flags
+            &format_flags,
         ));
     }
 
@@ -198,9 +200,13 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 .unwrap(),
         ));
     }
-    
-    frame.render_stateful_widget(song_list, chunks_info[1], &mut app.list_states.album_selected_state);
+
+    frame.render_stateful_widget(
+        song_list,
+        chunks_info[1],
+        &mut app.list_states.album_selected_state,
+    );
     frame.render_widget(info_block, albums_area[1]);
-    
+
     Ok(())
 }

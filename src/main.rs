@@ -115,7 +115,7 @@ async fn main() -> AppResult<()> {
     } else if !loaded && app.mode == AppConnectionMode::Offline {
         error!("Cannot start offline if no database is present.");
         println!("Cannot start offline if no database is present.");
-        exit(0)
+        exit(1)
     }
 
     // Initialize ipc stream

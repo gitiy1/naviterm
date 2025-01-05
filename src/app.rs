@@ -12,15 +12,17 @@ use crate::server::async_operation::Operation;
 use crate::server::parser::Parser;
 use crate::server::server::Server;
 use config::Config;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use ratatui::widgets::ListState;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::error;
+use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
+use ratatui::prelude::Color;
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum with applications screens
@@ -160,6 +162,7 @@ pub struct App {
     pub playlist_pane: TwoPaneVertical,
     pub new_name: String,
     pub queue_data: QueueData,
+    pub app_colors: AppColors,
 }
 
 #[derive(Default, Debug)]
@@ -168,6 +171,28 @@ pub struct ItemToBeAdded {
     pub id: String,
     pub parent_id: String,
     pub media_type: MediaType,
+}
+
+pub struct AppColors {
+    pub primary_accent: Color,
+    pub secondary_accent: Color,
+    pub connected: Color,
+    pub updating: Color,
+    pub error: Color,
+    pub now_playing: Color
+}
+
+impl AppColors {
+    fn default() -> Self {
+        AppColors {
+            primary_accent: Color::Yellow,
+            secondary_accent: Color::Gray,
+            connected: Color::Green,
+            updating: Color::Yellow,
+            error: Color::Red,
+            now_playing: Color::Green,
+        }
+    }
 }
 
 pub struct SearchData {
@@ -297,6 +322,7 @@ impl Default for App {
             playlist_pane: TwoPaneVertical::Left,
             new_name: String::from(""),
             queue_data: QueueData::default(),
+            app_colors: AppColors::default(),
         }
     }
 }
@@ -370,9 +396,42 @@ impl App {
     }
 
     pub fn set_config(&mut self, config: Config) -> AppResult<()> {
-        self.server.server_address = config.get("server_address").unwrap();
-        self.server.user = config.get("user").unwrap();
-        self.server.set_password(config.get("password").unwrap());
+        match config.get::<String>("server_address") {
+            Ok(address) => self.server.server_address = address,
+            Err(e) => {
+                println!("Could not load server address.");
+                error!("Failed to load server address. {}", e);
+                exit(1)
+            }
+        }
+        match config.get::<String>("user") {
+            Ok(user) => self.server.user = user,
+            Err(e) => {
+                println!("Could not load username.");
+                error!("Failed to load user name. {}", e);
+                exit(1)
+            }
+        }
+        match config.get::<String>("password") {
+            Ok(password) => self.server.set_password(password),
+            Err(e) => {
+                println!("Could not load password.");
+                error!("Failed to load password. {}", e);
+                exit(1)
+            }
+        }
+        if let Ok(color) = config.get::<String>("primary_accent") { 
+            match parse_color(color.as_str()) {
+                Ok(parsed_color) => self.app_colors.primary_accent = parsed_color,
+                Err(_) => warn!("Could not parse primary color from {}", color),
+            }
+        }
+        if let Ok(color) = config.get::<String>("secondary_accent") {
+            match parse_color(color.as_str()) {
+                Ok(parsed_color) => self.app_colors.secondary_accent = parsed_color,
+                Err(_) => warn!("Could not parse secondary color from {}", color),
+            }
+        }
         Ok(())
     }
 
@@ -2245,4 +2304,18 @@ fn sort_playlists_by_name(playlists: &HashMap<String, Playlist>) -> Vec<String> 
     playlists_vec.sort_by(|a, b| a.0.cmp(&b.0));
 
     playlists_vec.into_iter().map(|(_, id)| id).collect()
+}
+
+fn parse_color(string_color: &str) -> AppResult<Color> {
+    match string_color.to_lowercase().as_str() { 
+        "yellow" => Ok(Color::Yellow),
+        "red" => Ok(Color::Red),
+        "green" => Ok(Color::Green),
+        "blue" => Ok(Color::Blue),
+        "magenta" => Ok(Color::Magenta),
+        "cyan" => Ok(Color::Cyan),
+        "white" => Ok(Color::White),
+        &_ => Err(Box::from("Could not parse color")),
+    }
+
 }

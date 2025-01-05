@@ -70,7 +70,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         }
     };
 
-    let album_info = get_text_for_album_info(album);
+    let album_info = get_text_for_album_info(album, &app.app_colors);
     
     let format_flags = FormatFlags {
         include_artist: false,
@@ -84,6 +84,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         items.push(get_text_for_song_item(
             &app.database,
             &app.app_flags,
+            &app.app_colors,
             app.list_states.popup_list_state.selected().unwrap(),
             index,
             song_id,

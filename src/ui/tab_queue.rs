@@ -1,9 +1,7 @@
 use crate::app::{App, AppResult};
 use crate::ui::utils::{duration_to_hhmmss, get_text_for_song_item_queue};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::prelude::Color::Gray;
 use ratatui::prelude::Style;
-use ratatui::style::Color::Yellow;
 use ratatui::style::Modifier;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::BorderType::Rounded;
@@ -24,7 +22,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     if app.queue.is_empty() {
         frame.render_widget(
             Paragraph::new(
-                Line::from("\nNothing in the queue...").style(Style::default().fg(Gray)),
+                Line::from("\nNothing in the queue...")
+                    .style(Style::default().fg(app.app_colors.secondary_accent)),
             )
             .alignment(Alignment::Center)
             .block(queue_block),
@@ -37,8 +36,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(2), Constraint::Percentage(100)])
             .split(queue_block_inner);
-        
-        let seconds_left = app.queue_data.duration_left.parse::<usize>().unwrap() - app.ticks_during_playing_state / 4;
+
+        let seconds_left = app.queue_data.duration_left.parse::<usize>().unwrap()
+            - app.ticks_during_playing_state / 4;
 
         let queue_info = Paragraph::new(
             Line::from(format!(
@@ -48,7 +48,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 app.queue.len(),
                 duration_to_hhmmss(seconds_left.to_string().as_str())
             ))
-            .style(Style::default().fg(Gray)),
+            .style(Style::default().fg(app.app_colors.secondary_accent)),
         )
         .alignment(Alignment::Center);
 
@@ -59,6 +59,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             items.push(get_text_for_song_item_queue(
                 &app.database,
                 &app.app_flags,
+                &app.app_colors,
                 app.list_states.queue_list_state.selected().unwrap(),
                 index,
                 song_id,
@@ -100,7 +101,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Title: ".into(),
-                    style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
                 },
                 Span {
                     content: current_song.title().into(),
@@ -110,7 +113,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Artist: ".into(),
-                    style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
                 },
                 Span {
                     content: current_song.artist().into(),
@@ -120,7 +125,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Album: ".into(),
-                    style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
                 },
                 Span {
                     content: current_song.album().into(),
@@ -130,7 +137,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Genres: ".into(),
-                    style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
                 },
                 Span {
                     content: current_song.genres().join(", ").into(),
@@ -140,7 +149,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Duration: ".into(),
-                    style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
                 },
                 Span {
                     content: duration_to_hhmmss(current_song.duration()).into(),
@@ -150,7 +161,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Play count: ".into(),
-                    style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
                 },
                 Span {
                     content: current_song.play_count().into(),
@@ -161,7 +174,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Bit rate: ".into(),
-                    style: Style::default().fg(Gray),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
                 },
                 Span {
                     content: current_song.bit_rate().into(),
@@ -171,7 +184,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Track peak: ".into(),
-                    style: Style::default().fg(Gray),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
                 },
                 Span {
                     content: current_song.track_peak().into(),
@@ -181,7 +194,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Track gain: ".into(),
-                    style: Style::default().fg(Gray),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
                 },
                 Span {
                     content: current_song.track_gain().into(),
@@ -191,7 +204,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Album peak: ".into(),
-                    style: Style::default().fg(Gray),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
                 },
                 Span {
                     content: current_song.album_peak().into(),
@@ -201,7 +214,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             Line::from(vec![
                 Span {
                     content: "Album gain: ".into(),
-                    style: Style::default().fg(Gray),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
                 },
                 Span {
                     content: current_song.album_gain().into(),

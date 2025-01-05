@@ -4,7 +4,6 @@ use crate::ui::utils::{
 };
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::prelude::Alignment;
-use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::Style;
 use ratatui::text::Line;
 use ratatui::widgets::BorderType::Rounded;
@@ -20,14 +19,14 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let mut block_artists = Block::bordered()
         .border_type(Rounded)
         .title(Line::raw("Artists").left_aligned())
-        .border_style(Style::default().fg(Gray));
+        .border_style(Style::default().fg(app.app_colors.secondary_accent));
 
     let mut block_artist_selected = Block::bordered()
         .border_type(Rounded)
         .title(Line::raw("Albums by selected artist").left_aligned())
-        .border_style(Style::default().fg(Gray));
+        .border_style(Style::default().fg(app.app_colors.secondary_accent));
 
-    let active_pane_style = Style::default().fg(Yellow);
+    let active_pane_style = Style::default().fg(app.app_colors.primary_accent);
 
     match app.artist_pane {
         TwoPaneVertical::Left => {
@@ -41,7 +40,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     if app.database.artists().is_empty() || app.database.alphabetical_artists().is_empty() {
         frame.render_widget(
             Paragraph::new(Line::from("No artists..."))
-                .style(Style::default().fg(Gray))
+                .style(Style::default().fg(app.app_colors.secondary_accent))
                 .alignment(Alignment::Center)
                 .block(Block::bordered().border_type(Rounded)),
             area,
@@ -52,6 +51,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             artists_items.push(get_text_for_artist_item(
                 &app.database,
                 &app.app_flags,
+                &app.app_colors,
                 app.list_states.artist_state.selected().unwrap(),
                 index,
                 artist_id,
@@ -97,6 +97,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             album_items.push(get_text_for_album_item(
                 &app.database,
                 &app.app_flags,
+                &app.app_colors,
                 app.list_states.artist_selected_state.selected().unwrap(),
                 index,
                 album_id,
@@ -110,6 +111,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 album_items.push(get_text_for_song_item(
                     &app.database,
                     &app.app_flags,
+                    &app.app_colors,
                     app.list_states.artist_selected_state.selected().unwrap(),
                     index,
                     song_id,

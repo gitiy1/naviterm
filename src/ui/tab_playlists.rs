@@ -4,7 +4,6 @@ use crate::ui::utils::{
 };
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::prelude::{Modifier, Span};
-use ratatui::style::Color::{Gray, Yellow};
 use ratatui::style::Style;
 use ratatui::text::Line;
 use ratatui::widgets::BorderType::Rounded;
@@ -20,14 +19,14 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let mut block_playlists = Block::bordered()
         .title(Line::raw("Playlists").left_aligned())
         .border_type(Rounded)
-        .border_style(Style::default().fg(Gray));
+        .border_style(Style::default().fg(app.app_colors.secondary_accent));
 
     let mut block_playlist_selected = Block::bordered()
         .border_type(Rounded)
         .title(Line::raw("Selected playlist content").left_aligned())
-        .border_style(Style::default().fg(Gray));
+        .border_style(Style::default().fg(app.app_colors.secondary_accent));
 
-    let active_pane_style = Style::default().fg(Yellow);
+    let active_pane_style = Style::default().fg(app.app_colors.primary_accent);
 
     match app.playlist_pane {
         TwoPaneVertical::Left => {
@@ -40,9 +39,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
 
     if app.database.alphabetical_playlists().is_empty() {
         frame.render_widget(
-            Paragraph::new(Line::from("No playlists...").style(Style::default().fg(Gray)))
-                .alignment(Alignment::Center)
-                .block(Block::bordered().border_type(Rounded)),
+            Paragraph::new(
+                Line::from("No playlists...")
+                    .style(Style::default().fg(app.app_colors.secondary_accent)),
+            )
+            .alignment(Alignment::Center)
+            .block(Block::bordered().border_type(Rounded)),
             area,
         );
     } else {
@@ -51,6 +53,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             playlist_items.push(get_text_for_playlist_item(
                 &app.database,
                 &app.app_flags,
+                &app.app_colors,
                 app.list_states.playlist_state.selected().unwrap(),
                 index,
                 playlist_id,
@@ -97,27 +100,29 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         let playlist_info = Paragraph::new(Line::from(vec![
             Span {
                 content: selected_playlist.name().into(),
-                style: Style::default().fg(Yellow).add_modifier(Modifier::BOLD),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
             },
             Span {
                 content: " - ".into(),
-                style: Style::default().fg(Gray),
+                style: Style::default().fg(app.app_colors.secondary_accent),
             },
             Span {
                 content: selected_playlist_songs.len().to_string().into(),
-                style: Style::default().fg(Gray),
+                style: Style::default().fg(app.app_colors.secondary_accent),
             },
             Span {
                 content: " songs (".into(),
-                style: Style::default().fg(Gray),
+                style: Style::default().fg(app.app_colors.secondary_accent),
             },
             Span {
                 content: duration_to_hhmmss(selected_playlist.duration()).into(),
-                style: Style::default().fg(Gray),
+                style: Style::default().fg(app.app_colors.secondary_accent),
             },
             Span {
                 content: ")".into(),
-                style: Style::default().fg(Gray),
+                style: Style::default().fg(app.app_colors.secondary_accent),
             },
         ]))
         .alignment(Alignment::Center);
@@ -135,6 +140,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             items.push(get_text_for_song_item(
                 &app.database,
                 &app.app_flags,
+                &app.app_colors,
                 app.list_states.playlist_selected_state.selected().unwrap(),
                 index,
                 song_id,
