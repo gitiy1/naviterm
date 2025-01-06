@@ -97,6 +97,7 @@ impl Parser {
                 "duration" => new_album.set_duration(attribute.1.to_string()),
                 "playCount" => new_album.set_play_count(attribute.1.to_string()),
                 "songCount" => new_album.set_song_count(attribute.1.to_string()),
+                "year" => new_album.set_year(attribute.1.to_string()),
                 &_ => {}
             }
         }

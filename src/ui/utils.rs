@@ -630,7 +630,13 @@ pub fn get_text_for_album_info<'a>(album: &'a Album, app_colors: &AppColors) -> 
                     .add_modifier(Modifier::ITALIC),
             },
             Span {
-                content: " songs".into(),
+                content: " songs - ".into(),
+                style: Style::default()
+                    .fg(app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
+            },
+            Span {
+                content: album.year().into(),
                 style: Style::default()
                     .fg(app_colors.secondary_accent)
                     .add_modifier(Modifier::ITALIC),

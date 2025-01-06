@@ -8,6 +8,7 @@ pub struct Album {
     duration: String,
     play_count: String,
     artist: String,
+    year: String,
     genres: Vec<String>,
     song_count: String,
     songs: Vec<String>,
@@ -81,5 +82,13 @@ impl Album {
 
     pub fn set_songs(&mut self, songs: Vec<String>) {
         self.songs = songs;
+    }
+
+    pub fn year(&self) -> &str {
+        &self.year
+    }
+
+    pub fn set_year(&mut self, year: String) {
+        self.year = year;
     }
 }
