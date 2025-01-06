@@ -146,6 +146,7 @@ pub enum Popup {
     AlbumInformation,
     AddTo,
     GenreFilter,
+    YearFilter,
     UpdateDatabase,
     SelectPlaylist,
     SynchronizePlaylist,
@@ -178,8 +179,7 @@ pub struct App {
     pub player: Mpv,
     pub index_in_queue: usize,
     pub ticks_during_playing_state: usize,
-    pub album_genre_filter: String,
-    pub album_year_filter: String,
+    pub album_filters: AlbumFilters,
     pub album_sorting_mode: SortMode,
     pub album_sorting_direction: SortOrder,
     pub search_data: SearchData,
@@ -193,6 +193,28 @@ pub struct App {
     pub new_name: String,
     pub queue_data: QueueData,
     pub app_colors: AppColors,
+}
+
+pub struct AlbumFilters {
+    pub genre_filter: String,
+    pub year_from_filter: String,
+    pub year_to_filter: String,
+    pub year_from_filter_new: String,
+    pub year_to_filter_new: String,
+    pub filter_message: String,
+}
+
+impl AlbumFilters {
+    fn default() -> Self {
+        AlbumFilters {
+            genre_filter: String::from("any"),
+            year_from_filter: String::from(""),
+            year_to_filter: String::from(""),
+            year_from_filter_new: String::from(""),
+            year_to_filter_new: String::from(""),
+            filter_message: String::from(""),
+        }
+    }
 }
 
 #[derive(Default, Debug)]
@@ -255,6 +277,8 @@ pub struct AppFlags {
     pub replay_gain_auto: bool,
     pub is_current_song_scrobbled: bool,
     pub is_introducing_new_playlist_name: bool,
+    pub is_introducing_to_year: bool,
+    pub range_year_filter: bool,
 }
 
 #[derive(Default)]
@@ -338,8 +362,7 @@ impl Default for App {
             player: Mpv::default(),
             index_in_queue: 0,
             ticks_during_playing_state: 0,
-            album_genre_filter: String::from("any"),
-            album_year_filter: String::from("any"),
+            album_filters: AlbumFilters::default(),
             album_sorting_mode: SortMode::Alphabetical,
             album_sorting_direction: SortOrder::Descending,
             search_data: SearchData::default(),
@@ -1564,7 +1587,7 @@ impl App {
     }
 
     pub fn set_genre_filter(&mut self) -> AppResult<()> {
-        self.album_genre_filter =
+        self.album_filters.genre_filter =
             if self.list_states.popup_genre_list_state.selected().unwrap() == 0 {
                 "any".to_string()
             } else {
@@ -1585,26 +1608,128 @@ impl App {
     }
 
     pub fn process_filtered_album_list(&mut self) -> AppResult<()> {
-        let mut new_filtered_list: Vec<String> = vec![];
         let list = if self.album_sorting_mode == SortMode::Frequent {
             self.database.most_listened_albums()
         } else {
             self.database.alphabetical_list_albums()
         };
-        if self.album_genre_filter != "any" {
-            for album_id in list {
-                if self
-                    .database
-                    .get_album(album_id)
-                    .genres()
-                    .contains(&self.album_genre_filter)
-                {
-                    new_filtered_list.push(album_id.clone());
-                }
-            }
+
+        let new_filtered_list: Vec<String> = if self.album_filters.genre_filter != "any"
+            && self.album_filters.year_from_filter.is_empty()
+        {
+            list.iter()
+                .filter_map(|album_id| {
+                    if self
+                        .database
+                        .get_album(album_id)
+                        .genres()
+                        .contains(&self.album_filters.genre_filter)
+                    {
+                        Some(album_id.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else if self.album_filters.genre_filter != "any"
+            && !self.album_filters.year_from_filter.is_empty()
+            && self.album_filters.year_to_filter.is_empty()
+        {
+            list.iter()
+                .filter_map(|album_id| {
+                    if self
+                        .database
+                        .get_album(album_id)
+                        .genres()
+                        .contains(&self.album_filters.genre_filter)
+                        && self.database.get_album(album_id).year()
+                            == self.album_filters.year_from_filter
+                    {
+                        Some(album_id.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else if self.album_filters.genre_filter != "any"
+            && !self.album_filters.year_from_filter.is_empty()
+            && !self.album_filters.year_to_filter.is_empty()
+        {
+            list.iter()
+                .filter_map(|album_id| {
+                    if self
+                        .database
+                        .get_album(album_id)
+                        .genres()
+                        .contains(&self.album_filters.genre_filter)
+                        && self
+                            .database
+                            .get_album(album_id)
+                            .year()
+                            .parse::<i32>()
+                            .unwrap()
+                            >= self.album_filters.year_from_filter.parse().unwrap()
+                        && self
+                            .database
+                            .get_album(album_id)
+                            .year()
+                            .parse::<i32>()
+                            .unwrap()
+                            <= self.album_filters.year_to_filter.parse().unwrap()
+                    {
+                        Some(album_id.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else if self.album_filters.genre_filter == "any"
+            && !self.album_filters.year_from_filter.is_empty()
+            && self.album_filters.year_to_filter.is_empty()
+        {
+            list.iter()
+                .filter_map(|album_id| {
+                    if self.database.get_album(album_id).year()
+                        == self.album_filters.year_from_filter
+                    {
+                        Some(album_id.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else if self.album_filters.genre_filter == "any"
+            && !self.album_filters.year_from_filter.is_empty()
+            && !self.album_filters.year_to_filter.is_empty()
+        {
+            list.iter()
+                .filter_map(|album_id| {
+                    if !self.database.get_album(album_id).year().is_empty()
+                        && self
+                            .database
+                            .get_album(album_id)
+                            .year()
+                            .parse::<i32>()
+                            .unwrap()
+                            >= self.album_filters.year_from_filter.parse().unwrap()
+                        && self
+                            .database
+                            .get_album(album_id)
+                            .year()
+                            .parse::<i32>()
+                            .unwrap()
+                            <= self.album_filters.year_to_filter.parse().unwrap()
+                    {
+                        Some(album_id.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
         } else {
-            new_filtered_list = list.clone()
-        }
+            list.clone()
+        };
+
         self.database.set_filtered_albums(new_filtered_list);
         Ok(())
     }
@@ -1982,6 +2107,36 @@ impl App {
                 operation.set_started(false);
             }
         }
+        Ok(())
+    }
+
+    pub fn validate_year_filters(&mut self) -> AppResult<()> {
+        let year1: i32 = self
+            .album_filters
+            .year_from_filter_new
+            .parse()
+            .map_err(|_| format!("Invalid year: {}", self.album_filters.year_from_filter_new))?;
+        let year2: i32 = self
+            .album_filters
+            .year_to_filter_new
+            .parse()
+            .map_err(|_| format!("Invalid year: {}", self.album_filters.year_to_filter_new))?;
+
+        if year2 < year1 {
+            warn!(
+                "Could not set filters because the 'to' = {} cannot be before the 'from' = {}",
+                year2, year1
+            );
+            self.album_filters.filter_message = "Cannot set the 'to' before the 'from'".to_string();
+        } else if year1 == year2 {
+            info!("'From' and 'to' year filters are equal, ignoring 'to'");
+            self.album_filters.year_to_filter.clear();
+            self.album_filters.year_to_filter_new.clear();
+            self.album_filters.filter_message.clear();
+        } else {
+            self.album_filters.filter_message.clear();
+        }
+
         Ok(())
     }
 

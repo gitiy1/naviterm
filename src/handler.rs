@@ -54,7 +54,7 @@ pub async fn handle_key_events(
     if app.app_flags.is_introducing_new_playlist_name {
         match key_event.code {
             KeyCode::Backspace => {
-                if !app.search_data.search_string.is_empty() {
+                if !app.new_name.is_empty() {
                     let mut chars = app.new_name.chars().collect::<Vec<char>>();
                     chars.pop();
                     app.new_name = chars.iter().collect::<String>();
@@ -139,6 +139,9 @@ pub async fn handle_key_events(
                 }
                 KeyCode::Char('e') => {
                     app.current_popup = Popup::GenreFilter;
+                }
+                KeyCode::Char('y') => {
+                    app.current_popup = Popup::YearFilter;
                 }
                 KeyCode::Char('m') => {
                     app.album_sorting_mode = if app.album_sorting_mode == SortMode::Alphabetical {
@@ -326,6 +329,67 @@ pub async fn handle_key_events(
                     app.process_filtered_album_list()?;
                     app.current_popup = Popup::None;
                     app.clear_search()?;
+                }
+                _ => {}
+            },
+            Popup::YearFilter => match key_event.code {
+                KeyCode::Backspace => {
+                    let input_string = if app.app_flags.is_introducing_to_year {
+                        &app.album_filters.year_to_filter_new
+                    } else {
+                        &app.album_filters.year_from_filter_new
+                    };
+                    if !input_string.is_empty() {
+                        let mut chars = input_string.chars().collect::<Vec<char>>();
+                        chars.pop();
+                        if app.app_flags.is_introducing_to_year {
+                            app.album_filters.year_to_filter_new = chars.iter().collect::<String>()
+                        } else {
+                            app.album_filters.year_from_filter_new = chars.iter().collect::<String>()
+                        }
+                    }
+                }
+                KeyCode::Enter => {
+                    if app.app_flags.range_year_filter {
+                        app.validate_year_filters()?;
+                    }
+                    if app.album_filters.filter_message.is_empty() {
+                        app.album_filters.year_from_filter = app.album_filters.year_from_filter_new.clone();
+                        app.album_filters.year_to_filter = app.album_filters.year_to_filter_new.clone();
+                        app.process_filtered_album_list()?;
+                        app.current_popup = Popup::None;
+                    }
+                }
+                KeyCode::Tab => {
+                    if app.app_flags.range_year_filter {
+                        app.app_flags.is_introducing_to_year = !app.app_flags.is_introducing_to_year;
+                    }
+                }
+                KeyCode::Char('r') => {
+                    if app.app_flags.range_year_filter {
+                        app.app_flags.range_year_filter = false;
+                        app.app_flags.is_introducing_to_year = false;
+                        app.album_filters.year_to_filter.clear();
+                        app.album_filters.year_to_filter_new.clear();
+                    } else {
+                        app.app_flags.range_year_filter = true;
+                    }
+                }
+                KeyCode::Char(c) => {
+                    if c.is_ascii_digit() { 
+                        if app.app_flags.is_introducing_to_year {
+                            app.album_filters.year_to_filter_new.push(c);
+                        } else { 
+                            app.album_filters.year_from_filter_new.push(c);
+                        }
+                    }
+                }
+                KeyCode::Esc => {
+                    app.album_filters.year_from_filter.clear();
+                    app.album_filters.year_to_filter.clear();
+                    app.album_filters.year_from_filter_new.clear();
+                    app.album_filters.year_to_filter_new.clear();
+                    app.app_flags.is_introducing_to_year = false;
                 }
                 _ => {}
             },

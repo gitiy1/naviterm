@@ -27,13 +27,24 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         .style(Style::default());
     let filter_area = filters_block.inner(header_chunks[0]);
 
+    let year_filter_string = if app.album_filters.year_from_filter.is_empty() {
+        "any"
+    } else if app.album_filters.year_to_filter.is_empty() {
+        app.album_filters.year_from_filter.as_str()
+    } else {
+        &*format!(
+            "{} -> {}",
+            app.album_filters.year_from_filter, app.album_filters.year_to_filter
+        )
+    };
+
     let filter_text = Line::from(vec![
         Span {
             content: "Genre: ".into(),
             style: Style::default(),
         },
         Span {
-            content: app.album_genre_filter.clone().into(),
+            content: app.album_filters.genre_filter.clone().into(),
             style: Style::default().fg(app.app_colors.primary_accent),
         },
         Span {
@@ -41,7 +52,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             style: Style::default(),
         },
         Span {
-            content: app.album_year_filter.clone().into(),
+            content: year_filter_string.into(),
             style: Style::default().fg(app.app_colors.primary_accent),
         },
     ])
@@ -106,7 +117,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         }
     }
 
-    let list = if app.album_genre_filter == "any" {
+    let list = if app.album_filters.genre_filter == "any" && app.album_filters.year_from_filter.is_empty() {
         if app.album_sorting_mode == SortMode::Frequent {
             app.database.most_listened_albums()
         } else {
@@ -165,8 +176,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .unwrap(),
     );
 
-    let album_info =
-        Paragraph::new(get_text_for_album_info(selected_album, &app.app_colors)).wrap(Wrap { trim: true });
+    let album_info = Paragraph::new(get_text_for_album_info(selected_album, &app.app_colors))
+        .wrap(Wrap { trim: true });
 
     frame.render_widget(album_info, chunks_info[0]);
 
