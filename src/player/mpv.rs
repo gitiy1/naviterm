@@ -137,4 +137,8 @@ impl Mpv {
         self.volume = new_volume;
         self.ipc.set_volume(new_volume.to_string().as_str());
     }
+    
+    pub fn set_loop_mode(&mut self, loop_mode: &str) {
+        self.ipc.set_loop_mode(loop_mode);
+    }
 }

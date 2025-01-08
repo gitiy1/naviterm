@@ -1,7 +1,7 @@
 use ratatui::layout::Constraint::{Length, Percentage};
 use ratatui::layout::{Layout, Rect};
-use ratatui::prelude::{Text};
-use ratatui::style::Color::{DarkGray};
+use ratatui::prelude::Text;
+use ratatui::style::Color::DarkGray;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::BorderType::Rounded;
@@ -93,17 +93,25 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         Paragraph::new(Text::from(vec![
             Line::from(Span {
                 content: ellipse_line(song.title(), max_width).into(),
-                style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
             }),
             Line::from(Span {
                 content: ellipse_line(song.artist(), max_width).into(),
-                style: Style::default().fg(app.app_colors.secondary_accent).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app.app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             }),
         ]))
     };
 
     let progress = LineGauge::default()
-        .filled_style(Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD))
+        .filled_style(
+            Style::default()
+                .fg(app.app_colors.primary_accent)
+                .add_modifier(Modifier::BOLD),
+        )
         .unfilled_style(Style::default().fg(DarkGray))
         .label("")
         .line_set(symbols::line::THICK)
@@ -112,13 +120,22 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
     let random_status = if app.app_flags.random_playback {
         Span {
             content: "on".into(),
-            style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
+            style: Style::default()
+                .fg(app.app_colors.primary_accent)
+                .add_modifier(Modifier::BOLD),
         }
     } else {
         Span {
             content: "off".into(),
             style: Style::default(),
         }
+    };
+
+    let loop_status = Span {
+        content: app.loop_status.as_str().into(),
+        style: Style::default()
+            .fg(app.app_colors.primary_accent)
+            .add_modifier(Modifier::BOLD),
     };
 
     let status_text = Line::from(vec![
@@ -128,7 +145,9 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         },
         Span {
             content: app.player.get_volume().to_string().into(),
-            style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
+            style: Style::default()
+                .fg(app.app_colors.primary_accent)
+                .add_modifier(Modifier::BOLD),
         },
         Span {
             content: ", random: ".into(),
@@ -136,9 +155,10 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         },
         random_status,
         Span {
-            content: ", repeat: off".into(),
+            content: ", repeat: ".into(),
             style: Style::default(),
         },
+        loop_status
     ])
     .style(Style::default().add_modifier(Modifier::ITALIC))
     .centered();
@@ -158,11 +178,15 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         let next_song_info = Paragraph::new(Text::from(vec![
             Line::from(Span {
                 content: ellipse_line(song.title(), max_width).into(),
-                style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
             }),
             Line::from(Span {
                 content: ellipse_line(song.artist(), max_width).into(),
-                style: Style::default().fg(app.app_colors.secondary_accent).add_modifier(Modifier::ITALIC),
+                style: Style::default()
+                    .fg(app.app_colors.secondary_accent)
+                    .add_modifier(Modifier::ITALIC),
             }),
         ]))
         .right_aligned();

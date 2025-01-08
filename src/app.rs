@@ -93,6 +93,22 @@ pub enum AppHomeTabMode {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum AppLoopStatus {
+    None,
+    Track,
+    Playlist,
+}
+impl AppLoopStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            AppLoopStatus::None => "off",
+            AppLoopStatus::Track => "track",
+            AppLoopStatus::Playlist => "playlist",
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum HomePane {
     Top,
     TopLeft,
@@ -193,6 +209,7 @@ pub struct App {
     pub new_name: String,
     pub queue_data: QueueData,
     pub app_colors: AppColors,
+    pub loop_status: AppLoopStatus,
 }
 
 pub struct AlbumFilters {
@@ -376,6 +393,7 @@ impl Default for App {
             new_name: String::from(""),
             queue_data: QueueData::default(),
             app_colors: AppColors::default(),
+            loop_status: AppLoopStatus::None,
         }
     }
 }
@@ -1177,6 +1195,10 @@ impl App {
         if self.queue_has_next() {
             self.go_next_queue();
             self.play_current(false);
+        } else if self.loop_status == AppLoopStatus::Playlist {
+            debug!("Looping to first element in playlist");
+            self.go_first_in_queue();
+            self.play_current(false);
         }
         Ok(())
     }
@@ -1203,9 +1225,29 @@ impl App {
                 }
                 IpcEvent::PlaybackRestart => {}
                 IpcEvent::Eof(reason) => {
-                    if reason == "eof" && self.queue_has_next() {
-                        self.go_next_queue();
-                        self.play_current(true);
+                    if reason == "eof" {
+                        match self.loop_status {
+                            AppLoopStatus::None => {
+                                if self.queue_has_next() {
+                                    self.go_next_queue();
+                                    self.play_current(true);
+                                }
+                            }
+                            AppLoopStatus::Track => {
+                                warn!("Got eof while in loop, should not happen has mpv shoud have seeked to beginning.");
+                                self.play_current(false);
+                            }
+                            AppLoopStatus::Playlist => {
+                                if self.queue_has_next() {
+                                    self.go_next_queue();
+                                    self.play_current(true);
+                                } else {
+                                    debug!("Looping to first element in playlist");
+                                    self.go_first_in_queue();
+                                    self.play_current(false);
+                                }
+                            }
+                        }
                     }
                 }
                 IpcEvent::Seek => {
@@ -1213,6 +1255,12 @@ impl App {
                     debug!("Got {} as playback time", playback_time);
                     if playback_time != -1.0 {
                         self.ticks_during_playing_state = (playback_time * 4.0).floor() as usize;
+                        if playback_time <= 1.0 && self.loop_status == AppLoopStatus::Track {
+                            // This means mpv forced the seek to 0 due to loop
+                            debug!("Restarting song due to loop {}", self.loop_status.as_str());
+                            self.app_flags.next_is_in_player_queue = true;
+                            self.play_current(true);
+                        }
                     }
                 }
                 IpcEvent::Idle => {
@@ -1254,16 +1302,38 @@ impl App {
 
     fn go_next_queue(&mut self) {
         self.index_in_queue += 1;
+        self.resolve_next_queue();
+    }
+
+    fn go_previous_queue(&mut self) {
+        self.index_in_queue -= 1;
+        self.resolve_next_queue();
+    }
+
+    fn go_first_in_queue(&mut self) {
+        self.index_in_queue = 0;
+        self.resolve_next_queue();
+    }
+
+    fn resolve_next_queue(&mut self) {
         let next_index = self.queue_order.get(self.index_in_queue).unwrap();
         self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
         self.update_queue_data();
     }
 
-    fn go_previous_queue(&mut self) {
-        self.index_in_queue -= 1;
-        let next_index = self.queue_order.get(self.index_in_queue).unwrap();
-        self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
-        self.update_queue_data();
+    pub fn cycle_loop_mode(&mut self) -> AppResult<()> {
+        match self.loop_status {
+            AppLoopStatus::None => {
+                self.loop_status = AppLoopStatus::Track;
+                self.player.set_loop_mode("inf");
+            }
+            AppLoopStatus::Track => {
+                self.loop_status = AppLoopStatus::Playlist;
+                self.player.set_loop_mode("no");
+            }
+            AppLoopStatus::Playlist => self.loop_status = AppLoopStatus::None,
+        }
+        Ok(())
     }
 
     pub fn play_queue_song(&mut self) -> AppResult<()> {
@@ -1332,18 +1402,16 @@ impl App {
     }
 
     fn play_current(&mut self, check_next_song: bool) {
-        if check_next_song && self.app_flags.next_is_in_player_queue {
-            self.app_flags.next_is_in_player_queue = false;
-            self.app_flags.is_current_song_scrobbled = false;
-        } else {
+        if !check_next_song || !self.app_flags.next_is_in_player_queue {
+            debug!("Adding song {} to player queue", self.now_playing.id);
             self.player.play_song(
                 self.server
                     .get_song_url(self.now_playing.id.clone())
                     .as_str(),
             );
-            self.app_flags.next_is_in_player_queue = false;
-            self.app_flags.is_current_song_scrobbled = false;
         }
+        self.app_flags.next_is_in_player_queue = false;
+        self.app_flags.is_current_song_scrobbled = false;
         self.event_sender
             .as_ref()
             .unwrap()

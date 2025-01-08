@@ -280,6 +280,8 @@ pub async fn handle_key_events(
             app.go_next_in_search()?;
         } else if key_event.code == KeyCode::Char('N') {
             app.go_previous_in_search()?;
+        } else if key_event.code == KeyCode::Char('l') && key_event.modifiers == KeyModifiers::NONE { 
+            app.cycle_loop_mode()?;
         }
     } else {
         match app.current_popup {

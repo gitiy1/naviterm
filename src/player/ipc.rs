@@ -1,6 +1,6 @@
 use crate::app::AppResult;
 use crate::player::parser::{parse_json_data, parse_json_event, parse_json_success};
-use log::{debug, error};
+use log::{debug, error, warn};
 use num_traits::Num;
 use std::f64;
 use std::io::{Read, Write};
@@ -84,14 +84,26 @@ impl Ipc {
         self.send_ipc_command(msg, false);
     }
 
+    pub fn set_loop_mode(&mut self, loop_mode: &str) {
+        let msg = "{\"command\":[\"set_property\",\"loop-file\",\"".to_owned() + loop_mode + "\"]}\n";
+        debug!("Sending command to set loop on file: {}", loop_mode);
+        self.send_ipc_command(msg, false);
+    }
+
     pub fn get_playback_time(&mut self) -> f64 {
         let msg = String::from("{\"command\":[\"get_property_string\",\"playback-time\"]}\n");
         debug!("Sending command to get playback-time");
+        self.parsed_value.clear();
         self.send_ipc_command(msg, true);
-        f64::from_str_radix(self.parsed_value.as_str(), 10).unwrap_or_else(|e| {
-            error!("Error while parsing response from mpv: {}", e);
+        if !self.parsed_value.is_empty() {
+            f64::from_str_radix(self.parsed_value.as_str(), 10).unwrap_or_else(|e| {
+                error!("Error while parsing response from mpv: {}", e);
+                -1.0
+            })
+        } else {
+            error!("Response");
             -1.0
-        })
+        }
     }
 
     pub async fn poll_events(&mut self) {
@@ -141,19 +153,17 @@ impl Ipc {
                 debug!("Response from stream: {}", buf_string.trim());
                 if parse_response_data {
                     debug!("Parsing data");
-                    let response = buf_string.split("\n").next();
-                    match response {
-                        None => {
-                            error!("Could not read response from server!")
-                        }
-                        Some(response) => {
-                            if parse_json_success(response) {
-                                self.parsed_value = parse_json_data(buf_string.as_str());
-                            } else {
-                                error!("Error response from server!")
-                            }
+                    let response = buf_string.split("\n");
+                    for line in response {
+                        if parse_json_success(line) {
+                            self.parsed_value = parse_json_data(line);
+                            debug!("Parsed value: {}", self.parsed_value);
+                            return;
+                        } else {
+                            warn!("Could not parse response from line: {}", line);
                         }
                     }
+                   warn!("Could not parse response from stream: {}", buf_string); 
                 }
             }
             Err(e) => error!("Failed to read from stream: {}", e),

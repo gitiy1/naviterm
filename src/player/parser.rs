@@ -1,3 +1,4 @@
+use log::{error, warn};
 use crate::player::ipc::IpcEvent;
 
 pub fn parse_json_event(event: String) -> Vec<IpcEvent> {
@@ -38,9 +39,18 @@ pub fn parse_json_success(response: &str) -> bool {
     let parsed_json = json::parse(response);
     if parsed_json.is_ok() {
         let json_data = parsed_json.unwrap();
-        match json_data["error"].as_str().unwrap() {
-            "success" => true,
-            &_ => false,
+        match json_data["error"].as_str() {
+            None => {
+                error!("Could not parse json success response");
+                false
+            }
+            Some(value) => match value {
+                "success" => true,
+                &_ => {
+                    warn!("Got unexpected JSON error: {}", value);
+                    false
+                },
+            }
         }
     } else {
         false
