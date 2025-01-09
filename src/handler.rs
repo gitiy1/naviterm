@@ -1,7 +1,4 @@
-use crate::app::{
-    App, AppConnectionMode, AppMovementInList, AppResult, AppStatus, CurrentScreen, HomePane,
-    MediaType, Popup, SortMode, TwoPaneVertical,
-};
+use crate::app::{App, AppConnectionMode, AppLoopStatus, AppMovementInList, AppResult, AppStatus, CurrentScreen, HomePane, MediaType, Popup, SortMode, TwoPaneVertical};
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
@@ -281,7 +278,17 @@ pub async fn handle_key_events(
         } else if key_event.code == KeyCode::Char('N') {
             app.go_previous_in_search()?;
         } else if key_event.code == KeyCode::Char('l') && key_event.modifiers == KeyModifiers::NONE { 
-            app.cycle_loop_mode()?;
+            match app.loop_status {
+                AppLoopStatus::None => {
+                    handle_loop_status_change(app, iface_ref, String::from("Track")).await?;
+                }
+                AppLoopStatus::Track => {
+                    handle_loop_status_change(app, iface_ref, String::from("Playlist")).await?;
+                }
+                AppLoopStatus::Playlist => {
+                    handle_loop_status_change(app, iface_ref, String::from("None")).await?;
+                }
+            }
         }
     } else {
         match app.current_popup {
@@ -622,6 +629,9 @@ pub async fn handle_dbus_events(
         DbusEvent::Volume(new_volume) => {
             handle_volume_change(app, iface_ref, new_volume).await?;
         }
+        DbusEvent::LoopStatus(new_loop_status) => {
+            handle_loop_status_change(app, iface_ref, new_loop_status).await?;           
+        }
     }
     Ok(())
 }
@@ -716,5 +726,18 @@ async fn handle_volume_change(
     iface.set_position((app.get_playback_time() * 1000000) as i64);
     iface.update_volume(new_volume);
     iface.volume_changed(iface_ref.signal_context()).await?;
+    Ok(())
+}
+
+async fn handle_loop_status_change(
+    app: &mut App,
+    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    new_loop_status: String,
+) -> AppResult<()> {
+    app.set_loop_mode(new_loop_status.as_str())?;
+    let mut iface = iface_ref.get_mut().await;
+    iface.set_position((app.get_playback_time() * 1000000) as i64);
+    iface.update_loop_status(new_loop_status);
+    iface.loop_status_changed(iface_ref.signal_context()).await?;
     Ok(())
 }

@@ -1320,18 +1320,27 @@ impl App {
         self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
         self.update_queue_data();
     }
-
-    pub fn cycle_loop_mode(&mut self) -> AppResult<()> {
-        match self.loop_status {
-            AppLoopStatus::None => {
+    
+    pub fn set_loop_mode(&mut self, loop_mode: &str) -> AppResult<()> {
+        match loop_mode {
+            "Track" => {
+                debug!("Track loop");
                 self.loop_status = AppLoopStatus::Track;
                 self.player.set_loop_mode("inf");
             }
-            AppLoopStatus::Track => {
+            "Playlist" => {
+                debug!("Playlist loop");
                 self.loop_status = AppLoopStatus::Playlist;
                 self.player.set_loop_mode("no");
             }
-            AppLoopStatus::Playlist => self.loop_status = AppLoopStatus::None,
+            "None" => {
+                debug!("None loop");
+                self.loop_status = AppLoopStatus::None;
+                self.player.set_loop_mode("no");
+            }
+            _=> {
+                warn!("Loop setting unrecognized {}", loop_mode);
+            },
         }
         Ok(())
     }

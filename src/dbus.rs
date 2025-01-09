@@ -92,6 +92,7 @@ pub struct MediaPlayer2Player {
     can_go_previous: bool,
     shuffle: bool,
     playback_status: String,
+    loop_status: String,
     position: i64,
     volume: f64,
     metadata: HashMap<String, String>,
@@ -136,6 +137,11 @@ impl MediaPlayer2Player {
     }
 
     #[zbus(property)]
+    async fn loop_status(&self) -> &str {
+        &self.loop_status
+    }
+
+    #[zbus(property)]
     async fn rate(&self) -> f64 {
         1.0
     }
@@ -177,6 +183,12 @@ impl MediaPlayer2Player {
     async fn set_shuffle(&mut self, _shuffle: bool) {
         debug!("Shuffle request from dbus!");
         self.sender.send(Event::Dbus(DbusEvent::Shuffle)).unwrap();
+    }
+
+    #[zbus(property)]
+    async fn set_loop_status(&mut self, new_loop_status: String) {
+        debug!("Loop status change request from dbus with value: {}", new_loop_status);
+        self.sender.send(Event::Dbus(DbusEvent::LoopStatus(new_loop_status))).unwrap();
     }
 
     #[zbus(property)]
@@ -266,6 +278,10 @@ impl MediaPlayer2Player {
     pub fn update_shuffle(&mut self, new_shuffle_status: bool) {
         self.shuffle = new_shuffle_status;
     }
+    
+    pub fn update_loop_status(&mut self, new_loop_status: String) {
+        self.loop_status = new_loop_status;
+    }
 }
 
 // Although we use `tokio` here, you can use any async runtime of choice.
@@ -304,6 +320,7 @@ pub async fn set_up_mpris(sender: UnboundedSender<Event>) -> AppResult<Connectio
                 volume: 1.0,
                 metadata: HashMap::new(),
                 playback_status: String::from("Stopped"),
+                loop_status: String::from("None"),
                 sender,
             },
         )

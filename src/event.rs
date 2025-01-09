@@ -6,7 +6,7 @@ use tokio::sync::mpsc;
 
 use crate::app::AppResult;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum DbusEvent {
     PlayPause,
     Play,
@@ -20,10 +20,11 @@ pub enum DbusEvent {
     Shuffle,
     Clear,
     Volume(f64),
+    LoopStatus(String),
 }
 
 /// Terminal events.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum Event {
     /// Terminal tick.
     Tick,
