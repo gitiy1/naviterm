@@ -1234,7 +1234,7 @@ impl App {
                                 }
                             }
                             AppLoopStatus::Track => {
-                                warn!("Got eof while in loop, should not happen has mpv shoud have seeked to beginning.");
+                                warn!("Got eof while in loop, should not happen has mpv should have seeked to beginning.");
                                 self.play_current(false);
                             }
                             AppLoopStatus::Playlist => {
@@ -1674,6 +1674,30 @@ impl App {
                     .unwrap()
                     .clone()
             };
+        Ok(())
+    }
+
+    pub fn toggle_favorite_genre(&mut self) -> AppResult<()> {
+        // We subtract 1 from the list state because of the first item "Any"
+        if self.list_states.popup_genre_list_state.selected().unwrap() == 0 {
+            debug!("Won't set 'Any' as favorite!");
+            return Ok(());
+        }
+        let selected_genre = self.database.genres().get(self.list_states.popup_genre_list_state.selected().unwrap() - 1).unwrap();
+        if let Some(position) = self.database.favorite_genres().iter().position(|x| x == selected_genre) {
+            debug!("Removing favorite genre {} at position {}", selected_genre, position);
+            self.database.remove_favorite_genre(position);
+        } else if self.database.favorite_genres().len() <= 9 { 
+            debug!("Genre {} was not found, adding to favorites", selected_genre);
+            self.database.push_favorite_genre(selected_genre.clone());
+        } else { 
+            warn!("Genre {} was not added to favorites because the list is full", selected_genre);
+        }
+        Ok(())
+    }
+    pub fn set_favorite_genre_filter(&mut self, position: usize) -> AppResult<()> {
+        // Position in popup are labeled as 1-9
+        self.album_filters.genre_filter = self.database.favorite_genres().get(position - 1).unwrap().clone();
         Ok(())
     }
 

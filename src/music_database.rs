@@ -14,6 +14,7 @@ pub struct MusicDatabase {
     recently_added_albums: Vec<String>,
     filtered_albums: Vec<String>,
     genres: Vec<String>,
+    favorite_genres: Vec<String>,
     albums: HashMap<String, Album>,
     songs: HashMap<String, Song>,
     playlists: HashMap<String,Playlist>,
@@ -247,4 +248,14 @@ impl MusicDatabase {
     pub fn remove_album(&mut self, id: &str) {
         self.albums.remove(id);
     }
+    pub fn favorite_genres(&self) -> &Vec<String> {
+        &self.favorite_genres
+    }
+    pub fn push_favorite_genre(&mut self, genre: String) {
+        self.favorite_genres.push(genre);
+    }
+    pub fn remove_favorite_genre(&mut self, position: usize) {
+        self.favorite_genres.remove(position);
+    }
+    
 }

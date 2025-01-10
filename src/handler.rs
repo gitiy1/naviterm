@@ -338,6 +338,21 @@ pub async fn handle_key_events(
                     app.process_filtered_album_list()?;
                     app.current_popup = Popup::None;
                     app.clear_search()?;
+                }, 
+                KeyCode::Char('f') => {
+                    app.toggle_favorite_genre()?;
+                },
+                KeyCode::Char(c) => {
+                    if c.is_ascii_digit() && c != '0' {
+                        let position = c.to_digit(10).unwrap() as usize;
+                        if position <= app.database.favorite_genres().len() {
+                            app.list_states.album_state.select_first();
+                            app.set_favorite_genre_filter(position)?;
+                            app.process_filtered_album_list()?;
+                            app.current_popup = Popup::None;
+                            app.clear_search()?;
+                        }
+                    }
                 }
                 _ => {}
             },
