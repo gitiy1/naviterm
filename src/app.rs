@@ -207,6 +207,7 @@ pub struct App {
     pub artist_pane: TwoPaneVertical,
     pub playlist_pane: TwoPaneVertical,
     pub new_name: String,
+    pub selected_album_id_to_update: String,
     pub queue_data: QueueData,
     pub app_colors: AppColors,
     pub loop_status: AppLoopStatus,
@@ -391,6 +392,7 @@ impl Default for App {
             artist_pane: TwoPaneVertical::Left,
             playlist_pane: TwoPaneVertical::Left,
             new_name: String::from(""),
+            selected_album_id_to_update: String::from(""),
             queue_data: QueueData::default(),
             app_colors: AppColors::default(),
             loop_status: AppLoopStatus::None,
@@ -973,7 +975,6 @@ impl App {
                 self.database.filtered_albums()
             }
             CurrentScreen::Artists => {
-                selected_album_index = 0;
                 let albums = self
                     .database
                     .get_artist(
@@ -983,19 +984,8 @@ impl App {
                             .unwrap(),
                     )
                     .albums();
-                // Very hacky way of getting the album index, since the list of the album and songs
-                // for the selected artist is not stored anywhere
-                for (i, album_id) in albums.iter().enumerate() {
-                    let album = self.database.get_album(album_id.as_str());
-                    // The list also have the album title as elements, that is way we add 1 more
-                    offset += album.songs().len() + 1;
-                    if self.list_states.artist_selected_state.selected().unwrap() < offset {
-                        selected_album_index = i;
-                        // We will need this later
-                        offset -= album.songs().len();
-                        break;
-                    }
-                }
+                (selected_album_index, offset) =
+                    self.get_selected_album_index_in_artist_view(albums);
                 albums
             }
             _ => {
@@ -1098,6 +1088,26 @@ impl App {
             }
         }
         Ok(())
+    }
+
+    fn get_selected_album_index_in_artist_view(&self, albums: &Vec<String>) -> (usize, usize) {
+        let mut offset = 0;
+        let mut selected_album_index = 0;
+        // Very hacky way of getting the album index, since the list of the album and songs
+        // for the selected artist is not stored anywhere
+        for (i, album_id) in albums.iter().enumerate() {
+            let album = self.database.get_album(album_id.as_str());
+            // The list also have the album title as elements, that is why we add 1 more
+            offset += album.songs().len() + 1;
+            if self.list_states.artist_selected_state.selected().unwrap() < offset {
+                selected_album_index = i;
+                // We will need this later
+                offset -= album.songs().len();
+                break;
+            }
+        }
+
+        (selected_album_index, offset)
     }
 
     pub fn toggle_playing_status(&mut self) -> AppResult<()> {
@@ -1320,7 +1330,7 @@ impl App {
         self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
         self.update_queue_data();
     }
-    
+
     pub fn set_loop_mode(&mut self, loop_mode: &str) -> AppResult<()> {
         match loop_mode {
             "Track" => {
@@ -1338,9 +1348,9 @@ impl App {
                 self.loop_status = AppLoopStatus::None;
                 self.player.set_loop_mode("no");
             }
-            _=> {
+            _ => {
                 warn!("Loop setting unrecognized {}", loop_mode);
-            },
+            }
         }
         Ok(())
     }
@@ -1683,21 +1693,44 @@ impl App {
             debug!("Won't set 'Any' as favorite!");
             return Ok(());
         }
-        let selected_genre = self.database.genres().get(self.list_states.popup_genre_list_state.selected().unwrap() - 1).unwrap();
-        if let Some(position) = self.database.favorite_genres().iter().position(|x| x == selected_genre) {
-            debug!("Removing favorite genre {} at position {}", selected_genre, position);
+        let selected_genre = self
+            .database
+            .genres()
+            .get(self.list_states.popup_genre_list_state.selected().unwrap() - 1)
+            .unwrap();
+        if let Some(position) = self
+            .database
+            .favorite_genres()
+            .iter()
+            .position(|x| x == selected_genre)
+        {
+            debug!(
+                "Removing favorite genre {} at position {}",
+                selected_genre, position
+            );
             self.database.remove_favorite_genre(position);
-        } else if self.database.favorite_genres().len() <= 9 { 
-            debug!("Genre {} was not found, adding to favorites", selected_genre);
+        } else if self.database.favorite_genres().len() <= 9 {
+            debug!(
+                "Genre {} was not found, adding to favorites",
+                selected_genre
+            );
             self.database.push_favorite_genre(selected_genre.clone());
-        } else { 
-            warn!("Genre {} was not added to favorites because the list is full", selected_genre);
+        } else {
+            warn!(
+                "Genre {} was not added to favorites because the list is full",
+                selected_genre
+            );
         }
         Ok(())
     }
     pub fn set_favorite_genre_filter(&mut self, position: usize) -> AppResult<()> {
         // Position in popup are labeled as 1-9
-        self.album_filters.genre_filter = self.database.favorite_genres().get(position - 1).unwrap().clone();
+        self.album_filters.genre_filter = self
+            .database
+            .favorite_genres()
+            .get(position - 1)
+            .unwrap()
+            .clone();
         Ok(())
     }
 
@@ -2241,6 +2274,81 @@ impl App {
         Ok(())
     }
 
+    pub fn get_selected_album_for_update(&mut self) -> AppResult<()> {
+        let selected_album_id = match self.current_screen {
+            CurrentScreen::Home => match self.home_pane {
+                HomePane::TopLeft => self
+                    .database
+                    .recent_albums()
+                    .get(self.list_states.home_tab_top_left.selected().unwrap())
+                    .unwrap(),
+                HomePane::TopRight => self
+                    .database
+                    .recently_added_albums()
+                    .get(self.list_states.home_tab_top_right.selected().unwrap())
+                    .unwrap(),
+                HomePane::BottomLeft => self
+                    .database
+                    .most_listened_albums()
+                    .get(self.list_states.home_tab_bottom_left.selected().unwrap())
+                    .unwrap(),
+                HomePane::BottomRight => self
+                    .database
+                    .get_song(
+                        self.database
+                            .most_listened_tracks()
+                            .get(self.list_states.home_tab_bottom_right.selected().unwrap())
+                            .unwrap(),
+                    )
+                    .album_id(),
+                _ => {
+                    panic!("Should not happen")
+                }
+            },
+            CurrentScreen::Albums => self
+                .database
+                .filtered_albums()
+                .get(self.list_states.album_state.selected().unwrap())
+                .unwrap(),
+            CurrentScreen::Playlists => self
+                .database
+                .get_song(
+                    self.database
+                        .get_playlist(
+                            self.database
+                                .alphabetical_playlists()
+                                .get(self.list_states.playlist_state.selected().unwrap())
+                                .unwrap(),
+                        )
+                        .song_list()
+                        .get(self.list_states.playlist_selected_state.selected().unwrap())
+                        .unwrap(),
+                )
+                .album_id(),
+            CurrentScreen::Artists => {
+                let albums = self
+                    .database
+                    .get_artist(
+                        self.database
+                            .alphabetical_artists()
+                            .get(self.list_states.artist_state.selected().unwrap())
+                            .unwrap(),
+                    )
+                    .albums();
+                let (selected_album_index, _offset) =
+                    self.get_selected_album_index_in_artist_view(albums);
+                albums.get(selected_album_index).unwrap()
+            }
+            CurrentScreen::Queue => {
+                self.database.get_song(self.queue[self.list_states.queue_list_state.selected().unwrap()].as_str()).album_id()
+            }
+        };
+        
+        self.selected_album_id_to_update = selected_album_id.to_string();
+
+        Ok(())
+    }
+
     pub fn process_pending_requests(&mut self) {
         self.server.process_async_operations();
 
@@ -2361,7 +2469,7 @@ impl App {
                                 if self.database.contains_album(album_id.as_str()) && !force_update
                                 {
                                     debug!("Album {} already in database", album_id);
-                                } else if self.database.contains_album(album_id.as_str()) {
+                                } else if !self.database.contains_album(album_id.as_str()) {
                                     debug!("Album {} was not in database, fetching", album_id);
                                     self.albums_being_updated += 1;
                                     self.server.get_album_async(album_id.clone());
@@ -2432,7 +2540,19 @@ impl App {
                                 .get_artist_mut(artist.id())
                                 .insert_album(album_id.clone(), album_genres);
                         } else {
-                            debug!("Artist {} already had album {}", artist.name(), album_id);
+                            debug!(
+                                "Artist {} already had album {}, forcing update",
+                                artist.name(),
+                                album_id
+                            );
+                            self.database
+                                .get_artist_mut(artist.id())
+                                .albums_mut()
+                                .retain(|id| id != album_id);
+                            self.database
+                                .get_artist_mut(artist.id())
+                                .insert_album(album_id.clone(), album_genres);
+                            self.database.update_artist(artist.id());
                         }
                         self.albums_being_updated -= 1;
                         operation.set_processed(true);
@@ -2565,6 +2685,13 @@ impl App {
             .set_alphabetical_artists(sort_artists_by_name(self.database.artists()));
         self.database
             .set_alphabetical_playlists(sort_playlists_by_name(self.database.playlists()));
+    }
+    
+    pub fn update_selected_album(&mut self) -> AppResult<()> {
+        self.app_flags.updating_albums = true;
+        self.albums_being_updated += 1;
+        self.server.get_album_async(self.selected_album_id_to_update.clone());
+        Ok(())
     }
 }
 fn sort_songs_by_play_count(songs: &HashMap<String, Song>) -> Vec<String> {

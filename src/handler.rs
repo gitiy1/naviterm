@@ -338,7 +338,7 @@ pub async fn handle_key_events(
                     app.process_filtered_album_list()?;
                     app.current_popup = Popup::None;
                     app.clear_search()?;
-                }, 
+                },
                 KeyCode::Char('f') => {
                     app.toggle_favorite_genre()?;
                 },
@@ -437,6 +437,12 @@ pub async fn handle_key_events(
                 KeyCode::Char('a') => {
                     app.populate_db(true)?;
                     app.current_popup = Popup::None;
+                }
+                KeyCode::Enter => {
+                    if !app.selected_album_id_to_update.is_empty() {
+                        app.update_selected_album()?;
+                        app.current_popup = Popup::None;
+                    }
                 }
                 _ => {}
             },
@@ -548,6 +554,7 @@ pub async fn handle_key_events(
         if key_event.modifiers == KeyModifiers::CONTROL {
             app.move_in_list(AppMovementInList::PageUp)?;
         } else if key_event.modifiers.is_empty() && app.current_popup == Popup::None {
+            app.get_selected_album_for_update()?;
             app.current_popup = Popup::UpdateDatabase;
         }
     }

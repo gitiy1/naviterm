@@ -1,9 +1,9 @@
 use crate::model::album::Album;
-use crate::model::song::Song;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use crate::model::artist::Artist;
 use crate::model::playlist::Playlist;
+use crate::model::song::Song;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct MusicDatabase {
@@ -17,8 +17,8 @@ pub struct MusicDatabase {
     favorite_genres: Vec<String>,
     albums: HashMap<String, Album>,
     songs: HashMap<String, Song>,
-    playlists: HashMap<String,Playlist>,
-    artists: HashMap<String,Artist>,
+    playlists: HashMap<String, Playlist>,
+    artists: HashMap<String, Artist>,
     alphabetical_artists: Vec<String>,
     alphabetical_playlists: Vec<String>,
     last_played_album_id: String,
@@ -89,7 +89,7 @@ impl MusicDatabase {
     pub fn delete_album(&mut self, id: String) {
         self.albums.remove(&id);
     }
-    
+
     pub fn delete_song(&mut self, id: String) {
         self.songs.remove(&id);
     }
@@ -141,7 +141,7 @@ impl MusicDatabase {
     pub fn insert_playlist(&mut self, id: String, playlist: Playlist) {
         self.playlists.insert(id, playlist);
     }
-    
+
     pub fn remove_playlist(&mut self, id: &str) -> Playlist {
         self.playlists.remove(id).unwrap()
     }
@@ -164,7 +164,7 @@ impl MusicDatabase {
     pub fn contains_playlist(&self, id: &str) -> bool {
         self.playlists.contains_key(id)
     }
-    
+
     pub fn playlists(&self) -> &HashMap<String, Playlist> {
         &self.playlists
     }
@@ -257,5 +257,22 @@ impl MusicDatabase {
     pub fn remove_favorite_genre(&mut self, position: usize) {
         self.favorite_genres.remove(position);
     }
-    
+
+    pub fn update_artist(&mut self, artist_id: &str) {
+        let artist = self.artists.get_mut(artist_id).unwrap();
+        
+        // Set the updated genres
+        let updated_genres: Vec<String> = artist
+            .albums()
+            .iter()
+            .flat_map(|album_id| self.albums.get(album_id).unwrap().genres().iter())
+            .cloned()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+        artist.set_genres(updated_genres);
+        
+        // Set the updated number of albums
+        artist.set_number_of_albums(artist.albums().len());
+    }
 }

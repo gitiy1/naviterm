@@ -22,6 +22,9 @@ impl Artist {
         &self.albums
     }
 
+    pub fn albums_mut(&mut self) -> &mut Vec<String> {
+        &mut self.albums
+    }
     pub fn genres(&self) -> &Vec<String> {
         &self.genres
     }
