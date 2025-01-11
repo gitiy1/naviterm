@@ -20,6 +20,7 @@ pub enum DbusEvent {
     Shuffle,
     Clear,
     Volume(f64),
+    SetPosition(i64),
     LoopStatus(String),
 }
 

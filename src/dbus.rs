@@ -1,7 +1,5 @@
 use crate::app::AppResult;
-use crate::event::DbusEvent::{
-    Next, Pause, Play, PlayPause, Previous, SeekBackwards, SeekForward, Stop,
-};
+use crate::event::DbusEvent::{Next, Pause, Play, PlayPause, Previous, SeekBackwards, SeekForward, SetPosition, Stop};
 use crate::event::{DbusEvent, Event};
 use log::debug;
 use std::collections::HashMap;
@@ -257,6 +255,11 @@ impl MediaPlayer2Player {
             self.sender.send(Event::Dbus(SeekBackwards)).unwrap();
         }
     }
+    
+    async fn set_position(&self, track_id: ObjectPath<'_>, position: i64) {
+        debug!("Set position request from dbus for tack_id: {}, position: {}", track_id, position);
+        self.sender.send(Event::Dbus(SetPosition(position))).unwrap();
+    }
 }
 
 impl MediaPlayer2Player {
@@ -268,7 +271,7 @@ impl MediaPlayer2Player {
         self.metadata = new_metadata;
     }
 
-    pub fn set_position(&mut self, new_position: i64) {
+    pub fn update_position(&mut self, new_position: i64) {
         self.position = new_position;
     }
 

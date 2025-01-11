@@ -1,4 +1,7 @@
-use crate::app::{App, AppConnectionMode, AppLoopStatus, AppMovementInList, AppResult, AppStatus, CurrentScreen, HomePane, MediaType, Popup, SortMode, TwoPaneVertical};
+use crate::app::{
+    App, AppConnectionMode, AppLoopStatus, AppMovementInList, AppResult, AppStatus, CurrentScreen,
+    HomePane, MediaType, Popup, SortMode, TwoPaneVertical,
+};
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
@@ -277,7 +280,8 @@ pub async fn handle_key_events(
             app.go_next_in_search()?;
         } else if key_event.code == KeyCode::Char('N') {
             app.go_previous_in_search()?;
-        } else if key_event.code == KeyCode::Char('l') && key_event.modifiers == KeyModifiers::NONE { 
+        } else if key_event.code == KeyCode::Char('l') && key_event.modifiers == KeyModifiers::NONE
+        {
             match app.loop_status {
                 AppLoopStatus::None => {
                     handle_loop_status_change(app, iface_ref, String::from("Track")).await?;
@@ -338,10 +342,10 @@ pub async fn handle_key_events(
                     app.process_filtered_album_list()?;
                     app.current_popup = Popup::None;
                     app.clear_search()?;
-                },
+                }
                 KeyCode::Char('f') => {
                     app.toggle_favorite_genre()?;
-                },
+                }
                 KeyCode::Char(c) => {
                     if c.is_ascii_digit() && c != '0' {
                         let position = c.to_digit(10).unwrap() as usize;
@@ -369,7 +373,8 @@ pub async fn handle_key_events(
                         if app.app_flags.is_introducing_to_year {
                             app.album_filters.year_to_filter_new = chars.iter().collect::<String>()
                         } else {
-                            app.album_filters.year_from_filter_new = chars.iter().collect::<String>()
+                            app.album_filters.year_from_filter_new =
+                                chars.iter().collect::<String>()
                         }
                     }
                 }
@@ -378,15 +383,18 @@ pub async fn handle_key_events(
                         app.validate_year_filters()?;
                     }
                     if app.album_filters.filter_message.is_empty() {
-                        app.album_filters.year_from_filter = app.album_filters.year_from_filter_new.clone();
-                        app.album_filters.year_to_filter = app.album_filters.year_to_filter_new.clone();
+                        app.album_filters.year_from_filter =
+                            app.album_filters.year_from_filter_new.clone();
+                        app.album_filters.year_to_filter =
+                            app.album_filters.year_to_filter_new.clone();
                         app.process_filtered_album_list()?;
                         app.current_popup = Popup::None;
                     }
                 }
                 KeyCode::Tab => {
                     if app.app_flags.range_year_filter {
-                        app.app_flags.is_introducing_to_year = !app.app_flags.is_introducing_to_year;
+                        app.app_flags.is_introducing_to_year =
+                            !app.app_flags.is_introducing_to_year;
                     }
                 }
                 KeyCode::Char('r') => {
@@ -400,10 +408,10 @@ pub async fn handle_key_events(
                     }
                 }
                 KeyCode::Char(c) => {
-                    if c.is_ascii_digit() { 
+                    if c.is_ascii_digit() {
                         if app.app_flags.is_introducing_to_year {
                             app.album_filters.year_to_filter_new.push(c);
-                        } else { 
+                        } else {
                             app.album_filters.year_from_filter_new.push(c);
                         }
                     }
@@ -596,7 +604,7 @@ pub async fn handle_dbus_events(
         DbusEvent::PlayPause => {
             if *app.player.player_status() == PlayerStatus::Stopped && app.try_play_current() {
                 let mut iface = iface_ref.get_mut().await;
-                iface.set_position((app.get_playback_time() * 1000000) as i64);
+                iface.update_position((app.get_playback_time() * 1000000) as i64);
                 iface.set_playback_status(String::from("Playing"));
                 iface
                     .playback_status_changed(iface_ref.signal_context())
@@ -609,7 +617,7 @@ pub async fn handle_dbus_events(
         DbusEvent::Previous => app.play_previous()?,
         DbusEvent::Playing => {
             let mut iface = iface_ref.get_mut().await;
-            iface.set_position((app.get_playback_time() * 1000000) as i64);
+            iface.update_position((app.get_playback_time() * 1000000) as i64);
             iface.set_metadata(app.get_metada_for_current_song());
             iface.metadata_changed(iface_ref.signal_context()).await?;
             iface.set_playback_status(String::from("Playing"));
@@ -620,7 +628,7 @@ pub async fn handle_dbus_events(
         DbusEvent::Play => {
             if app.try_play_current() {
                 let mut iface = iface_ref.get_mut().await;
-                iface.set_position((app.get_playback_time() * 1000000) as i64);
+                iface.update_position((app.get_playback_time() * 1000000) as i64);
                 iface.set_playback_status(String::from("Playing"));
                 iface
                     .playback_status_changed(iface_ref.signal_context())
@@ -630,7 +638,7 @@ pub async fn handle_dbus_events(
         DbusEvent::Pause => {
             if app.try_pause_current() {
                 let mut iface = iface_ref.get_mut().await;
-                iface.set_position((app.get_playback_time() * 1000000) as i64);
+                iface.update_position((app.get_playback_time() * 1000000) as i64);
                 iface.set_playback_status(String::from("Paused"));
                 iface
                     .playback_status_changed(iface_ref.signal_context())
@@ -652,7 +660,10 @@ pub async fn handle_dbus_events(
             handle_volume_change(app, iface_ref, new_volume).await?;
         }
         DbusEvent::LoopStatus(new_loop_status) => {
-            handle_loop_status_change(app, iface_ref, new_loop_status).await?;           
+            handle_loop_status_change(app, iface_ref, new_loop_status).await?;
+        }
+        DbusEvent::SetPosition(new_position) => {
+            handle_position_change(app, iface_ref, new_position).await?;
         }
     }
     Ok(())
@@ -663,7 +674,7 @@ async fn handle_shuffle_update(
     iface_ref: &InterfaceRef<MediaPlayer2Player>,
 ) -> AppResult<()> {
     let mut iface = iface_ref.get_mut().await;
-    iface.set_position((app.get_playback_time() * 1000000) as i64);
+    iface.update_position((app.get_playback_time() * 1000000) as i64);
 
     app.toggle_random_playback()?;
     iface.update_shuffle(app.app_flags.random_playback);
@@ -678,7 +689,7 @@ async fn handle_seek_forward(
 
     app.player_seek_forward()?;
     let new_position = (app.get_playback_time() * 1000000) as i64;
-    iface.set_position(new_position);
+    iface.update_position(new_position);
     MediaPlayer2Player::seeked(iface_ref.signal_context(), new_position).await?;
 
     Ok(())
@@ -691,7 +702,7 @@ async fn handle_seek_backwards(
 
     app.player_seek_backwards()?;
     let new_position = (app.get_playback_time() * 1000000) as i64;
-    iface.set_position(new_position);
+    iface.update_position(new_position);
     MediaPlayer2Player::seeked(iface_ref.signal_context(), new_position).await?;
 
     Ok(())
@@ -702,7 +713,7 @@ async fn handle_toggle_play_pause(
 ) -> AppResult<()> {
     app.toggle_playing_status()?;
     let mut iface = iface_ref.get_mut().await;
-    iface.set_position((app.get_playback_time() * 1000000) as i64);
+    iface.update_position((app.get_playback_time() * 1000000) as i64);
     if *app.player.player_status() == PlayerStatus::Playing {
         iface.set_playback_status(String::from("Playing"));
     } else if *app.player.player_status() == PlayerStatus::Paused {
@@ -721,7 +732,7 @@ async fn handle_stop_playback(
 ) -> AppResult<()> {
     if *app.player.player_status() != PlayerStatus::Stopped {
         let mut iface = iface_ref.get_mut().await;
-        iface.set_position((app.get_playback_time() * 1000000) as i64);
+        iface.update_position((app.get_playback_time() * 1000000) as i64);
         app.stop_playback();
         iface.set_playback_status(String::from("Stopped"));
         iface
@@ -745,7 +756,7 @@ async fn handle_volume_change(
     let new_volume = volume.clamp(0.0, 1.0);
     app.set_volume(new_volume)?;
     let mut iface = iface_ref.get_mut().await;
-    iface.set_position((app.get_playback_time() * 1000000) as i64);
+    iface.update_position((app.get_playback_time() * 1000000) as i64);
     iface.update_volume(new_volume);
     iface.volume_changed(iface_ref.signal_context()).await?;
     Ok(())
@@ -758,8 +769,21 @@ async fn handle_loop_status_change(
 ) -> AppResult<()> {
     app.set_loop_mode(new_loop_status.as_str())?;
     let mut iface = iface_ref.get_mut().await;
-    iface.set_position((app.get_playback_time() * 1000000) as i64);
+    iface.update_position((app.get_playback_time() * 1000000) as i64);
     iface.update_loop_status(new_loop_status);
-    iface.loop_status_changed(iface_ref.signal_context()).await?;
+    iface
+        .loop_status_changed(iface_ref.signal_context())
+        .await?;
+    Ok(())
+}
+
+async fn handle_position_change(
+    app: &mut App,
+    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    new_position: i64,
+) -> AppResult<()> {
+    app.set_playback_time(new_position);
+    let mut iface = iface_ref.get_mut().await;
+    iface.update_position((app.get_playback_time() * 1000000) as i64);
     Ok(())
 }

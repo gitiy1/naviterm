@@ -1310,6 +1310,22 @@ impl App {
         self.ticks_during_playing_state / 4
     }
 
+    pub fn set_playback_time(&mut self, new_position_micros: i64) {
+        let duration_micros = self.now_playing.duration.parse::<i64>().unwrap() * 1000000;
+        let new_position: f64 = if new_position_micros < 0 {
+            0.0
+        } else if new_position_micros > duration_micros  {
+            duration_micros as f64
+        } else {
+            new_position_micros as f64
+        };
+        let playback_percentage = ((new_position / duration_micros as f64) * 100.0).round();
+        let percentage_string = format!("{}", playback_percentage as i64);
+        debug!("Setting playing percentage: {}", percentage_string);
+        self.player.set_playback_percentage(percentage_string.as_str());
+        self.ticks_during_playing_state = (new_position / 1000000.0) as usize * 4;
+    }
+
     fn go_next_queue(&mut self) {
         self.index_in_queue += 1;
         self.resolve_next_queue();
@@ -2343,7 +2359,7 @@ impl App {
                 self.database.get_song(self.queue[self.list_states.queue_list_state.selected().unwrap()].as_str()).album_id()
             }
         };
-        
+
         self.selected_album_id_to_update = selected_album_id.to_string();
 
         Ok(())
@@ -2686,7 +2702,7 @@ impl App {
         self.database
             .set_alphabetical_playlists(sort_playlists_by_name(self.database.playlists()));
     }
-    
+
     pub fn update_selected_album(&mut self) -> AppResult<()> {
         self.app_flags.updating_albums = true;
         self.albums_being_updated += 1;
