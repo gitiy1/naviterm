@@ -232,7 +232,7 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Queue => match key_event.code {
-                KeyCode::Char('z') => app.center_queue_cursor()?,
+                KeyCode::Char('e') => app.center_queue_cursor()?,
                 KeyCode::Char('>') => app.play_next()?,
                 KeyCode::Char('<') => app.play_previous()?,
                 KeyCode::Char('c') => {
