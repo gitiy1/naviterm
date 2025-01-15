@@ -134,7 +134,11 @@ pub async fn handle_key_events(
                     }
                 }
                 KeyCode::Enter => {
-                    app.set_item_to_be_added(MediaType::Album)?;
+                    if app.album_pane == TwoPaneVertical::Left {
+                        app.set_item_to_be_added(MediaType::Album)?;
+                    } else {
+                        app.set_item_to_be_added(MediaType::Song)?;
+                    }
                     app.add_queue_immediately()?;
                 }
                 KeyCode::Char('e') => {
