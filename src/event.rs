@@ -29,6 +29,7 @@ pub enum DbusEvent {
 pub enum Event {
     /// Terminal tick.
     Tick,
+    Draw,
     /// Key press.
     Key(KeyEvent),
     /// Mouse click/scroll.
@@ -59,6 +60,7 @@ impl EventHandler {
         let handler = tokio::spawn(async move {
             let mut reader = crossterm::event::EventStream::new();
             let mut tick = tokio::time::interval(tick_rate);
+            let mut draw = false;
             loop {
                 let tick_delay = tick.tick();
                 let crossterm_event = reader.next().fuse();
@@ -68,6 +70,10 @@ impl EventHandler {
                   }
                   _ = tick_delay => {
                     _sender.send(Event::Tick).unwrap();
+                    if draw {
+                        _sender.send(Event::Draw).unwrap();
+                        draw = false;
+                    } else { draw = true; }
                   }
                   Some(Ok(evt)) = crossterm_event => {
                     match evt {

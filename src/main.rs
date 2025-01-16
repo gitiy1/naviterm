@@ -157,18 +157,19 @@ async fn main() -> AppResult<()> {
     // Start the main loop.
     while app.app_flags.running {
         // Render the user interface.
-        tui.draw(&mut app)?;
         // Handle events.
         match tui.events.next().await? {
             Event::Tick => {
                 app.tick()
             },
             Event::Key(key_event) => {
-                handle_key_events(key_event, &mut app, &iface_ref).await?
+                handle_key_events(key_event, &mut app, &iface_ref).await?;
+                tui.draw(&mut app)?;
             },
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
             Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, &iface_ref).await?,
+            Event::Draw => tui.draw(&mut app)?
         }
     }
 
