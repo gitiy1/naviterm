@@ -21,8 +21,6 @@ pub enum SubsonicOperation {
     GetAlbumListRecent,
     GetAlbumListMostListened,
     GetAlbumListAlphabetical,
-    GetAlbumListByGenre,
-    GetAlbumListByGenreAndMostListened,
     GetPlaylistList,
     GetPlaylist,
     CreatePlaylist,
@@ -432,32 +430,6 @@ impl Server {
                     self.salt
                 )
             }
-            SubsonicOperation::GetAlbumListByGenre => {
-                format!(
-                    "{}/navidrome/rest/getAlbumList.view?type=byGenre&\
-                    size={}&offset={}&genre={}&u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address,
-                    parameters[0],
-                    parameters[1],
-                    parameters[2],
-                    self.user,
-                    self.token,
-                    self.salt
-                )
-            }
-            SubsonicOperation::GetAlbumListByGenreAndMostListened => {
-                format!(
-                    "{}/navidrome/rest/getAlbumList.view?type=frequent&type=byGenre&\
-                    size={}&offset={}&genre={}&u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address,
-                    parameters[0],
-                    parameters[1],
-                    parameters[2],
-                    self.user,
-                    self.token,
-                    self.salt
-                )
-            }
             SubsonicOperation::GetAlbum => {
                 format!(
                     "{}/navidrome/rest/getAlbum.view?id={}&\
@@ -503,8 +475,8 @@ impl Server {
             SubsonicOperation::GetAlbumListRecentlyAdded => {
                 format!(
                     "{}/navidrome/rest/getAlbumList.view?type=newest&\
-                    u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, self.user, self.token, self.salt
+                    size={}&u={}&t={}&s={}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::Scrobble => {
