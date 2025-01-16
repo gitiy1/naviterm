@@ -217,6 +217,7 @@ pub struct App {
 #[derive(Default, Debug)]
 pub struct AppConfig {
     pub list_size: usize,
+    pub follow_cursor: bool,
 }
 
 pub struct AlbumFilters {
@@ -526,6 +527,14 @@ impl App {
             Err(e) => {
                 self.app_config.list_size = 20;
                 warn!("Could not load home size size, using default. {}", e);
+            }
+        }
+        
+        match config.get::<bool>("follow_cursor_queue") {
+            Ok(value) => self.app_config.follow_cursor = value,
+            Err(e) => {
+                warn!("Could not load follow cursor queue, using default. {}", e);
+                self.app_config.follow_cursor = true;
             }
         }
         Ok(())
@@ -1228,6 +1237,9 @@ impl App {
         if self.queue_has_next() {
             self.go_next_queue();
             self.play_current(false);
+            if self.app_config.follow_cursor {
+                self.list_states.queue_list_state.select(Some(self.queue_order[self.index_in_queue]));
+            }
         } else if self.loop_status == AppLoopStatus::Playlist {
             debug!("Looping to first element in playlist");
             self.go_first_in_queue();
