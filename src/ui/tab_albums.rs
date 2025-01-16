@@ -187,7 +187,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             &app.database,
             &app.app_flags,
             &app.app_colors,
-            app.list_states.album_selected_state.selected().unwrap(),
+            app.list_states.album_selected_state.selected(),
             index,
             song_id,
             &app.search_data,

@@ -1,9 +1,11 @@
+use chrono::{DateTime};
 use crate::app::AppResult;
 use crate::model::album::Album;
 use crate::model::connection_status::ConnectionStatus;
 use crate::model::song::Song;
 use encoding::all::ISO_8859_1;
 use encoding::{EncoderTrap, Encoding};
+use log::debug;
 use crate::model::artist::Artist;
 use crate::model::playlist::Playlist;
 
@@ -203,6 +205,8 @@ impl Parser {
                     "name" => new_playlist.set_name(attribute.1.to_string()),
                     "songCount" => new_playlist.set_song_count(attribute.1.to_string()),
                     "duration" => new_playlist.set_duration(attribute.1.to_string()),
+                    "created" => new_playlist.set_created_on(parse_date(attribute.1.to_string().as_str())),
+                    "changed" => new_playlist.set_modified_on(parse_date(attribute.1.to_string().as_str())),
                     _ => {}
                 }
             }
@@ -241,5 +245,15 @@ impl Parser {
             }
         }
         Err(Box::from("Could not find playlist id in server response"))
+    }
+}
+fn parse_date(string_date: &str) -> String {
+    let dt = DateTime::parse_from_rfc3339(string_date);
+    match dt {
+        Ok(dt_ok) => dt_ok.format("%m/%d/%y - %H:%M").to_string(),
+        Err(e) => {
+            debug!("Could not parse date: {:?}", e);
+            "".to_string()
+        }
     }
 }

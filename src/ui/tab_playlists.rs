@@ -95,60 +95,83 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                     .unwrap(),
             )
             .unwrap();
+        
         let selected_playlist_songs = selected_playlist.song_list();
-
-        let playlist_info = Paragraph::new(Line::from(vec![
-            Span {
-                content: selected_playlist.name().into(),
-                style: Style::default()
-                    .fg(app.app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            },
-            Span {
-                content: " - ".into(),
-                style: Style::default().fg(app.app_colors.secondary_accent),
-            },
-            Span {
-                content: selected_playlist_songs.len().to_string().into(),
-                style: Style::default().fg(app.app_colors.secondary_accent),
-            },
-            Span {
-                content: " songs (".into(),
-                style: Style::default().fg(app.app_colors.secondary_accent),
-            },
-            Span {
-                content: duration_to_hhmmss(selected_playlist.duration()).into(),
-                style: Style::default().fg(app.app_colors.secondary_accent),
-            },
-            Span {
-                content: ")".into(),
-                style: Style::default().fg(app.app_colors.secondary_accent),
-            },
-        ]))
+        
+        let playlist_info = Paragraph::new(vec![
+            Line::from(vec![
+                Span {
+                    content: selected_playlist.name().into(),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                },
+                Span {
+                    content: " - ".into(),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
+                },
+                Span {
+                    content: selected_playlist_songs.len().to_string().into(),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
+                },
+                Span {
+                    content: " songs (".into(),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
+                },
+                Span {
+                    content: duration_to_hhmmss(selected_playlist.duration()).into(),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
+                },
+                Span {
+                    content: ")".into(),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
+                },
+            ]),
+            Line::from(vec![
+                Span {
+                    content: "Created on: ".into(),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
+                },
+                Span {
+                    content: selected_playlist.created_on().into(),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
+                },
+                Span {
+                    content: ", modified on: ".into(),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
+                },
+                Span {
+                    content: selected_playlist.modified_on().into(),
+                    style: Style::default().fg(app.app_colors.secondary_accent),
+                },
+            ]),
+        ])
         .alignment(Alignment::Center);
 
         frame.render_widget(playlist_info, chunks_selected_playlist[0]);
 
         let mut items: Vec<ListItem> = Vec::new();
-        let format_flags = FormatFlags {
-            include_artist: true,
-            include_track: false,
-            indent: false,
-            highlight_title: true,
-        };
-        for (index, song_id) in selected_playlist_songs.iter().enumerate() {
-            items.push(get_text_for_song_item(
-                &app.database,
-                &app.app_flags,
-                &app.app_colors,
-                app.list_states.playlist_selected_state.selected().unwrap(),
-                index,
-                song_id,
-                &app.search_data,
-                app.playlist_pane.to_u8(),
-                TwoPaneVertical::Right as u8,
-                &format_flags,
-            ));
+        if !selected_playlist_songs.is_empty() {
+            let format_flags = FormatFlags {
+                include_artist: true,
+                include_track: false,
+                indent: false,
+                highlight_title: true,
+            };
+            for (index, song_id) in selected_playlist_songs.iter().enumerate() {
+                items.push(get_text_for_song_item(
+                    &app.database,
+                    &app.app_flags,
+                    &app.app_colors,
+                    app.list_states.playlist_selected_state.selected(),
+                    index,
+                    song_id,
+                    &app.search_data,
+                    app.playlist_pane.to_u8(),
+                    TwoPaneVertical::Right as u8,
+                    &format_flags,
+                ));
+            }
         }
 
         let list = List::new(items)

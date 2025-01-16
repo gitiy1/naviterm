@@ -85,7 +85,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             &app.database,
             &app.app_flags,
             &app.app_colors,
-            app.list_states.popup_list_state.selected().unwrap(),
+            app.list_states.popup_list_state.selected(),
             index,
             song_id,
             &app.search_data,

@@ -261,6 +261,8 @@ impl MusicDatabase {
     pub fn update_artist(&mut self, artist_id: &str) {
         let artist = self.artists.get_mut(artist_id).unwrap();
         
+        artist.albums_mut().retain(|album_id| self.albums.contains_key(album_id));
+        
         // Set the updated genres
         let updated_genres: Vec<String> = artist
             .albums()
@@ -274,5 +276,10 @@ impl MusicDatabase {
         
         // Set the updated number of albums
         artist.set_number_of_albums(artist.albums().len());
+    }
+
+    pub fn update_playlist_dates(&mut self, playlist_id: &str, modified_date: &str) {
+        let playlist = self.playlists.get_mut(playlist_id).unwrap();
+        playlist.set_modified_on(modified_date.to_string());
     }
 }

@@ -297,6 +297,8 @@ pub async fn handle_key_events(
                     handle_loop_status_change(app, iface_ref, String::from("None")).await?;
                 }
             }
+        } else if key_event.code == KeyCode::Char('s') {
+            handle_stop_playback(app, iface_ref).await?;
         }
     } else {
         match app.current_popup {

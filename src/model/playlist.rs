@@ -6,7 +6,9 @@ pub struct Playlist {
     song_count: String,
     duration: String,
     modified: bool,
-    song_list: Vec<String>
+    song_list: Vec<String>,
+    created_on: String,
+    modified_on: String,
 }
 
 impl Playlist {
@@ -60,5 +62,21 @@ impl Playlist {
 
     pub fn modified(&self) -> bool {
         self.modified
+    }
+
+    pub fn created_on(&self) -> &str {
+        &self.created_on
+    }
+
+    pub fn modified_on(&self) -> &str {
+        &self.modified_on
+    }
+
+    pub fn set_modified_on(&mut self, modified_on: String) {
+        self.modified_on = modified_on;
+    }
+
+    pub fn set_created_on(&mut self, created_on: String) {
+        self.created_on = created_on;
     }
 }

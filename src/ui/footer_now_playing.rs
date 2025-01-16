@@ -8,7 +8,7 @@ use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
 use ratatui::{symbols, Frame};
 
-use crate::app::App;
+use crate::app::{App, AppLoopStatus};
 use crate::player::mpv::PlayerStatus;
 use crate::ui::utils::{duration_to_hhmmss, ellipse_line};
 
@@ -83,8 +83,7 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
     let mut ratio;
     let current_song_info = if app.now_playing.id.is_empty() {
         ratio = 0f64;
-        Paragraph::new("Nothing in the playing queue")
-            .style(Style::default().fg(app.app_colors.secondary_accent))
+        Paragraph::new("")
     } else {
         let song = app.database.get_song(app.now_playing.id.as_str());
         ratio = (app.ticks_during_playing_state / 4) as f64
@@ -131,11 +130,18 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         }
     };
 
-    let loop_status = Span {
-        content: app.loop_status.as_str().into(),
-        style: Style::default()
-            .fg(app.app_colors.primary_accent)
-            .add_modifier(Modifier::BOLD),
+    let loop_status = if app.loop_status == AppLoopStatus::None {
+        Span {
+            content: app.loop_status.as_str().into(),
+            style: Style::default(),
+        }
+    } else {
+        Span {
+            content: app.loop_status.as_str().into(),
+            style: Style::default()
+                .fg(app.app_colors.primary_accent)
+                .add_modifier(Modifier::BOLD),
+        }
     };
 
     let status_text = Line::from(vec![
@@ -158,17 +164,16 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
             content: ", repeat: ".into(),
             style: Style::default(),
         },
-        loop_status
+        loop_status,
     ])
     .style(Style::default().add_modifier(Modifier::ITALIC))
     .centered();
 
     frame.render_widget(current_song_info, current_song_section);
-    if app.player.player_status != PlayerStatus::Stopped {
-        frame.render_widget(status_block, status_section);
-        frame.render_widget(status_text, status_text_area);
-        frame.render_widget(progress, status_progress_bar_area);
-    }
+    frame.render_widget(status_block, status_section);
+    frame.render_widget(status_text, status_text_area);
+    frame.render_widget(progress, status_progress_bar_area);
+
     if app.queue_has_next() {
         let next_song_id = app
             .queue

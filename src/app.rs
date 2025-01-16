@@ -2413,6 +2413,7 @@ impl App {
                         for playlist in playlist_list {
                             if self.database.contains_playlist(playlist.id()) && !force_update {
                                 debug!("Playlist {} already in database", playlist.name());
+                                self.database.update_playlist_dates(playlist.id(), playlist.modified_on());
                             } else if !self.database.contains_playlist(playlist.id()) {
                                 debug!(
                                     "Playlist {} was not in database, fetching",
@@ -2424,6 +2425,8 @@ impl App {
                             } else {
                                 debug!("Forcing update for playlist {}", playlist.name());
                                 self.server.get_playlist_async(playlist.id());
+                                self.database.remove_playlist(playlist.id());
+                                self.database.insert_playlist(playlist.id().to_string(), playlist);
                             }
                         }
                     }

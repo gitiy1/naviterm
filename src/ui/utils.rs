@@ -3,8 +3,8 @@ use crate::model::album::Album;
 use crate::music_database::MusicDatabase;
 use log::debug;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::prelude::{Line, Modifier, Span, Style, Stylize, Text};
 use ratatui::prelude::Color::Black;
+use ratatui::prelude::{Line, Modifier, Span, Style, Stylize, Text};
 use ratatui::widgets::ListItem;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -220,7 +220,9 @@ pub fn get_text_for_song_item_queue<'a>(
     let song = database.get_song(song_id);
     let mut song_first_line_vector: Vec<Span> = vec![];
     let style_playing = if index == *queue_order.get(index_in_queue).unwrap() {
-        Style::default().fg(app_colors.now_playing).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(app_colors.now_playing)
+            .add_modifier(Modifier::BOLD)
     } else if index == selected_index {
         Style::default()
             .fg(app_colors.primary_accent)
@@ -297,7 +299,7 @@ pub fn get_text_for_song_item<'a>(
     database: &'a MusicDatabase,
     app_flags: &AppFlags,
     app_colors: &AppColors,
-    selected_index: usize,
+    selected_index: Option<usize>,
     index: usize,
     song_id: &str,
     search_data: &SearchData,
@@ -314,14 +316,17 @@ pub fn get_text_for_song_item<'a>(
         song_second_line_vector.push(Span::from("  "));
     }
     if format_flags.include_track {
-        if song.track().len() == 1 {
+        if !song.track().is_empty() {
+            if song.track().len() == 1 {
+                song_first_line_vector
+                    .push(Span::from(" ").style(Style::default().fg(app_colors.secondary_accent)));
+            }
+            song_first_line_vector.push(
+                Span::from(song.track()).style(Style::default().fg(app_colors.secondary_accent)),
+            );
             song_first_line_vector
-                .push(Span::from(" ").style(Style::default().fg(app_colors.secondary_accent)));
+                .push(Span::from(". ").style(Style::default().fg(app_colors.secondary_accent)));
         }
-        song_first_line_vector
-            .push(Span::from(song.track()).style(Style::default().fg(app_colors.secondary_accent)));
-        song_first_line_vector
-            .push(Span::from(". ").style(Style::default().fg(app_colors.secondary_accent)));
         song_second_line_vector.push(Span::from(" "));
     }
 
@@ -357,7 +362,7 @@ pub fn get_text_for_song_item<'a>(
             ),
         );
         song_first_line_vector.push(Span::from(last_slice.to_string()).style(Style::default()));
-    } else if index == selected_index {
+    } else if selected_index.is_some() && index == selected_index.unwrap() {
         song_first_line_vector.push(
             Span::from(song.title()).style(
                 Style::default()
@@ -501,9 +506,26 @@ pub fn get_text_for_playlist_item<'a>(
             .add_modifier(Modifier::ITALIC),
     });
 
-    ListItem::from(Text::from(vec![Line::from(
-        playlist_first_line_vector.clone(),
-    )]))
+    let playlist_second_line_vector: Vec<Span> = vec![
+        Span {
+        content: playlist.song_count().into(),
+        style: Style::default()
+            .fg(app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
+    },
+
+        Span {
+            content: " songs".into(),
+            style: Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
+        }
+    ];
+
+    ListItem::from(Text::from(vec![
+        Line::from(playlist_first_line_vector.clone()),
+        Line::from(playlist_second_line_vector.clone()),
+    ]))
 }
 
 pub fn get_text_for_artist_item<'a>(
@@ -579,9 +601,29 @@ pub fn get_text_for_artist_item<'a>(
         })
     }
 
-    ListItem::from(Text::from(vec![Line::from(
-        artist_first_line_vector.clone(),
-    )]))
+    let artist_second_line_vector: Vec<Span> = vec![
+        Span::from(artist.number_of_albums().to_string()).style(
+            Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
+        ),
+        Span::from(" albums - ").style(
+            Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
+        ),
+        Span {
+            content: artist.genres().join(", ").into(),
+            style: Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
+        },
+    ];
+
+    ListItem::from(Text::from(vec![
+        Line::from(artist_first_line_vector.clone()),
+        Line::from(artist_second_line_vector.clone()),
+    ]))
 }
 
 pub fn get_text_for_album_info<'a>(album: &'a Album, app_colors: &AppColors) -> Text<'a> {

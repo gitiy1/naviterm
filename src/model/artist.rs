@@ -54,7 +54,6 @@ impl Artist {
     }
 
     pub fn insert_album(&mut self, album: String, new_genres: Vec<String>) {
-        self.number_of_albums += 1;
         self.albums.push(album);
         for genre in new_genres {
             if !self.genres.contains(&genre) {
