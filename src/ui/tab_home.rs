@@ -84,7 +84,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             indent: false,
             highlight_title: false,
         };
-        for (index, album_id) in recent_albums.iter().enumerate() {
+        for (index, album_id) in recent_albums.iter().take(app.app_config.list_size).enumerate() {
             items.push(get_text_for_album_item(
                 &app.database,
                 &app.app_flags,
@@ -133,7 +133,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             indent: false,
             highlight_title: false,
         };
-        for (index, album_id) in most_listened_albums.iter().enumerate() {
+        for (index, album_id) in most_listened_albums.iter().take(app.app_config.list_size).enumerate() {
             items.push(get_text_for_album_item(
                 &app.database,
                 &app.app_flags,
@@ -182,7 +182,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             indent: false,
             highlight_title: false,
         };
-        for (index, song_id) in most_listened_tracks.iter().enumerate() {
+        for (index, song_id) in most_listened_tracks.iter().take(app.app_config.list_size).enumerate() {
             items.push(get_text_for_song_item(
                 &app.database,
                 &app.app_flags,
@@ -231,7 +231,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             indent: false,
             highlight_title: false,
         };
-        for (index, album_id) in recently_added_albums.iter().enumerate() {
+        for (index, album_id) in recently_added_albums.iter().take(app.app_config.list_size).enumerate() {
             items.push(get_text_for_album_item(
                 &app.database,
                 &app.app_flags,

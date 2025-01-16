@@ -11,7 +11,7 @@ use crate::player::mpv::{Mpv, PlayerStatus};
 use crate::server::async_operation::Operation;
 use crate::server::parser::Parser;
 use crate::server::server::Server;
-use config::Config;
+use config::{Config};
 use log::{debug, error, info, warn};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -211,6 +211,12 @@ pub struct App {
     pub queue_data: QueueData,
     pub app_colors: AppColors,
     pub loop_status: AppLoopStatus,
+    pub app_config: AppConfig,
+}
+
+#[derive(Default, Debug)]
+pub struct AppConfig {
+    pub list_size: usize,
 }
 
 pub struct AlbumFilters {
@@ -396,6 +402,7 @@ impl Default for App {
             queue_data: QueueData::default(),
             app_colors: AppColors::default(),
             loop_status: AppLoopStatus::None,
+            app_config: AppConfig::default(),
         }
     }
 }
@@ -503,6 +510,22 @@ impl App {
             match parse_color(color.as_str()) {
                 Ok(parsed_color) => self.app_colors.secondary_accent = parsed_color,
                 Err(_) => warn!("Could not parse secondary color from {}", color),
+            }
+        }
+
+        match config.get::<String>("home_list_size"){
+            Ok(value) => {
+                match value.parse::<usize>() {
+                    Ok(list_size) => self.app_config.list_size = list_size,
+                    Err(e) => {
+                        self.app_config.list_size = 20;
+                        println!("Could not parse list size, using default. {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                self.app_config.list_size = 20;
+                warn!("Could not load home size size, using default. {}", e);
             }
         }
         Ok(())
