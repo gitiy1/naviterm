@@ -1,7 +1,7 @@
 use crate::constants;
 use crate::event::DbusEvent::{Clear, Playing};
 use crate::event::Event;
-use crate::event::Event::Dbus;
+use crate::event::Event::{Dbus, Draw};
 use crate::model::artist::Artist;
 use crate::model::playlist::Playlist;
 use crate::model::song::Song;
@@ -212,12 +212,14 @@ pub struct App {
     pub app_colors: AppColors,
     pub loop_status: AppLoopStatus,
     pub app_config: AppConfig,
+    pub app_focused: bool
 }
 
 #[derive(Default, Debug)]
 pub struct AppConfig {
     pub list_size: usize,
     pub follow_cursor: bool,
+    pub draw_while_unfocused: bool,
 }
 
 pub struct AlbumFilters {
@@ -404,6 +406,7 @@ impl Default for App {
             app_colors: AppColors::default(),
             loop_status: AppLoopStatus::None,
             app_config: AppConfig::default(),
+            app_focused: true,
         }
     }
 }
@@ -514,16 +517,8 @@ impl App {
             }
         }
 
-        match config.get::<String>("home_list_size"){
-            Ok(value) => {
-                match value.parse::<usize>() {
-                    Ok(list_size) => self.app_config.list_size = list_size,
-                    Err(e) => {
-                        self.app_config.list_size = 20;
-                        println!("Could not parse list size, using default. {}", e);
-                    }
-                }
-            }
+        match config.get::<usize>("home_list_size"){
+            Ok(value) => self.app_config.list_size = value,
             Err(e) => {
                 self.app_config.list_size = 20;
                 warn!("Could not load home size size, using default. {}", e);
@@ -535,6 +530,13 @@ impl App {
             Err(e) => {
                 warn!("Could not load follow cursor queue, using default. {}", e);
                 self.app_config.follow_cursor = true;
+            }
+        }
+        
+        match config.get::<bool>("draw_while_unfocused") {
+            Ok(value) => self.app_config.draw_while_unfocused = value,
+            Err(e) => {
+                warn!("Could not load draw while unfocused, using default. {}", e);
             }
         }
         Ok(())
@@ -1237,9 +1239,6 @@ impl App {
         if self.queue_has_next() {
             self.go_next_queue();
             self.play_current(false);
-            if self.app_config.follow_cursor {
-                self.list_states.queue_list_state.select(Some(self.queue_order[self.index_in_queue]));
-            }
         } else if self.loop_status == AppLoopStatus::Playlist {
             debug!("Looping to first element in playlist");
             self.go_first_in_queue();
@@ -1488,6 +1487,12 @@ impl App {
             .send(Dbus(Playing))
             .unwrap();
         self.ticks_during_playing_state = 0;
+        if self.app_config.follow_cursor {
+            self.list_states.queue_list_state.select(Some(self.queue_order[self.index_in_queue]));
+        }
+        if !self.app_focused {
+            self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
+        }
     }
 
     fn shuffle_queue_order_starting_at_current_index(&mut self) {

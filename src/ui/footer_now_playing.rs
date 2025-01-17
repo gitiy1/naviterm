@@ -14,47 +14,37 @@ use crate::ui::utils::{duration_to_hhmmss, ellipse_line};
 
 pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
     let seconds_played = (app.ticks_during_playing_state / 4).to_string();
+    let elapsed_track_time = if app.app_focused && app.player.player_status != PlayerStatus::Stopped {
+        Span {
+            content: format!(
+                " - [{}/{}] ",
+                duration_to_hhmmss(seconds_played.as_str()),
+                duration_to_hhmmss(
+                    app.database
+                        .get_song(app.now_playing.id.as_str())
+                        .duration()
+                )
+            )
+            .into(),
+            style: Style::default(),
+        }
+    } else {
+        Span::default()
+    };
     let player_status = match app.player.player_status() {
         PlayerStatus::Playing => Line::from(vec![
             Span {
-                content: "Now playing - [".into(),
+                content: "Now playing".into(),
                 style: Style::default(),
             },
-            Span {
-                content: duration_to_hhmmss(seconds_played.as_str()).into(),
-                style: Style::default(),
-            },
-            Span {
-                content: "/".into(),
-                style: Style::default(),
-            },
-            Span {
-                content: duration_to_hhmmss(
-                    app.database
-                        .get_song(app.now_playing.id.as_str())
-                        .duration(),
-                )
-                .into(),
-                style: Style::default(),
-            },
-            Span {
-                content: "] ".into(),
-                style: Style::default(),
-            },
+            elapsed_track_time,
         ]),
         PlayerStatus::Paused => Line::from(vec![
             Span {
-                content: "Paused - [".into(),
+                content: "Paused".into(),
                 style: Style::default(),
             },
-            Span {
-                content: duration_to_hhmmss(seconds_played.as_str()).into(),
-                style: Style::default(),
-            },
-            Span {
-                content: "] ".into(),
-                style: Style::default(),
-            },
+            elapsed_track_time,
         ]),
         PlayerStatus::Stopped => Line::from("Stopped"),
     };
@@ -86,9 +76,13 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         Paragraph::new("")
     } else {
         let song = app.database.get_song(app.now_playing.id.as_str());
-        ratio = (app.ticks_during_playing_state / 4) as f64
-            / song.duration().parse::<usize>().unwrap() as f64;
-        ratio = if ratio > 1f64 { 1f64 } else { ratio };
+        if app.app_focused {
+            ratio = (app.ticks_during_playing_state / 4) as f64
+                / song.duration().parse::<usize>().unwrap() as f64;
+            ratio = if ratio > 1f64 { 1f64 } else { ratio };
+        } else { 
+            ratio = 0f64;
+        }
         Paragraph::new(Text::from(vec![
             Line::from(Span {
                 content: ellipse_line(song.title(), max_width).into(),

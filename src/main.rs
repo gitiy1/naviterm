@@ -169,7 +169,24 @@ async fn main() -> AppResult<()> {
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
             Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, &iface_ref).await?,
-            Event::Draw => tui.draw(&mut app)?
+            Event::Draw(force_draw) => {
+                if app.app_focused || force_draw {
+                    tui.draw(&mut app)?
+                }
+            }
+            Event::FocusGained => { 
+                if !app.app_config.draw_while_unfocused {
+                    debug!("Application gained focus, resuming drawing");
+                    app.app_focused = true;
+                }
+            }
+            Event::FocusLost => {
+                if !app.app_config.draw_while_unfocused {
+                    debug!("Application lost focus, will not draw");
+                    app.app_focused = false;
+                    tui.draw(&mut app)?
+                }
+            }
         }
     }
 

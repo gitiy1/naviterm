@@ -29,14 +29,20 @@ pub enum DbusEvent {
 pub enum Event {
     /// Terminal tick.
     Tick,
-    Draw,
+    /// Event for redrawing.
+    Draw(bool),
     /// Key press.
     Key(KeyEvent),
     /// Mouse click/scroll.
     Mouse(MouseEvent),
     /// Terminal resize.
     Resize(u16, u16),
+    /// Dbus event received
     Dbus(DbusEvent),
+    /// Focus gained event
+    FocusGained,
+    /// Focus lost event
+    FocusLost,
 }
 
 /// Terminal event handler.
@@ -71,7 +77,7 @@ impl EventHandler {
                   _ = tick_delay => {
                     _sender.send(Event::Tick).unwrap();
                     if draw {
-                        _sender.send(Event::Draw).unwrap();
+                        _sender.send(Event::Draw(false)).unwrap();
                         draw = false;
                     } else { draw = true; }
                   }
@@ -89,8 +95,10 @@ impl EventHandler {
                         _sender.send(Event::Resize(x, y)).unwrap();
                       },
                       CrosstermEvent::FocusLost => {
+                        _sender.send(Event::FocusLost).unwrap();
                       },
                       CrosstermEvent::FocusGained => {
+                        _sender.send(Event::FocusGained).unwrap();
                       },
                       CrosstermEvent::Paste(_) => {
                       },
