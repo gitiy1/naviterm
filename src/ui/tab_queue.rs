@@ -37,8 +37,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .constraints([Constraint::Min(2), Constraint::Percentage(100)])
             .split(queue_block_inner);
 
-        let seconds_left = app.queue_data.duration_left.parse::<usize>().unwrap()
-            - app.ticks_during_playing_state / 4;
+        let seconds_left = app.queue_data.duration_left.parse::<usize>().unwrap().saturating_sub(app.ticks_during_playing_state / 4);
 
         let queue_info = Paragraph::new(
             Line::from(format!(
