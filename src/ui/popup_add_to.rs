@@ -1,19 +1,14 @@
-use ratatui::layout::{Alignment, Constraint, Direction, Layout};
+use ratatui::layout::{Alignment};
 use ratatui::style::{Color, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
-
+use ratatui::prelude::{Modifier, Span};
 use crate::app::{App, AppResult, MediaType};
 use crate::ui::utils;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(40, 30, frame.size());
-
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(5), Constraint::Length(1)])
-        .split(area);
 
     let added_item_name = match app.item_to_be_added.media_type  {
         MediaType::Song => {
@@ -30,14 +25,41 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         }
     };
 
-    let popup_block = Paragraph::new(format!(
-        "Adding {} to...\n\n\
-                (n) Queue, after current song\n\
-                (e) Queue, at the end\n\
-                (p) Playlist...\n\
-                ",
-        added_item_name
-    ))
+    let popup_lines = vec![
+        Line::from(format!("Adding {} to...", added_item_name)),
+        Line::from(""),
+        Line::from(vec![
+            Span{
+                content: "(n)".into(),
+                style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
+            },
+            Span{
+                content: " Queue, after current song".into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span{
+                content: "(e)".into(),
+                style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
+            },
+            Span{
+                content: " Queue, at the end".into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span{
+                content: "(p)".into(),
+                style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
+            },
+            Span{
+                content: " Playlists...".into(),
+                style: Style::default(),
+            },
+        ]),
+    ];
+    let popup_block = Paragraph::new(popup_lines)
     .wrap(Wrap { trim: true })
     .block(
         Block::bordered()
@@ -48,14 +70,8 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     )
     .style(Style::default().fg(Color::default()).bg(Color::default()));
 
-    let popup_footer = Paragraph::new(Line::from(
-        "(n) add next (e) add at the end (p) add to playlist",
-    ))
-    .block(Block::default());
-
     frame.render_widget(Clear, area);
-    frame.render_widget(popup_block, chunks[0]);
-    frame.render_widget(popup_footer, chunks[1]);
+    frame.render_widget(popup_block, area);
 
     Ok(())
 }

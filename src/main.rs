@@ -166,7 +166,6 @@ async fn main() -> AppResult<()> {
                 handle_key_events(key_event, &mut app, &iface_ref).await?;
                 tui.draw(&mut app)?;
             },
-            Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
             Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, &iface_ref).await?,
             Event::Draw(force_draw) => {
