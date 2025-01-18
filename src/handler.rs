@@ -737,9 +737,9 @@ async fn handle_stop_playback(
     iface_ref: &InterfaceRef<MediaPlayer2Player>,
 ) -> AppResult<()> {
     if *app.player.player_status() != PlayerStatus::Stopped {
+        app.stop_playback();
         let mut iface = iface_ref.get_mut().await;
         iface.update_position((app.get_playback_time() * 1000000) as i64);
-        app.stop_playback();
         iface.set_playback_status(String::from("Stopped"));
         iface
             .playback_status_changed(iface_ref.signal_context())
