@@ -1,53 +1,126 @@
 use crate::app::{App, AppResult};
 use crate::ui::utils;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
-use ratatui::style::{Color, Style};
+use ratatui::prelude::Span;
+use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, BorderType, Clear, Paragraph, Wrap};
+use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(60, 40, frame.size());
 
+    let popup_paragraph = Paragraph::new(vec![
+        Line::from(vec![
+            Span {
+                content: "Salt: ".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: app.server.salt.clone().into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span {
+                content: "Token: ".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: app.server.token.clone().into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span {
+                content: "Server address: ".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: app.server.server_address.clone().into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span {
+                content: "Connection status: ".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: app.server.connection_status.clone().into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span {
+                content: "Last connection: ".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: app.server.last_connection_timestamp.clone().into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span {
+                content: "Connection error code: ".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: app.server.connection_code.clone().into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span {
+                content: "Connection message: ".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: app.server.connection_message.clone().into(),
+                style: Style::default(),
+            },
+        ]),
+    ])
+    .wrap(Wrap { trim: true });
+
+    let popup_footer = Paragraph::new(
+        Line::from("(r) to generate new salt and token (t) to test connection").style(
+            Style::default()
+                .fg(app.app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
+        ),
+    )
+    .centered();
+
+    let block = Block::bordered()
+        .title("Test Navidrome server")
+        .title_alignment(Alignment::Center)
+        .padding(Padding::new(4, 4, 1, 1))
+        .border_type(BorderType::Rounded);
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(1), Constraint::Length(3)])
-        .split(area);
-
-    let popup_block = Paragraph::new(format!(
-        "Testing details:\n\
-                Salt: {}\n\
-                Token: {}\n\
-                Server address: {}\n\
-                Connection status: {}\n\
-                Last connection: {}\n\
-                Connection error code: {}\n\
-                Connection message: {}\n\
-                ",
-        app.server.salt,
-        app.server.token,
-        app.server.server_address,
-        app.server.connection_status,
-        app.server.last_connection_timestamp,
-        app.server.connection_code,
-        app.server.connection_message
-    ))
-    .wrap(Wrap { trim: true })
-    .block(
-        Block::bordered()
-            .title("Test Navidrome server")
-            .title_alignment(Alignment::Center)
-            .border_type(BorderType::Rounded),
-    )
-    .style(Style::default().fg(Color::default()).bg(Color::default()));
-
-    let popup_footer = Paragraph::new(Line::from(
-        "(r) to generate new salt and token (t) to test connection",
-    ))
-    .block(Block::default());
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(block.inner(area));
 
     frame.render_widget(Clear, area);
-    frame.render_widget(popup_block, chunks[0]);
+    frame.render_widget(popup_paragraph, chunks[0]);
     frame.render_widget(popup_footer, chunks[1]);
+    frame.render_widget(block, area);
     Ok(())
 }
