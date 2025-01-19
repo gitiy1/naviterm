@@ -27,11 +27,17 @@ async fn main() -> AppResult<()> {
     let xdg_conf = home_dir.to_string_lossy().to_string() + "/.config/naviterm/";
     let config_file = xdg_conf.clone() + "config.ini";
     let database_file = xdg_conf.clone() + "database.bin";
-    let settings = Config::builder()
+    let settings = match Config::builder()
         .add_source(config::File::with_name(config_file.as_str()))
         .add_source(config::Environment::with_prefix("APP"))
-        .build()
-        .unwrap();
+        .build() {
+        Ok(conf) => conf,
+        Err(_) => {
+            println!("You need to have a config file: HOME/.config/naviterm/config.ini");
+            exit(1);
+        }
+    };
+    
 
     let debug_level: Result<String, ConfigError> = settings.get("debug");
     let level: LevelFilter = match debug_level {
