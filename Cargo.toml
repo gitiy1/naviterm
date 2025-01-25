@@ -2,7 +2,7 @@
 name = "naviterm"
 version = "0.1.0"
 authors = ["Jaime Pando Acedo <jaime@jpandoac.es>"]
-license = "MIT"
+license = "GLPv3"
 edition = "2021"
 
 [dependencies]
