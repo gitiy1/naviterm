@@ -2801,6 +2801,7 @@ fn parse_color(string_color: &str) -> AppResult<Color> {
         "magenta" => Ok(Color::Magenta),
         "cyan" => Ok(Color::Cyan),
         "white" => Ok(Color::White),
+        "gray" => Ok(Color::Gray),
         &_ => Err(Box::from("Could not parse color")),
     }
 }

@@ -43,23 +43,13 @@ async fn main() -> AppResult<()> {
     let level: LevelFilter = match debug_level {
         Ok(level) => match level.as_str() {
             "DEBUG" => LevelFilter::Debug,
-            _ => LevelFilter::Error,
+            "WARN" => LevelFilter::Warn,
+            "ERROR" => LevelFilter::Error,
+            "INFO" => LevelFilter::Info,
+            _ => LevelFilter::Info,
         },
-        Err(_) => LevelFilter::Error,
+        Err(_) => LevelFilter::Info,
     };
-    let app_mode: Result<String, ConfigError> = settings.get("mode");
-    let mode: AppConnectionMode = match app_mode {
-        Ok(mode) => match mode.as_str() {
-            "OFFLINE" => AppConnectionMode::Offline,
-            _ => AppConnectionMode::Online,
-        },
-        Err(_) => AppConnectionMode::Online,
-    };
-    let replay_gain_mode: Result<String, ConfigError> = settings.get("replay_gain");
-    let replay_mode = replay_gain_mode.unwrap_or_else(|_| {
-        warn!("No replay gain mode configured, setting to track");
-        String::from("track")
-    });
 
     // Set the logging path
     let file_path = "/tmp/naviterm.log";
@@ -80,6 +70,24 @@ async fn main() -> AppResult<()> {
         .build(Root::builder().appender("logfile").build(level))
         .unwrap();
     let _handle = log4rs::init_config(config);
+    
+    info!("Starting navidrome...");
+    let app_mode: Result<String, ConfigError> = settings.get("mode");
+    let mode: AppConnectionMode = match app_mode {
+        Ok(mode) => match mode.as_str() {
+            "OFFLINE" => AppConnectionMode::Offline,
+            _ => AppConnectionMode::Online,
+        },
+        Err(_) => AppConnectionMode::Online,
+    };
+    debug!("App connection mode: {:?}", mode);
+    
+    let replay_gain_mode: Result<String, ConfigError> = settings.get("replay_gain");
+    let replay_mode = replay_gain_mode.unwrap_or_else(|_| {
+        warn!("No replay gain mode configured, setting to track");
+        String::from("track")
+    });
+    debug!("Replay gain mode: {:?}", replay_mode);
 
     // Create an application.
     let mut app = App::new();
@@ -127,7 +135,7 @@ async fn main() -> AppResult<()> {
     // Initialize ipc stream
     match app.initialize_player_stream() {
         Ok(_) => {
-            debug!("Initialized ipc stream!")
+            info!("Initialized ipc stream!")
         }
         Err(e) => {
             error!("Could not initialize ipc stream: {}", e);
@@ -146,6 +154,7 @@ async fn main() -> AppResult<()> {
     }
 
     app.poll_player_events().await?;
+    info!("Started polling mpv events!");
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stderr());
     let terminal = Terminal::new(backend)?;
@@ -154,11 +163,13 @@ async fn main() -> AppResult<()> {
     let dbus_connection = dbus::set_up_mpris(events.sender.clone()).await?;
     let mut tui = Tui::new(terminal, events);
     tui.init()?;
+    info!("TUI initialized!");
 
     let iface_ref = dbus_connection
         .object_server()
         .interface::<_, dbus::MediaPlayer2Player>("/org/mpris/MediaPlayer2")
         .await?;
+    info!("Initialized dbus interface!");
 
     // Start the main loop.
     while app.app_flags.running {
