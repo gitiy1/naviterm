@@ -64,6 +64,11 @@ impl Mpv {
     pub fn add_next_song_to_queue(&mut self, song_url: &str) {
         self.ipc.load_file_next(song_url);
     }
+    
+    pub fn restore_player(&mut self) {
+        self.ipc.set_pause("false");
+        self.ipc.set_volume(self.volume.to_string().as_str());
+    }
 
     pub fn toggle_play_pause(&mut self) {
         match self.player_status {

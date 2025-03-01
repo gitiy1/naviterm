@@ -70,6 +70,7 @@ impl Ipc {
 
     pub fn stop(&mut self) {
         let msg = String::from("{\"command\":[\"stop\"]}\n");
+        debug!("Sending command to stop playback");
         self.send_ipc_command(msg, false);
     }
     pub fn set_replay_gain_mode(&mut self, mode: &str) {
@@ -81,6 +82,12 @@ impl Ipc {
     pub fn set_volume(&mut self, volume: &str) {
         let msg = "{\"command\":[\"set_property\",\"volume\",\"".to_owned() + volume + "\"]}\n";
         debug!("Sending command to set volume: {}", volume);
+        self.send_ipc_command(msg, false);
+    }
+
+    pub fn set_pause(&mut self, paused: &str) {
+        let msg = "{\"command\":[\"set_property\",\"pause\",".to_owned() + paused + "]}\n";
+        debug!("Sending command to set pause status: {}", paused);
         self.send_ipc_command(msg, false);
     }
 

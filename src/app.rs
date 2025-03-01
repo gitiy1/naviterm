@@ -1467,6 +1467,7 @@ impl App {
 
     pub fn stop_playback(&mut self) {
         self.player.stop();
+        self.player.restore_player();
         self.ticks_during_playing_state = 0;
         self.player.player_status = PlayerStatus::Stopped;
     }
