@@ -557,6 +557,10 @@ impl App {
             "Starting database population. Force update: {}",
             force_update
         );
+        // Used to prioritize album updating vs other operations that would mean looking for an 
+        // album we have not yet fetched
+        self.app_flags.updating_albums = true;
+        self.app_flags.updating_database = true;
         self.update_alphabetical_albums_async(force_update)?;
         self.server.get_recent_albums_async();
         self.server.get_recently_added_albums_async();

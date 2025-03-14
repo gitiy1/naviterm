@@ -120,10 +120,6 @@ async fn main() -> AppResult<()> {
 
     // Refresh database
     if app.mode == AppConnectionMode::Online {
-        // Used to prioritize album updating vs other operations that would mean looking for an 
-        // album we have not yet fetched
-        app.app_flags.updating_albums = true;
-        app.app_flags.updating_database = true;
         // If we ha not loaded a database, fetch it whole
         app.populate_db(!loaded)?;
     } else if !loaded && app.mode == AppConnectionMode::Offline {
