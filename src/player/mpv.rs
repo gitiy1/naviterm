@@ -90,17 +90,20 @@ impl Mpv {
         let mut v = self.volume;
         while v > 0 {
             self.ipc.set_volume(v.to_string().as_str());
-            v -= 5;
+            v = v.saturating_sub(5);
             sleep(Duration::from_millis(5));
         }
-        self.ipc.set_volume("0");
     }
 
     fn raise_volume_from_0 (&mut self) {
         let mut v = 0;
         while v < self.volume {
+            if v + 5 > self.volume {
+                break;
+            } else {
+                v += 5;
+            }
             self.ipc.set_volume(v.to_string().as_str());
-            v += 5;
             sleep(Duration::from_millis(5));
         }
         self.ipc.set_volume(self.volume.to_string().as_str());
