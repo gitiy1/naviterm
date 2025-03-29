@@ -525,7 +525,7 @@ impl App {
                 warn!("Could not load home size size, using default. {}", e);
             }
         }
-        
+
         match config.get::<bool>("follow_cursor_queue") {
             Ok(value) => self.app_config.follow_cursor = value,
             Err(e) => {
@@ -533,7 +533,7 @@ impl App {
                 self.app_config.follow_cursor = true;
             }
         }
-        
+
         match config.get::<bool>("draw_while_unfocused") {
             Ok(value) => self.app_config.draw_while_unfocused = value,
             Err(e) => {
@@ -558,7 +558,7 @@ impl App {
             "Starting database population. Force update: {}",
             force_update
         );
-        // Used to prioritize album updating vs other operations that would mean looking for an 
+        // Used to prioritize album updating vs other operations that would mean looking for an
         // album we have not yet fetched
         self.app_flags.updating_albums = true;
         self.app_flags.updating_database = true;
@@ -924,10 +924,9 @@ impl App {
                 .clone();
             let playlist = self.database.get_mut_playlist(playlist_id.as_str());
             let duration = playlist.duration().parse::<usize>().unwrap();
-            let song_count = playlist.song_count().parse::<usize>().unwrap();
             playlist.song_list_mut().append(&mut songs_to_add);
             playlist.set_duration((duration + duration_to_add).to_string());
-            playlist.set_song_count((song_count + songs_to_add.len()).to_string());
+            playlist.set_song_count(playlist.song_list().len().to_string());
             if !playlist.id().starts_with("local") {
                 playlist.set_modified(true);
             }
