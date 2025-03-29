@@ -2291,7 +2291,7 @@ impl App {
             .map(|(album_id, _)| album_id.clone())
             .collect::<Vec<_>>();
         for album_id in missing_albums {
-            debug!("Album {} not found in server, deleting", album_id);
+            info!("Album {} not found in server, deleting", album_id);
             self.database.remove_album(album_id.as_str());
         }
     }
@@ -2434,7 +2434,7 @@ impl App {
         for i in 0..pending_operations_number {
             let operation = &mut self.server.operations[i];
             if operation.error() {
-                debug!("Operation {:?} failed", operation.operation_id());
+                error!("Operation {:?} failed", operation.operation_id());
                 self.status = AppStatus::Disconnected;
                 self.current_popup = Popup::ConnectionError;
                 break;
@@ -2462,11 +2462,11 @@ impl App {
                                 debug!("Playlist {} already in database", playlist.name());
                                 match is_date_before(self.database.get_playlist(playlist.id()).modified_on(), playlist.modified_on()) {
                                     Ok(result) => if result {
-                                        info!("Playlist {} has a newer modified date in server", playlist.name());
+                                        debug!("Playlist {} has a newer modified date in server", playlist.name());
                                         if self.database.get_playlist(playlist.id()).modified() {
-                                            warn!("Playlist {} has been modified locally, will pull from server!", playlist.name());
+                                            debug!("Playlist {} has been modified locally, will not pull from server!", playlist.name());
                                         } else{
-                                            info!("Fetching server version of playlist {}", playlist.name());
+                                            debug!("Fetching server version of playlist {}", playlist.name());
                                             self.server.get_playlist_async(playlist.id());
                                             self.database.remove_playlist(playlist.id());
                                             self.database.insert_playlist(playlist.id().to_string(), playlist);
