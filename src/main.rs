@@ -114,13 +114,14 @@ async fn main() -> AppResult<()> {
         }
         Err(e) => {
             error! {"Error loading database file: {}", e};
+            app.database.populate_default_album();
             false
         }
     };
 
     // Refresh database
     if app.mode == AppConnectionMode::Online {
-        // If we ha not loaded a database, fetch it whole
+        // If we have not loaded a database, fetch it whole
         app.populate_db(!loaded)?;
     } else if !loaded && app.mode == AppConnectionMode::Offline {
         error!("Cannot start offline if no database is present.");

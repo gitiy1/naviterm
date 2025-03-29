@@ -4,6 +4,7 @@ use crate::model::playlist::Playlist;
 use crate::model::song::Song;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use log::error;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct MusicDatabase {
@@ -23,11 +24,20 @@ pub struct MusicDatabase {
     alphabetical_playlists: Vec<String>,
     last_played_album_id: String,
     number_of_local_playlists: usize,
+    default_album: Album,
 }
 
 impl MusicDatabase {
     pub fn new() -> Self {
         Self::default()
+    }
+    
+    pub fn populate_default_album(&mut self) {
+        let mut album = Album::default();
+        album.set_name(String::from("Default"));
+        album.set_id(String::from("0"));
+        album.set_artist(String::from("Try updating albums"));
+        self.default_album = album;
     }
 
     pub fn recent_albums(&self) -> &Vec<String> {
@@ -95,11 +105,13 @@ impl MusicDatabase {
     }
 
     pub fn get_album(&self, id: &str) -> &Album {
-        self.albums.get(id).unwrap()
-    }
-
-    pub fn get_album_mut(&mut self, id: &str) -> &Album {
-        self.albums.get(id).unwrap()
+        match self.albums.get(id) {
+            Some(album) => album,
+            None => {
+                error!("Album {} not found in database, try updating database", id);
+                &self.default_album
+            },
+        }
     }
 
     pub fn set_album_songs(&mut self, id: &str, songs: Vec<String>) {
