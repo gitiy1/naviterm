@@ -1,10 +1,10 @@
+use crate::app::{App, AppResult};
+use crate::ui::utils;
 use ratatui::layout::Alignment;
+use ratatui::prelude::{Line, Modifier, Span};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
-
-use crate::app::{App, AppResult};
-use crate::ui::utils;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(40, 30, frame.size());
@@ -16,21 +16,68 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             .unwrap(),
     );
 
-    let popup_content = if selected_playlist.id().starts_with("local") {
-        Paragraph::new(format!(
-            "Playlist {} is a local playlist. Do you want to push it to the server?\n\n\
-            (y) Yes\n\
-            (n) No",
-            selected_playlist.name()
-        ))
+    let popup_lines = if selected_playlist.id().starts_with("local") {
+        vec![
+            Line::from(format!(
+                "Playlist {} is a local playlist. Do you want to push it to the server?",
+                selected_playlist.name()
+            )),
+            Line::from(""),
+            Line::from(vec![
+                Span {
+                    content: "(y)".into(),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                },
+                Span {
+                    content: " Yes".into(),
+                    style: Style::default(),
+                },
+            ]),
+            Line::from(vec![
+                Span {
+                    content: "(n)".into(),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                },
+                Span {
+                    content: " No".into(),
+                    style: Style::default(),
+                },
+            ]),
+        ]
     } else {
-        Paragraph::new(format!("Playlist {} is also in the server. \
-        Do you want to push the local version, or pull the server one?\n\n\
-        (l) Push local\n\
-        (r) Pull remote", selected_playlist.name()))
+        vec![
+        Line::from(format!("Playlist {} is also in the server, do you want to push the local server or pull the server one", selected_playlist.name())),
+        Line::from(""),
+        Line::from(vec![
+            Span{
+                content: "(l)".into(),
+                style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
+            },
+            Span{
+                content: " Push local".into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span{
+                content: "(p)".into(),
+                style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
+            },
+            Span{
+                content: " Pull remote".into(),
+                style: Style::default(),
+            },
+        ])]
     };
+    
+    let popup_content = Paragraph::new(popup_lines);
 
-    let popup_block = popup_content.wrap(Wrap { trim: true })
+    let popup_block = popup_content
+        .wrap(Wrap { trim: true })
         .block(
             Block::bordered()
                 .title("Synchronize playlist")
