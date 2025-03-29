@@ -14,7 +14,7 @@ use crate::server::server::Server;
 use config::{Config};
 use log::{debug, error, info, warn};
 use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 use ratatui::prelude::Color;
 use ratatui::widgets::ListState;
 use std::cmp::PartialEq;
@@ -643,9 +643,11 @@ impl App {
                 }
                 self.queue_order = (0..self.queue.len()).collect();
                 if self.app_flags.random_playback {
-                    self.shuffle_queue_order_starting_at_current_index()
+                    let mut rng = thread_rng();
+                    let random_index = rng.gen_range(0..self.queue.len());
+                    self.shuffle_queue_order_starting_at_index(random_index);
                 }
-                self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
+                self.change_current_playing_to(self.queue[self.queue_order[0]].clone().as_str());
             }
             MediaType::Playlist => {
                 self.queue.clear();
@@ -666,9 +668,11 @@ impl App {
                 }
                 self.queue_order = (0..self.queue.len()).collect();
                 if self.app_flags.random_playback {
-                    self.shuffle_queue_order_starting_at_current_index()
+                    let mut rng = thread_rng();
+                    let random_index = rng.gen_range(0..self.queue.len());
+                    self.shuffle_queue_order_starting_at_index(random_index);
                 }
-                self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
+                self.change_current_playing_to(self.queue[self.queue_order[0]].clone().as_str());
             }
             MediaType::Artist => {
                 self.queue.clear();
@@ -690,9 +694,11 @@ impl App {
                 }
                 self.queue_order = (0..self.queue.len()).collect();
                 if self.app_flags.random_playback {
-                    self.shuffle_queue_order_starting_at_current_index()
+                    let mut rng = thread_rng();
+                    let random_index = rng.gen_range(0..self.queue.len());
+                    self.shuffle_queue_order_starting_at_index(random_index);
                 }
-                self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
+                self.change_current_playing_to(self.queue[self.queue_order[0]].clone().as_str());
             }
         }
         self.update_queue_data();
@@ -1206,7 +1212,7 @@ impl App {
                 self.queue_order.clear();
                 self.queue_order = (0..self.queue.len()).collect();
             } else {
-                self.shuffle_queue_order_starting_at_current_index();
+                self.shuffle_queue_order_starting_at_index(self.index_in_queue);
                 self.index_in_queue = 0;
             }
         }
@@ -1219,6 +1225,7 @@ impl App {
         }
         self.app_flags.random_playback = !self.app_flags.random_playback;
         self.update_queue_data();
+        self.app_flags.next_is_in_player_queue = false;
         Ok(())
     }
 
@@ -1407,6 +1414,7 @@ impl App {
                 warn!("Loop setting unrecognized {}", loop_mode);
             }
         }
+        self.app_flags.next_is_in_player_queue = false;
         Ok(())
     }
 
@@ -1425,7 +1433,7 @@ impl App {
         );
         self.index_in_queue = self.list_states.queue_list_state.selected().unwrap();
         if self.app_flags.random_playback {
-            self.shuffle_queue_order_starting_at_current_index();
+            self.shuffle_queue_order_starting_at_index(self.index_in_queue);
             debug!("queue_order after shuffling: {:?}", self.queue_order);
             self.index_in_queue = 0;
         }
@@ -1502,10 +1510,10 @@ impl App {
         }
     }
 
-    fn shuffle_queue_order_starting_at_current_index(&mut self) {
+    fn shuffle_queue_order_starting_at_index(&mut self, index: usize) {
         let mut shuffled_vector = Vec::with_capacity(self.queue.len());
-        self.queue_order.swap_remove(self.index_in_queue);
-        shuffled_vector.push(self.index_in_queue);
+        self.queue_order.swap_remove(index);
+        shuffled_vector.push(index);
 
         let mut rng = thread_rng();
         self.queue_order.shuffle(&mut rng);
