@@ -23,6 +23,7 @@ use std::error;
 use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
+use chrono::NaiveDateTime;
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum with applications screens
@@ -2459,7 +2460,20 @@ impl App {
                         for playlist in playlist_list {
                             if self.database.contains_playlist(playlist.id()) && !force_update {
                                 debug!("Playlist {} already in database", playlist.name());
-                                self.database.update_playlist_dates(playlist.id(), playlist.modified_on());
+                                match is_date_before(self.database.get_playlist(playlist.id()).modified_on(), playlist.modified_on()) {
+                                    Ok(result) => if result {
+                                        info!("Playlist {} has a newer modified date in server", playlist.name());
+                                        if self.database.get_playlist(playlist.id()).modified() {
+                                            warn!("Playlist {} has been modified locally, will pull from server!", playlist.name());
+                                        } else{
+                                            info!("Fetching server version of playlist {}", playlist.name());
+                                            self.server.get_playlist_async(playlist.id());
+                                            self.database.remove_playlist(playlist.id());
+                                            self.database.insert_playlist(playlist.id().to_string(), playlist);
+                                        }
+                                    }
+                                    Err(e) => error!{"Error while comparing dates for playlist {}: {}", playlist.name(), e},
+                                }
                             } else if !self.database.contains_playlist(playlist.id()) {
                                 debug!(
                                     "Playlist {} was not in database, fetching",
@@ -2808,4 +2822,15 @@ fn parse_color(string_color: &str) -> AppResult<Color> {
         "gray" => Ok(Color::Gray),
         &_ => Err(Box::from("Could not parse color")),
     }
+}
+
+fn is_date_before(date1: &str, date2: &str) -> AppResult<bool> {
+    let format = "%m/%d/%y - %H:%M";
+
+    // Parse the date strings into NaiveDateTime objects
+    let parsed_date1 = NaiveDateTime::parse_from_str(date1, format)?;
+    let parsed_date2 = NaiveDateTime::parse_from_str(date2, format)?;
+
+    // Return true if the first date is before the second one
+    Ok(parsed_date1 < parsed_date2)
 }
