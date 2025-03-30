@@ -2418,6 +2418,36 @@ impl App {
 
         Ok(())
     }
+    
+    pub fn set_album_in_list_to_current_playing(&mut self) -> AppResult<()> {
+        let selected_queue_song = self.database.get_song(self.queue[self.list_states.queue_list_state.selected().unwrap()].as_str());
+        let index = self.database.filtered_albums().iter().position(|album| {album == selected_queue_song.album_id()});
+        match index {
+            Some(index) => {
+                self.list_states.album_state.select(Some(index));
+            }
+            None => {
+                warn!("Could not find the album of the playing song in the filtered album list!")
+            }
+        }
+        
+        Ok(())
+    }
+
+    pub fn set_artist_in_list_to_current_playing(&mut self) -> AppResult<()> {
+        let selected_queue_song = self.database.get_song(self.queue[self.list_states.queue_list_state.selected().unwrap()].as_str());
+        let index = self.database.alphabetical_artists().iter().position(|artist| {artist == selected_queue_song.artist_id()});
+        match index {
+            Some(index) => {
+                self.list_states.artist_state.select(Some(index));
+            }
+            None => {
+                warn!("Could not find the artist of the playing song in the artist list!")
+            }
+        }
+
+        Ok(())
+    }
 
     pub fn process_pending_requests(&mut self) {
         self.server.process_async_operations();

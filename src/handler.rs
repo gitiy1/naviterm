@@ -236,6 +236,18 @@ pub async fn handle_key_events(
                 _ => {}
             },
             CurrentScreen::Queue => match key_event.code {
+                KeyCode::Char('a') => {
+                    app.clear_search()?;
+                    app.set_album_in_list_to_current_playing()?;
+                    app.album_pane = TwoPaneVertical::Right;
+                    app.current_screen = CurrentScreen::Albums;
+                }
+                KeyCode::Char('r') => {
+                    app.clear_search()?;
+                    app.set_artist_in_list_to_current_playing()?;
+                    app.artist_pane = TwoPaneVertical::Right;
+                    app.current_screen = CurrentScreen::Artists;
+                }
                 KeyCode::Char('e') => app.center_queue_cursor()?,
                 KeyCode::Char('>') => app.play_next()?,
                 KeyCode::Char('<') => app.play_previous()?,

@@ -7,6 +7,8 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Padding, Paragraph, Wrap};
 use ratatui::Frame;
+use ratatui::layout::Constraint::{Length};
+use ratatui::prelude::Constraint::Max;
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let chunks = Layout::default()
@@ -89,6 +91,9 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .padding(Padding::new(2, 2, 1, 1));
 
         let info_block_inner = info_block.inner(chunks[1]);
+
+        let vertical = Layout::vertical([Max(100), Length(2)]);
+        let [info_area, navigation_area] = vertical.areas(info_block_inner);
 
         let current_song = app.database.get_song(
             app.queue
@@ -223,7 +228,36 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         ])
         .wrap(Wrap { trim: true });
 
-        frame.render_widget(song_information, info_block_inner);
+        frame.render_widget(song_information, info_area);
+
+        let navigation_options = Paragraph::new(vec![
+            Line::from(vec![
+                Span {
+                    content: "(a)".into(),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                },
+                Span {
+                    content: " Go to album in albums pane".into(),
+                    style: Style::default(),
+                },
+            ]),
+            Line::from(vec![
+                Span {
+                    content: "(r)".into(),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                },
+                Span {
+                    content: " Go to artist in artists pane".into(),
+                    style: Style::default(),
+                },
+            ]),
+        ]);
+
+        frame.render_widget(navigation_options, navigation_area);
         frame.render_widget(info_block, chunks[1]);
     }
 
