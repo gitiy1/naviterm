@@ -64,7 +64,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         ]),
         Line::from(vec![
             Span{
-                content: "(p)".into(),
+                content: "(r)".into(),
                 style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
             },
             Span{

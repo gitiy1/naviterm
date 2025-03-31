@@ -1,10 +1,10 @@
+use crate::app::{App, AppResult};
+use crate::ui::utils;
 use ratatui::layout::Alignment;
+use ratatui::prelude::{Line, Modifier, Span};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
-
-use crate::app::{App, AppResult};
-use crate::ui::utils;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(40, 30, frame.size());
@@ -16,22 +16,47 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             .unwrap(),
     );
 
-    let popup_content = if selected_playlist.id().starts_with("local") {
-        Paragraph::new(format!(
-            "Are you sure you want to delete playlist {}?\n\n\
-            (y) Yes\n\
-            (n) No",
+    let mut popup_lines = if selected_playlist.id().starts_with("local") {
+        vec![Line::from(format!(
+            "Are you sure you want to delete playlist {}",
             selected_playlist.name()
-        ))
+        ))]
     } else {
-        Paragraph::new(format!(
-            "Are you sure you want to delete playlist {}? (Note: this will also \
-            delete the server playlist!)\n\n\
-            (y) Yes\n\
-            (n) No",
+        vec![Line::from(format!(
+            "Are you sure you want to delete playlist {}? (Note: this will also delete the server playlist!)",
             selected_playlist.name()
-        ))
+        ))]
     };
+
+    popup_lines.append(&mut vec![
+        Line::from(""),
+        Line::from(vec![
+            Span {
+                content: "(y)".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: " Yes".into(),
+                style: Style::default(),
+            },
+        ]),
+        Line::from(vec![
+            Span {
+                content: "(n)".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: " No".into(),
+                style: Style::default(),
+            },
+        ]),
+    ]);
+
+    let popup_content = Paragraph::new(popup_lines);
 
     let popup_block = popup_content
         .wrap(Wrap { trim: true })
