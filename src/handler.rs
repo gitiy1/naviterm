@@ -311,6 +311,9 @@ pub async fn handle_key_events(
             }
         } else if key_event.code == KeyCode::Char('o') {
             handle_stop_playback(app, iface_ref).await?;
+        } else if key_event.code == KeyCode::Char('u') && key_event.modifiers.is_empty() && app.current_popup == Popup::None {
+            app.get_selected_album_for_update()?;
+            app.current_popup = Popup::UpdateDatabase;
         }
     } else {
         match app.current_popup {
@@ -571,18 +574,11 @@ pub async fn handle_key_events(
         app.clear_search()?;
         app.try_go_right_pane()?;
     }
-    if key_event.code == KeyCode::Char('d') {
-        if key_event.modifiers == KeyModifiers::CONTROL {
-            app.move_in_list(AppMovementInList::PageDown)?;
-        }
+    if key_event.code == KeyCode::Char('d') && key_event.modifiers == KeyModifiers::CONTROL {
+        app.move_in_list(AppMovementInList::PageDown)?;
     }
-    if key_event.code == KeyCode::Char('u') {
-        if key_event.modifiers == KeyModifiers::CONTROL {
-            app.move_in_list(AppMovementInList::PageUp)?;
-        } else if key_event.modifiers.is_empty() && app.current_popup == Popup::None {
-            app.get_selected_album_for_update()?;
-            app.current_popup = Popup::UpdateDatabase;
-        }
+    if key_event.code == KeyCode::Char('u') && key_event.modifiers == KeyModifiers::CONTROL {
+        app.move_in_list(AppMovementInList::PageUp)?;
     }
     if key_event.code == KeyCode::Char('g') {
         app.move_in_list(AppMovementInList::First)?;

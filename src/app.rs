@@ -1655,6 +1655,9 @@ impl App {
                 }
                 _ => {}
             },
+            CurrentScreen::Albums => {
+                self.album_pane = TwoPaneVertical::Left;
+            }
             CurrentScreen::Playlists => {
                 self.playlist_pane = TwoPaneVertical::Left;
             }
@@ -1677,6 +1680,9 @@ impl App {
                 }
                 _ => {}
             },
+            CurrentScreen::Albums => {
+                self.album_pane = TwoPaneVertical::Right;
+            }
             CurrentScreen::Playlists => {
                 self.playlist_pane = TwoPaneVertical::Right;
             }
