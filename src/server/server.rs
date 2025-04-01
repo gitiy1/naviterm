@@ -372,13 +372,15 @@ impl Server {
                     response_text = success_response.text().await.unwrap();
                     debug!("Response from server: {}", response_text)
                 }
-                reqwest::StatusCode::UNAUTHORIZED => {
-                    debug!("Need to grab a new token");
-                    //TODO
-                }
                 _ => {
-                    panic!("Uh oh! Something unexpected happened.");
-                    //TODO
+                    error!("Got HTTP code: {}", success_response.status());
+                    match success_response.text().await {
+                        Ok(text) => {
+                            error!("Response from server: {}", text);
+                            response_text = text;
+                        },
+                        Err(e) => error!("Could not parse error response from server: {}", e),
+                    }
                 }
             },
             Err(error) => {

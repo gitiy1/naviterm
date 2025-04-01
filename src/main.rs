@@ -98,9 +98,9 @@ async fn main() -> AppResult<()> {
     if app.mode != AppConnectionMode::Offline {
         match app.test_connection().await {
             Ok(_) => info!("Connected to server successfully!"),
-            Err(_) => {
+            Err(e) => {
                 app.mode = AppConnectionMode::Offline;
-                info!("Could not connect to server, starting offline!")
+                warn!("Could not connect to server, starting offline! Error: {}", e)
             }
         }
     }
