@@ -174,17 +174,19 @@ async fn main() -> AppResult<()> {
         // Handle events.
         match tui.events.next().await? {
             Event::Tick => {
-                app.tick()
+                if let Err(e) = app.tick() { error!("Unmanaged error while processing the tick event: {}", e) }
             },
             Event::Key(key_event) => {
-                handle_key_events(key_event, &mut app, &iface_ref).await?;
-                tui.draw(&mut app)?;
+                if let Err(e) = handle_key_events(key_event, &mut app, &iface_ref).await { error!("Unmanaged error while processing the key event: {}", e) }
+                if let Err(e) = tui.draw(&mut app) { error!("Unmanaged error while drawing the UI: {}", e) }
             },
             Event::Resize(_, _) => {}
-            Event::Dbus(dbus_event) => handle_dbus_events(dbus_event, &mut app, &iface_ref).await?,
+            Event::Dbus(dbus_event) => {
+                if let Err(e) = handle_dbus_events(dbus_event, &mut app, &iface_ref).await { error!("Unmanaged error while processing the dbus event: {}", e) }
+            }
             Event::Draw(force_draw) => {
                 if app.app_focused || force_draw {
-                    tui.draw(&mut app)?
+                    if let Err(e) = tui.draw(&mut app) { error!("Unmanaged error while drawing the UI: {}", e) }
                 }
             }
             Event::FocusGained => { 
@@ -197,14 +199,14 @@ async fn main() -> AppResult<()> {
                 if !app.app_config.draw_while_unfocused {
                     debug!("Application lost focus, will not draw");
                     app.app_focused = false;
-                    tui.draw(&mut app)?
+                    if let Err(e) = tui.draw(&mut app) { error!("Unmanaged error while drawing the UI: {}", e) }
                 }
             }
         }
     }
 
     // Exit the user interface.
-    tui.exit()?;
+    if let Err(e) = tui.exit() { error!("Unmanaged error while exiting tui: {}", e); }
     // Save music database if it does not exist
     match save_to_disk(&app.database, database_file.as_str()) {
         Ok(..) => info!("Database saved successfully!"),

@@ -419,7 +419,7 @@ impl App {
     }
 
     /// Handles the tick event of the terminal.
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self) -> AppResult<()> {
         if self.status != AppStatus::Disconnected && self.mode != AppConnectionMode::Offline {
             self.process_pending_requests();
         }
@@ -472,6 +472,8 @@ impl App {
                 }
             }
         }
+        
+        Ok(())
     }
 
     /// Set running to false in order to quit the application.
