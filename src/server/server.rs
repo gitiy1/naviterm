@@ -397,20 +397,20 @@ impl Server {
     ) -> String {
         let url: String = match subsonic_operation {
             SubsonicOperation::Ping => format!(
-                "{}/navidrome/rest/ping.view?\
+                "{}/rest/ping.view?\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                 self.server_address, self.user, self.token, self.salt
             ),
             SubsonicOperation::GetAlbumListRecent => {
                 format!(
-                    "{}/navidrome/rest/getAlbumList.view?type=recent&\
+                    "{}/rest/getAlbumList.view?type=recent&\
                     size={}&u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::GetAlbumListMostListened => {
                 format!(
-                    "{}/navidrome/rest/getAlbumList.view?type=frequent&\
+                    "{}/rest/getAlbumList.view?type=frequent&\
                     size={}&offset={}&u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address,
                     parameters[0],
@@ -422,7 +422,7 @@ impl Server {
             }
             SubsonicOperation::GetAlbumListAlphabetical => {
                 format!(
-                    "{}/navidrome/rest/getAlbumList.view?type=alphabeticalByName&\
+                    "{}/rest/getAlbumList.view?type=alphabeticalByName&\
                     size={}&offset={}&u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address,
                     parameters[0],
@@ -434,63 +434,63 @@ impl Server {
             }
             SubsonicOperation::GetAlbum => {
                 format!(
-                    "{}/navidrome/rest/getAlbum.view?id={}&\
+                    "{}/rest/getAlbum.view?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::DownloadSong => {
                 format!(
-                    "{}/navidrome/rest/download?id={}&\
+                    "{}/rest/download?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::GetCoverArt => {
                 format!(
-                    "{}/navidrome/rest/getCoverArt.view?id={}&\
+                    "{}/rest/getCoverArt.view?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm&size=300",
                     self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::GetGenres => {
                 format!(
-                    "{}/navidrome/rest/getGenres.view?\
+                    "{}/rest/getGenres.view?\
                 u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::GetPlaylistList => {
                 format!(
-                    "{}/navidrome/rest/getPlaylists.view?\
+                    "{}/rest/getPlaylists.view?\
                 u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::GetPlaylist => {
                 format!(
-                    "{}/navidrome/rest/getPlaylist.view?id={}&\
+                    "{}/rest/getPlaylist.view?id={}&\
                 u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::GetAlbumListRecentlyAdded => {
                 format!(
-                    "{}/navidrome/rest/getAlbumList.view?type=newest&\
+                    "{}/rest/getAlbumList.view?type=newest&\
                     size={}&u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::Scrobble => {
                 format!(
-                    "{}/navidrome/rest/scrobble?id={}&\
+                    "{}/rest/scrobble?id={}&\
                     u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::CreatePlaylist => {
                 format!(
-                    "{}/navidrome/rest/createPlaylist.view?name={}&\
+                    "{}/rest/createPlaylist.view?name={}&\
                     songId={}&u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address,
                     parameters[0],
@@ -502,14 +502,14 @@ impl Server {
             }
             SubsonicOperation::DeletePlaylist => {
                 format!(
-                    "{}/navidrome/rest/deletePlaylist.view?id={}&\
+                    "{}/rest/deletePlaylist.view?id={}&\
                 u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address, parameters[0], self.user, self.token, self.salt
                 )
             }
             SubsonicOperation::UpdatePlaylist => {
                 format!(
-                    "{}/navidrome/rest/createPlaylist.view?playlistId={}&\
+                    "{}/rest/createPlaylist.view?playlistId={}&\
                     songId={}&u={}&t={}&s={}&v=0.1&c=naviterm",
                     self.server_address,
                     parameters[0],
