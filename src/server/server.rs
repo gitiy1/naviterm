@@ -65,10 +65,12 @@ impl Display for SubsonicParameter {
 pub struct Server {
     pub server_address: String,
     pub server_version: String,
+    pub server_auth: String,
     /// server token
     pub token: String,
     /// salt
     pub salt: String,
+    pub connection_string: String,
     pub connection_status: String,
     pub connection_message: String,
     pub connection_code: String,
@@ -88,12 +90,14 @@ impl Default for Server {
         Self {
             token: "".to_string(),
             salt: "".to_string(),
+            connection_string: "".to_string(),
             connection_status: "".to_string(),
             connection_message: "".to_string(),
             connection_code: "".to_string(),
             last_connection_timestamp: "".to_string(),
             server_address: "".to_string(),
             server_version: "".to_string(),
+            server_auth: "".to_string(),
             user: "".to_string(),
             password: "".to_string(),
             client: Client::new(),
@@ -139,15 +143,21 @@ impl Server {
     }
 
     pub fn renew_credentials(&mut self) -> AppResult<()> {
-        let salt = Alphanumeric
-            .sample_string(&mut rand::thread_rng(), 10)
-            .to_lowercase();
-        let mut concatenation: String = String::from(&self.password);
-        concatenation.push_str(&salt);
-        let token = md5::compute(concatenation.as_bytes());
+        if self.server_auth == "token" {
+            let salt = Alphanumeric
+                .sample_string(&mut rand::thread_rng(), 10)
+                .to_lowercase();
+            let mut concatenation: String = String::from(&self.password);
+            concatenation.push_str(&salt);
+            let token = md5::compute(concatenation.as_bytes());
 
-        self.salt = salt;
-        self.token = format!("{:x}", token);
+            self.salt = salt;
+            self.token = format!("{:x}", token);
+            
+            self.connection_string = format!("u={}&s={}&t={}", self.user, self.salt, self.token);
+        } else {
+            self.connection_string = format!("u={}&p={}", self.user, self.password);
+        }
 
         Ok(())
     }
@@ -398,125 +408,117 @@ impl Server {
         let url: String = match subsonic_operation {
             SubsonicOperation::Ping => format!(
                 "{}/rest/ping.view?\
-                    u={}&t={}&s={}&v=0.1&c=naviterm",
-                self.server_address, self.user, self.token, self.salt
+                    {}&v=0.1&c=naviterm",
+                self.server_address, self.connection_string 
             ),
             SubsonicOperation::GetAlbumListRecent => {
                 format!(
                     "{}/rest/getAlbumList.view?type=recent&\
-                    size={}&u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, parameters[0], self.user, self.token, self.salt
+                    size={}&{}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.connection_string
                 )
             }
             SubsonicOperation::GetAlbumListMostListened => {
                 format!(
                     "{}/rest/getAlbumList.view?type=frequent&\
-                    size={}&offset={}&u={}&t={}&s={}&v=0.1&c=naviterm",
+                    size={}&offset={}&{}&v=0.1&c=naviterm",
                     self.server_address,
                     parameters[0],
                     parameters[1],
-                    self.user,
-                    self.token,
-                    self.salt
+                    self.connection_string,
                 )
             }
             SubsonicOperation::GetAlbumListAlphabetical => {
                 format!(
                     "{}/rest/getAlbumList.view?type=alphabeticalByName&\
-                    size={}&offset={}&u={}&t={}&s={}&v=0.1&c=naviterm",
+                    size={}&offset={}&{}&v=0.1&c=naviterm",
                     self.server_address,
                     parameters[0],
                     parameters[1],
-                    self.user,
-                    self.token,
-                    self.salt
+                    self.connection_string,
                 )
             }
             SubsonicOperation::GetAlbum => {
                 format!(
                     "{}/rest/getAlbum.view?id={}&\
-                    u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, parameters[0], self.user, self.token, self.salt
+                    {}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.connection_string
                 )
             }
             SubsonicOperation::DownloadSong => {
                 format!(
                     "{}/rest/download?id={}&\
-                    u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, parameters[0], self.user, self.token, self.salt
+                    {}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.connection_string
                 )
             }
             SubsonicOperation::GetCoverArt => {
                 format!(
                     "{}/rest/getCoverArt.view?id={}&\
-                    u={}&t={}&s={}&v=0.1&c=naviterm&size=300",
-                    self.server_address, parameters[0], self.user, self.token, self.salt
+                    {}&v=0.1&c=naviterm&size=300",
+                    self.server_address, parameters[0], self.connection_string
                 )
             }
             SubsonicOperation::GetGenres => {
                 format!(
                     "{}/rest/getGenres.view?\
-                u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, self.user, self.token, self.salt
+                {}&v=0.1&c=naviterm",
+                    self.server_address, self.connection_string
                 )
             }
             SubsonicOperation::GetPlaylistList => {
                 format!(
                     "{}/rest/getPlaylists.view?\
-                u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, self.user, self.token, self.salt
+                {}&v=0.1&c=naviterm",
+                    self.server_address, self.connection_string
                 )
             }
             SubsonicOperation::GetPlaylist => {
                 format!(
                     "{}/rest/getPlaylist.view?id={}&\
-                u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, parameters[0], self.user, self.token, self.salt
+                {}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.connection_string
                 )
             }
             SubsonicOperation::GetAlbumListRecentlyAdded => {
                 format!(
                     "{}/rest/getAlbumList.view?type=newest&\
-                    size={}&u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, parameters[0], self.user, self.token, self.salt
+                    size={}&{}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.connection_string
                 )
             }
             SubsonicOperation::Scrobble => {
                 format!(
                     "{}/rest/scrobble?id={}&\
-                    u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, parameters[0], self.user, self.token, self.salt
+                    {}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.connection_string
                 )
             }
             SubsonicOperation::CreatePlaylist => {
                 format!(
                     "{}/rest/createPlaylist.view?name={}&\
-                    songId={}&u={}&t={}&s={}&v=0.1&c=naviterm",
+                    songId={}&{}&v=0.1&c=naviterm",
                     self.server_address,
                     parameters[0],
                     parameters[1],
-                    self.user,
-                    self.token,
-                    self.salt
+                    self.connection_message,
                 )
             }
             SubsonicOperation::DeletePlaylist => {
                 format!(
                     "{}/rest/deletePlaylist.view?id={}&\
-                u={}&t={}&s={}&v=0.1&c=naviterm",
-                    self.server_address, parameters[0], self.user, self.token, self.salt
+                {}&v=0.1&c=naviterm",
+                    self.server_address, parameters[0], self.connection_string
                 )
             }
             SubsonicOperation::UpdatePlaylist => {
                 format!(
                     "{}/rest/createPlaylist.view?playlistId={}&\
-                    songId={}&u={}&t={}&s={}&v=0.1&c=naviterm",
+                    songId={}&{}&v=0.1&c=naviterm",
                     self.server_address,
                     parameters[0],
                     parameters[1],
-                    self.user,
-                    self.token,
-                    self.salt
+                    self.connection_string,
                 )
             }
         };

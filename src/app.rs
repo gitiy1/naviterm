@@ -507,6 +507,18 @@ impl App {
                 exit(1)
             }
         }
+        match config.get::<String>("server_auth") {
+            Ok(auth_mode) => {
+                if auth_mode == "token" || auth_mode == "plain" {
+                    self.server.server_auth = auth_mode
+                }
+            },
+            Err(e) => {
+                warn!("Could not parse auth mode {}", e);
+                info!("Using default server auth mode: token.");
+                self.server.server_auth = "token".to_string();
+            }
+        }
         if let Ok(color) = config.get::<String>("primary_accent") {
             match parse_color(color.as_str()) {
                 Ok(parsed_color) => self.app_colors.primary_accent = parsed_color,
