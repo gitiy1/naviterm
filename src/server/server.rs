@@ -153,7 +153,7 @@ impl Server {
 
             self.salt = salt;
             self.token = format!("{:x}", token);
-            
+
             self.connection_string = format!("u={}&s={}&t={}", self.user, self.salt, self.token);
         } else {
             self.connection_string = format!("u={}&p={}", self.user, self.password);
@@ -409,7 +409,7 @@ impl Server {
             SubsonicOperation::Ping => format!(
                 "{}/rest/ping.view?\
                     {}&v=0.1&c=naviterm",
-                self.server_address, self.connection_string 
+                self.server_address, self.connection_string
             ),
             SubsonicOperation::GetAlbumListRecent => {
                 format!(
@@ -599,10 +599,25 @@ async fn perform_request_async(url: String, sender: UnboundedSender<String>) {
                         debug!("Response from server: {}", text);
                         text
                     }
-                    Err(_) => "error".into(),
+                    Err(err) => {
+                        error!("Error while parsing successful response: {:?}", err);
+                        format!("error: {:?}", err)
+                    }
                 }
             }
-            _ => "error".into(),
+            _ => {
+                error!("Got HTTP code: {}", success_response.status());
+                match success_response.text().await {
+                    Ok(text) => {
+                        error!("Response from server: {}", text);
+                        format!("error: {}", text)
+                    },
+                    Err(e) => {
+                        error!("Could not parse error response from server: {}", e);
+                        format!("error: {:?}", e)
+                    },
+                }
+            },
         },
         Err(err) => {
             error!("Error while doing request: {:?}", err);
