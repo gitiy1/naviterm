@@ -554,7 +554,16 @@ impl App {
         self.server.test_connection().await?;
         Ok(())
     }
-
+    
+    pub fn check_server_connection_status (&self) -> bool {
+        if self.server.connection_status == "failed" {
+            println!("Server connection failed. Error code: {}, error message: {}", self.server.connection_code, self.server.connection_message);
+            error!("Server connection failed. Error code: {}, error message: {}", self.server.connection_code, self.server.connection_message);
+            false
+        } else {
+            true
+        }
+    }
     pub fn populate_db(&mut self, force_update: bool) -> AppResult<()> {
         info!(
             "Starting database population. Force update: {}",

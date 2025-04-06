@@ -97,7 +97,14 @@ async fn main() -> AppResult<()> {
     app.renew_credentials()?;
     if app.mode != AppConnectionMode::Offline {
         match app.test_connection().await {
-            Ok(_) => info!("Connected to server successfully!"),
+            Ok(_) => {
+                info!("Established connection to server!");
+                if !app.check_server_connection_status() {
+                    error!("Server returned error response, check credentials in config file");
+                    println!("Server returned error response, check credentials in config file");
+                    exit(1);
+                }
+            },
             Err(e) => {
                 app.mode = AppConnectionMode::Offline;
                 warn!("Could not connect to server, starting offline! Error: {}", e)
