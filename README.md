@@ -40,6 +40,7 @@ A configuration file is needed for the program to start. It must be at `~/.confi
 | server_address       | The address your server is running in, including the path. It should have the following format (note no trailing slash): `http(s)://name-or-ip/music/subsonic` |    -    |    Yes    |
 | user                 | Your user in navidrome                                                                                                                                         |    -    |    Yes    |
 | password             | The password for the user                                                                                                                                      |    -    |    Yes    |
+| server_auth          | The authentication method to use, to choose from plain or token                                                                                                |  token  |    No     |
 | replay_gain          | The replay gain mode. The possible values are: track, album, auto                                                                                              |  track  |    No     |
 | primary_accent       | The primary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                                     | yellow  |    No     |
 | secondary_accent     | The secondary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                                   |  gray   |    No     |
