@@ -41,8 +41,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         frame.render_widget(
             Paragraph::new(
                 Line::from("No playlists...")
-                    .style(Style::default().fg(app.app_colors.secondary_accent)),
             )
+            .style(Style::default().fg(app.app_colors.secondary_accent))
             .alignment(Alignment::Center)
             .block(Block::bordered().border_type(Rounded)),
             area,

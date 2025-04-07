@@ -1,6 +1,6 @@
 use crate::app::{App, AppHomeTabMode, AppResult, HomePane};
 use crate::ui::utils::{get_text_for_album_item, get_text_for_song_item, FormatFlags};
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::Style;
 use ratatui::text::Line;
 use ratatui::widgets::BorderType::Rounded;
@@ -73,6 +73,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         frame.render_widget(
             Paragraph::new(Line::from("No recent albums..."))
                 .block(Block::default())
+                .style(Style::default().fg(app.app_colors.secondary_accent))
+                .alignment(Alignment::Center)
                 .block(block_recents),
             chunks_top[0],
         );
@@ -122,6 +124,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         frame.render_widget(
             Paragraph::new(Line::from("No most listened albums..."))
                 .block(Block::default())
+                .style(Style::default().fg(app.app_colors.secondary_accent))
+                .alignment(Alignment::Center)
                 .block(block_most_listened),
             chunks_bottom[0],
         );
@@ -171,6 +175,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         frame.render_widget(
             Paragraph::new(Line::from("No most listened tracks..."))
                 .block(Block::default())
+                .style(Style::default().fg(app.app_colors.secondary_accent))
+                .alignment(Alignment::Center)
                 .block(block_most_listened_tracks),
             chunks_bottom[1],
         );
@@ -220,6 +226,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         frame.render_widget(
             Paragraph::new(Line::from("No recently added albums..."))
                 .block(Block::default())
+                .style(Style::default().fg(app.app_colors.secondary_accent))
+                .alignment(Alignment::Center)
                 .block(block_recently_added),
             chunks_top[1],
         );

@@ -37,6 +37,8 @@ impl MusicDatabase {
         album.set_name(String::from("Default"));
         album.set_id(String::from("0"));
         album.set_artist(String::from("Try updating albums"));
+        album.set_song_count(String::from("0"));
+        album.set_duration(String::from("0"));
         self.default_album = album;
     }
 
