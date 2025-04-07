@@ -1,7 +1,7 @@
 use crate::app::AppResult;
 use crate::event::DbusEvent::{Next, Pause, Play, PlayPause, Previous, SeekBackwards, SeekForward, SetPosition, Stop};
 use crate::event::{DbusEvent, Event};
-use log::debug;
+use log::{debug, warn};
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 use zbus::zvariant::{ObjectPath, Value};
@@ -207,8 +207,14 @@ impl MediaPlayer2Player {
                 fields.insert("mpris:length".to_string(), Value::from(us_length));
             } else if field.0.starts_with("id") {
                 let str_path = format!("/org/node/mediaplayer/naviterm/track/{}", field.1);
-                let path = ObjectPath::try_from(str_path).unwrap();
-                fields.insert("mpris:trackid".to_string(), Value::from(path));
+                match ObjectPath::try_from(str_path) {
+                    Ok(path) => fields.insert("mpris:trackid".to_string(), Value::from(path)),
+                    Err(e) => {
+                        warn!("Error while creating path for dbus: {}", e);
+                        fields.insert("mpris:trackid".to_string(), Value::from(ObjectPath::try_from("/org/node/mediaplayer/naviterm/track/default_track").unwrap()))
+                    }
+                };
+                
             }
         }
         fields

@@ -1560,13 +1560,13 @@ impl App {
         metadata.insert("title".to_string(), song.title().to_string());
         metadata.insert("album".to_string(), song.album().to_string());
         metadata.insert("artist".to_string(), song.artist().to_string());
-        metadata.insert("id".to_string(), song.id().to_string());
+        metadata.insert("id".to_string(), song.id().chars().filter(|c| c.is_alphanumeric()).collect());
         metadata.insert("length".to_string(), song.duration().to_string());
         metadata.insert(
             "cover".to_string(),
             self.server.get_song_art_url(song.id().to_string()),
         );
-
+        
         metadata
     }
 
@@ -1854,9 +1854,7 @@ impl App {
                 .filter_map(|album_id| {
                     if self
                         .database
-                        .get_album(album_id)
-                        .genres()
-                        .contains(&self.album_filters.genre_filter)
+                        .album_contains_genre(album_id, &self.album_filters.genre_filter)
                     {
                         Some(album_id.clone())
                     } else {
@@ -1872,9 +1870,7 @@ impl App {
                 .filter_map(|album_id| {
                     if self
                         .database
-                        .get_album(album_id)
-                        .genres()
-                        .contains(&self.album_filters.genre_filter)
+                        .album_contains_genre(album_id, &self.album_filters.genre_filter)
                         && self.database.get_album(album_id).year()
                             == self.album_filters.year_from_filter
                     {
@@ -1892,9 +1888,7 @@ impl App {
                 .filter_map(|album_id| {
                     if self
                         .database
-                        .get_album(album_id)
-                        .genres()
-                        .contains(&self.album_filters.genre_filter)
+                        .album_contains_genre(album_id, &self.album_filters.genre_filter)
                         && self
                             .database
                             .get_album(album_id)
@@ -2379,19 +2373,16 @@ impl App {
                 HomePane::TopLeft => self
                     .database
                     .recent_albums()
-                    .get(self.list_states.home_tab_top_left.selected().unwrap())
-                    .unwrap(),
+                    .get(self.list_states.home_tab_top_left.selected().unwrap()).cloned(),
                 HomePane::TopRight => self
                     .database
                     .recently_added_albums()
-                    .get(self.list_states.home_tab_top_right.selected().unwrap())
-                    .unwrap(),
+                    .get(self.list_states.home_tab_top_right.selected().unwrap()).cloned(),
                 HomePane::BottomLeft => self
                     .database
                     .most_listened_albums()
-                    .get(self.list_states.home_tab_bottom_left.selected().unwrap())
-                    .unwrap(),
-                HomePane::BottomRight => self
+                    .get(self.list_states.home_tab_bottom_left.selected().unwrap()).cloned(),
+                HomePane::BottomRight => Some(self
                     .database
                     .get_song(
                         self.database
@@ -2399,7 +2390,7 @@ impl App {
                             .get(self.list_states.home_tab_bottom_right.selected().unwrap())
                             .unwrap(),
                     )
-                    .album_id(),
+                    .album_id().to_string()),
                 _ => {
                     panic!("Should not happen")
                 }
@@ -2407,9 +2398,8 @@ impl App {
             CurrentScreen::Albums => self
                 .database
                 .filtered_albums()
-                .get(self.list_states.album_state.selected().unwrap())
-                .unwrap(),
-            CurrentScreen::Playlists => self
+                .get(self.list_states.album_state.selected().unwrap()).cloned(),
+            CurrentScreen::Playlists => Some(self
                 .database
                 .get_song(
                     self.database
@@ -2423,7 +2413,7 @@ impl App {
                         .get(self.list_states.playlist_selected_state.selected().unwrap())
                         .unwrap(),
                 )
-                .album_id(),
+                .album_id().to_string()),
             CurrentScreen::Artists => {
                 let albums = self
                     .database
@@ -2436,14 +2426,22 @@ impl App {
                     .albums();
                 let (selected_album_index, _offset) =
                     self.get_selected_album_index_in_artist_view(albums);
-                albums.get(selected_album_index).unwrap()
+                albums.get(selected_album_index).cloned()
             }
             CurrentScreen::Queue => {
-                self.database.get_song(self.queue[self.list_states.queue_list_state.selected().unwrap()].as_str()).album_id()
+                Some(self.database.get_song(self.queue[self.list_states.queue_list_state.selected().unwrap()].as_str()).album_id().to_string())
             }
         };
+        
+        match selected_album_id {
+            None => {
+                warn!("No album selected");
+            }
+            Some(album_id) => {
+                self.selected_album_id_to_update = album_id.clone();
+            }
+        }
 
-        self.selected_album_id_to_update = selected_album_id.to_string();
 
         Ok(())
     }
@@ -2642,8 +2640,23 @@ impl App {
                         }
                     }
                     Operation::GetAlbum(album_id) => {
-                        let (album, songs, artist) =
-                            Parser::parse_album(operation.result().to_string()).unwrap();
+                        let album;
+                        let songs;
+                        let artist;
+                        match Parser::parse_album(operation.result().to_string()) {
+                            Ok(parsed_items) => {
+                                album = parsed_items.0;
+                                songs = parsed_items.1;
+                                artist = parsed_items.2;
+                            }
+                            Err(e) => {
+                                warn!("Could not parse album result: {}", operation.result());
+                                warn!("{}", e);
+                                operation.set_error(true);
+                                continue;
+                            }
+                        }
+        
                         for song in songs {
                             if !self.database.contains_song(song.id()) {
                                 self.database.insert_song(song.id().to_string(), song);

@@ -450,27 +450,33 @@ pub async fn handle_key_events(
                 KeyCode::Char('p') => {
                     app.update_playlists_async(true)?;
                     app.current_popup = Popup::None;
+                    app.selected_album_id_to_update.clear();
                 }
                 KeyCode::Char('b') => {
                     app.update_alphabetical_albums_async(true)?;
                     app.current_popup = Popup::None;
+                    app.selected_album_id_to_update.clear();
                 }
                 KeyCode::Char('y') => {
                     app.update_playlists_async(true)?;
                     app.current_popup = Popup::None;
+                    app.selected_album_id_to_update.clear();
                 }
                 KeyCode::Char('s') => {
                     app.populate_db(false)?;
                     app.current_popup = Popup::None;
+                    app.selected_album_id_to_update.clear();
                 }
                 KeyCode::Char('a') => {
                     app.populate_db(true)?;
                     app.current_popup = Popup::None;
+                    app.selected_album_id_to_update.clear();
                 }
                 KeyCode::Enter => {
                     if !app.selected_album_id_to_update.is_empty() {
                         app.update_selected_album()?;
                         app.current_popup = Popup::None;
+                        app.selected_album_id_to_update.clear();
                     }
                 }
                 _ => {}
@@ -546,6 +552,7 @@ pub async fn handle_key_events(
         // Exit popup no matter the current_popup
         if key_event.code == KeyCode::Esc || key_event.code == KeyCode::Char('q') {
             app.current_popup = Popup::None;
+            app.selected_album_id_to_update.clear();
         }
     }
 

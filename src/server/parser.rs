@@ -5,7 +5,7 @@ use crate::model::connection_status::ConnectionStatus;
 use crate::model::song::Song;
 use encoding::all::ISO_8859_1;
 use encoding::{EncoderTrap, Encoding};
-use log::debug;
+use log::{debug};
 use crate::model::artist::Artist;
 use crate::model::playlist::Playlist;
 
@@ -45,9 +45,7 @@ impl Parser {
 
         let list = root.get_child("genres", Self::NAMESPACE).unwrap();
         for genre in list.children() {
-            let chars = ISO_8859_1
-                .encode(genre.text().as_str(), EncoderTrap::Ignore)?;
-            genres_list.push(String::from_utf8(chars).unwrap());
+            genres_list.push(parse_attribute(genre.text().as_str()));
         }
         Ok(genres_list)
     }
@@ -85,15 +83,14 @@ impl Parser {
             match attribute.0 {
                 "id" => new_album.set_id(attribute.1.to_string()),
                 "name" => {
-                    let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
-                    new_album.set_name(String::from_utf8(chars).unwrap());
+                    new_album.set_name(parse_attribute(attribute.1));
                 }
                 "artist" => {
-                    let chars = ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
-                    let name = String::from_utf8(chars).unwrap();
+                    let name = parse_attribute(attribute.1);
                     new_album.set_artist(name.clone());
                     new_artist.set_name(name);
                 }
+                "genre" => album_genres.push(parse_attribute(attribute.1)),
                 "artistId" => new_artist.set_id(attribute.1.to_string()),
                 "coverArt" => new_album.set_cover_art(attribute.1.to_string()),
                 "duration" => new_album.set_duration(attribute.1.to_string()),
@@ -106,13 +103,9 @@ impl Parser {
         for child in album.children() {
             if child.name() == "genres" {
                 for attribute in child.attrs() {
-                    match attribute.0 {
-                        "name" => {
-                            let chars =
-                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
-                            album_genres.push(String::from_utf8(chars)?);
-                        }
-                        &_ => {}
+                    if attribute.0 == "name" {
+                        let new_genre = parse_attribute(attribute.1);
+                        if !album_genres.contains(&new_genre) {album_genres.push(new_genre);}
                     }
                 }
             } else if child.name() == "song" {
@@ -122,22 +115,16 @@ impl Parser {
                     match attribute.0 {
                         "id" => new_song.set_id(attribute.1.to_string()),
                         "title" => {
-                            let chars =
-                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
-                            new_song.set_title(String::from_utf8(chars)?);
+                            new_song.set_title(parse_attribute(attribute.1));
                         }
                         "album" => {
-                            let chars =
-                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
-                            new_song.set_album(String::from_utf8(chars)?);
+                            new_song.set_album(parse_attribute(attribute.1));
                         }
                         "albumId" => {
                             new_song.set_album_id(attribute.1.to_string());
                         }
                         "artist" => {
-                            let chars =
-                                ISO_8859_1.encode(attribute.1, EncoderTrap::Ignore)?;
-                            new_song.set_artist(String::from_utf8(chars).unwrap())
+                            new_song.set_artist(parse_attribute(attribute.1));
                         }
                         "artistId" => new_song.set_artist_id(attribute.1.to_string()),
                         "coverArt" => new_song.set_cover_art(attribute.1.to_string()),
@@ -163,10 +150,7 @@ impl Parser {
                         for attribute in child.attrs() {
                             match attribute.0 {
                                 "name" => {
-                                    let chars = ISO_8859_1
-                                        .encode(attribute.1, EncoderTrap::Ignore)
-                                        .unwrap();
-                                    song_genres.push(String::from_utf8(chars)?);
+                                    song_genres.push(parse_attribute(attribute.1));
                                 }
                                 &_ => {}
                             }
@@ -254,6 +238,18 @@ fn parse_date(string_date: &str) -> String {
         Err(e) => {
             debug!("Could not parse date: {:?}", e);
             "".to_string()
+        }
+    }
+}
+
+fn parse_attribute(attribute: &str) -> String {
+    let chars = ISO_8859_1.encode(attribute, EncoderTrap::Replace).unwrap();
+    match String::from_utf8(chars) {
+        Ok(parsed_string) => parsed_string,
+        Err(e) => {
+            debug!("Error while parsing: {}", attribute);
+            debug!("Reason: {}", e);
+            attribute.to_string()
         }
     }
 }

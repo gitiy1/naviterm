@@ -296,4 +296,14 @@ impl MusicDatabase {
         let playlist = self.playlists.get_mut(playlist_id).unwrap();
         playlist.set_modified_on(modified_date.to_string());
     }
+    
+    pub fn album_contains_genre(&self, id: &str, genre: &str) -> bool {
+        for album_genre in self.albums.get(id).unwrap().genres() {
+            if album_genre.contains(genre) {
+                return true;
+            }
+        }
+        
+        false
+    }
 }
