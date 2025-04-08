@@ -1252,6 +1252,9 @@ impl App {
     }
 
     pub fn player_seek_forward(&mut self) -> AppResult<()> {
+        if self.player.player_status == PlayerStatus::Stopped {
+            return Ok(());
+        }
         if self.get_playback_time() + 10
             > self.now_playing.duration.as_str().parse::<usize>().unwrap()
         {
@@ -1264,6 +1267,9 @@ impl App {
     }
 
     pub fn player_seek_backwards(&mut self) -> AppResult<()> {
+        if self.player.player_status == PlayerStatus::Stopped {
+            return Ok(());
+        }
         self.player.seek_backwards();
         self.ticks_during_playing_state = self.ticks_during_playing_state.saturating_sub(40);
         Ok(())
