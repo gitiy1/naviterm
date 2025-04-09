@@ -53,6 +53,7 @@ The config file has to be a `ini` config file:
 server_address=https://your-navidrome-instance.com/music/subsonic
 user=joe
 password=secret_pass
+server_auth=token
 replay_gain=auto
 primary_accent=yellow
 secondary_accent=gray
@@ -97,7 +98,7 @@ This section includes lists of all shortcuts you can use in the app, heavily Vim
 | Shortcut            | Description                                                |
 |:--------------------|:-----------------------------------------------------------|
 | `<F1>`              | Open Connection Testing popup                              |
-| `<Ctrl-h><Ctrl-l>`  | Move to the sub-pane up,down                               |
+| `<Ctrl-j><Ctrl-k>`  | Move to the sub-pane up,down                               |
 | `i`                 | Open the Album Information popup of the selected item      |
 | `a`                 | Open the Add To popup for the selected item                |
 
@@ -124,7 +125,6 @@ This section includes lists of all shortcuts you can use in the app, heavily Vim
 ### Artist pane shortcuts
 | Shortcut | Description                                            |
 |:---------|:-------------------------------------------------------|
-| `J,K`    | Move the selected song item in playlist down, up       |
 | `A`      | Open the Add To popup for whole album of selected item |
 | `a`      | Open the Add To popup for the selected item            |
 
@@ -153,6 +153,14 @@ APP_DEBUG=DEBUG naviterm
 The `mpv` process controlled by naviterm logs at `/tmp/naviterm_mpv.log`, which could also be helpful. Please attach both logs to the issue when possible.
 
 If you have a feature request, also open an issue. No guarantees that I will implement it, but I will always take a look to see the feasibility/impact. Contributions are very welcome.
+
+## Compability
+Please note that I developed the application with [navidrome](https://www.navidrome.org/) in mind. Although the Subsonic API is used by other server applications, it might be the case that navidrome does not work well with them. I might not be able to test/reproduce all issues of that kind, so bear that in mind when opening issues. If you are willing to help building bugfix branches and testing, that would help me a lot.
+
+Server applications tested:
+- [navidrome](https://www.navidrome.org/)
+- [Nextcloud Music app](https://apps.nextcloud.com/apps/music)
+
 
 ## Roadmap
 The app does mostly all I expect from a client (at least for my use cases). The following are some pending issues/wishlist that I will work on, time permits:
