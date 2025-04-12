@@ -4,7 +4,8 @@ use crate::model::playlist::Playlist;
 use crate::model::song::Song;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use log::error;
+use log::{error, warn};
+use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct MusicDatabase {
@@ -24,7 +25,6 @@ pub struct MusicDatabase {
     alphabetical_playlists: Vec<String>,
     last_played_album_id: String,
     number_of_local_playlists: usize,
-    default_album: Album,
 }
 
 impl MusicDatabase {
@@ -32,14 +32,25 @@ impl MusicDatabase {
         Self::default()
     }
     
-    pub fn populate_default_album(&mut self) {
+    pub fn populate_defaults(&mut self) {
+        let mut song = Song::default();
+        song.set_id(String::from(DEFAULT_SONG));
+        song.set_artist(String::from("Not found"));
+        song.set_duration(String::from("0"));
+        song.set_album("Not found".to_string());
+        song.set_title(String::from("Not found"));
+        song.set_play_count(String::from("0"));
+        self.songs.insert(DEFAULT_SONG.to_string(), song);
+        
         let mut album = Album::default();
-        album.set_name(String::from("Default"));
-        album.set_id(String::from("0"));
-        album.set_artist(String::from("Try updating albums"));
-        album.set_song_count(String::from("0"));
+        album.set_name(String::from("Not found"));
+        album.set_id(String::from(DEFAULT_ALBUM));
+        album.set_artist(String::from("Not found"));
+        album.set_song_count(String::from("1"));
+        album.set_songs(vec![DEFAULT_SONG.to_string()]);
         album.set_duration(String::from("0"));
-        self.default_album = album;
+        self.albums.insert(DEFAULT_ALBUM.to_string(), album);
+
     }
 
     pub fn recent_albums(&self) -> &Vec<String> {
@@ -111,7 +122,7 @@ impl MusicDatabase {
             Some(album) => album,
             None => {
                 error!("Album {} not found in database, try updating database", id);
-                &self.default_album
+                self.albums.get(DEFAULT_ALBUM).unwrap()
             },
         }
     }
@@ -133,7 +144,13 @@ impl MusicDatabase {
     }
 
     pub fn get_song(&self, id: &str) -> &Song {
-        self.songs.get(id).unwrap()
+        match self.songs.get(id) {
+            None => {
+                warn!("Song {} not found in database, try updating database", id);
+                self.songs.get(DEFAULT_SONG).unwrap()
+            }
+            Some(song) => song
+        }
     }
 
     pub fn get_song_mut(&mut self, id: &str) -> &mut Song {

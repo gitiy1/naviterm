@@ -25,6 +25,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use chrono::NaiveDateTime;
 use tokio::sync::mpsc::UnboundedSender;
+use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
 
 /// Enum with applications screens
 #[derive(Debug, PartialEq)]
@@ -648,6 +649,10 @@ impl App {
     }
 
     pub fn add_queue_immediately(&mut self) -> AppResult<()> {
+        if self.item_to_be_added.id.is_empty() {
+            warn!("Item to be added empty, could not add queue immediately.");
+            return Ok(());
+        }
         self.index_in_queue = 0;
         match self.item_to_be_added.media_type {
             MediaType::Song => {
@@ -1110,19 +1115,23 @@ impl App {
                             .unwrap(),
                     )
                 };
+                if song.id() == DEFAULT_SONG {
+                    warn!("Cannot add default song!");
+                    return Ok(())
+                }
                 self.item_to_be_added.name = song.title().to_string();
                 self.item_to_be_added.id = song.id().to_string();
                 self.item_to_be_added.parent_id = selected_album_id.to_string();
                 self.item_to_be_added.media_type = MediaType::Song;
             }
             MediaType::Album => {
-                self.item_to_be_added.id =
-                    album_list.get(selected_album_index).unwrap().to_string();
-                self.item_to_be_added.name = self
-                    .database
-                    .get_album(album_list.get(selected_album_index).unwrap())
-                    .name()
-                    .to_string();
+                let album = self.database.get_album(album_list.get(selected_album_index).unwrap());
+                if album.id() == DEFAULT_ALBUM {
+                    warn!("Cannot add default album!");
+                    return Ok(())
+                }
+                self.item_to_be_added.id = album.id().to_string();
+                self.item_to_be_added.name = album.name().to_string();
                 self.item_to_be_added.media_type = MediaType::Album;
             }
             MediaType::Playlist => {
@@ -2327,8 +2336,10 @@ impl App {
             .map(|(album_id, _)| album_id.clone())
             .collect::<Vec<_>>();
         for album_id in missing_albums {
-            info!("Album {} not found in server, deleting", album_id);
-            self.database.remove_album(album_id.as_str());
+            if album_id != DEFAULT_ALBUM {
+                info!("Album {} not found in server, deleting", album_id);
+                self.database.remove_album(album_id.as_str());
+            }
         }
     }
 
@@ -2435,7 +2446,11 @@ impl App {
                 albums.get(selected_album_index).cloned()
             }
             CurrentScreen::Queue => {
-                Some(self.database.get_song(self.queue[self.list_states.queue_list_state.selected().unwrap()].as_str()).album_id().to_string())
+                self.list_states
+                    .queue_list_state
+                    .selected()
+                    .and_then(|i| self.queue.get(i))
+                    .map(|song_id| self.database.get_song(song_id).album_id().to_string())
             }
         };
         
@@ -2444,7 +2459,11 @@ impl App {
                 warn!("No album selected");
             }
             Some(album_id) => {
-                self.selected_album_id_to_update = album_id.clone();
+                if album_id == DEFAULT_ALBUM {
+                    warn!("Not possible to update this album");
+                } else {
+                    self.selected_album_id_to_update = album_id.clone();
+                }
             }
         }
 
@@ -2496,6 +2515,7 @@ impl App {
             {
                 self.finish_database_update();
                 self.app_flags.updating_database = false;
+                self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
             }
         }
 
@@ -2837,9 +2857,10 @@ impl App {
     }
 
     fn finish_database_update(&mut self) {
-        if self.database.get_number_of_albums() > self.database.alphabetical_list_albums().len() {
+        // We subtract 1 to number of albums to account for default album
+        if self.database.get_number_of_albums() - 1 > self.database.alphabetical_list_albums().len() {
             debug!("Number of albums in database ({}) is greater than alphabetical list ({}), albums have been deleted!",
-                                    self.database.get_number_of_albums(), self.database.alphabetical_list_albums().len());
+                                    self.database.get_number_of_albums() - 1, self.database.alphabetical_list_albums().len());
             self.remove_albums_missing_in_server()
         }
         self.process_filtered_album_list().unwrap();
