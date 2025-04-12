@@ -55,6 +55,7 @@ server_address=https://your-navidrome-instance.com/music/subsonic
 user=joe
 password=secret_pass
 server_auth=token
+mpv_path=/usr/bin/mpv
 replay_gain=auto
 primary_accent=yellow
 secondary_accent=gray
