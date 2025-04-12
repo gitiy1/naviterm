@@ -1533,6 +1533,9 @@ impl App {
         }
         self.app_flags.next_is_in_player_queue = false;
         self.app_flags.is_current_song_scrobbled = false;
+        if self.player.player_status == PlayerStatus::Paused {
+            self.player.toggle_play_pause();
+        }
         self.event_sender
             .as_ref()
             .unwrap()
