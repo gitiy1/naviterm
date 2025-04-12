@@ -15,10 +15,11 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use serde::{Deserialize, Serialize};
 use std::fs::{copy, remove_file, File};
-use std::io;
+use std::{io};
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::exit;
+use which::which;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -78,7 +79,10 @@ async fn main() -> AppResult<()> {
             "OFFLINE" => AppConnectionMode::Offline,
             _ => AppConnectionMode::Online,
         },
-        Err(_) => AppConnectionMode::Online,
+        Err(_) => {
+            info!("No app mode was configured, trying to start online");
+            AppConnectionMode::Online
+        },
     };
     debug!("App connection mode: {:?}", mode);
     
@@ -88,6 +92,23 @@ async fn main() -> AppResult<()> {
         String::from("track")
     });
     debug!("Replay gain mode: {:?}", replay_mode);
+    
+    let mpv_path = settings.get("mpv_path").unwrap_or_else(|_| {
+        info!("No mpv path defined, will try to look in PATH");
+        String::from("mpv")
+    });
+    
+    match which(&mpv_path) {
+        Ok(path) => {
+            info!("Found mpv at: {}", path.display());
+            // you can use `path` to execute mpv later
+        }
+        Err(_) => {
+            println!("mpv not found at specified path or in PATH: {}. mpv is required for navidrome to start", mpv_path);
+            error!("mpv not found at specified path or in PATH: {}. mpv is required for navidrome to start", mpv_path);
+            exit(1);
+        }
+    }
 
     // Create an application.
     let mut app = App::new();
@@ -121,7 +142,7 @@ async fn main() -> AppResult<()> {
         }
         Err(e) => {
             error! {"Error loading database file: {}", e};
-            app.database.populate_default_album();
+            app.database.populate_defaults();
             false
         }
     };

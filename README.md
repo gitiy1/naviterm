@@ -41,6 +41,7 @@ A configuration file is needed for the program to start. It must be at `~/.confi
 | user                 | Your user in navidrome                                                                                                                                         |    -    |    Yes    |
 | password             | The password for the user                                                                                                                                      |    -    |    Yes    |
 | server_auth          | The authentication method to use, to choose from plain or token                                                                                                |  token  |    No     |
+| mpv_path             | The path to the mpv executable. If left empty, navidrome will try to use `mpv` from `$PATH`                                                                    |   mpv   |    No     |
 | replay_gain          | The replay gain mode. The possible values are: track, album, auto                                                                                              |  track  |    No     |
 | primary_accent       | The primary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                                     | yellow  |    No     |
 | secondary_accent     | The secondary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                                   |  gray   |    No     |
