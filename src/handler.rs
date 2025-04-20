@@ -639,9 +639,15 @@ pub async fn handle_dbus_events(
         DbusEvent::Playing => {
             let mut iface = iface_ref.get_mut().await;
             iface.update_position((app.get_playback_time() * 1000000) as i64);
-            iface.set_metadata(app.get_metada_for_current_song());
-            iface.metadata_changed(iface_ref.signal_context()).await?;
             iface.set_playback_status(String::from("Playing"));
+            iface
+                .playback_status_changed(iface_ref.signal_context())
+                .await?;
+        }
+        DbusEvent::Paused => {
+            let mut iface = iface_ref.get_mut().await;
+            iface.update_position((app.get_playback_time() * 1000000) as i64);
+            iface.set_playback_status(String::from("Paused"));
             iface
                 .playback_status_changed(iface_ref.signal_context())
                 .await?;
@@ -685,6 +691,12 @@ pub async fn handle_dbus_events(
         }
         DbusEvent::SetPosition(new_position) => {
             handle_position_change(app, iface_ref, new_position).await?;
+        }
+        DbusEvent::Metadata => {
+            let mut iface = iface_ref.get_mut().await;
+            iface.update_position((app.get_playback_time() * 1000000) as i64);
+            iface.set_metadata(app.get_metadata_for_current_song());
+            iface.metadata_changed(iface_ref.signal_context()).await?;
         }
     }
     Ok(())

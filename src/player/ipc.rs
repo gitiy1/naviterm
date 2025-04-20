@@ -11,6 +11,7 @@ use std::time::Duration;
 use tokio::io;
 use tokio::net::UnixStream as OtherUnixStream;
 
+#[derive(Debug)]
 pub enum IpcEvent {
     FileLoaded,
     Eof(String),
@@ -108,7 +109,7 @@ impl Ipc {
                 -1.0
             })
         } else {
-            error!("Response");
+            error!("Could not get playback time from response received from mpv");
             -1.0
         }
     }

@@ -12,6 +12,8 @@ pub const MPV_LOG: &str = "/tmp/naviterm_mpv.log";
 pub enum PlayerStatus {
     Playing,
     Paused,
+    Buffering,
+    LoadingFile,
     Stopped,
 }
 
@@ -82,7 +84,10 @@ impl Mpv {
                 self.ipc.toggle_play_pause();
                 self.raise_volume_from_0();
             }
-            PlayerStatus::Stopped => {}
+            PlayerStatus::Buffering => {
+                self.ipc.toggle_play_pause();
+            }
+            _ => {}
         }
     }
     

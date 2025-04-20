@@ -47,6 +47,8 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
             elapsed_track_time,
         ]),
         PlayerStatus::Stopped => Line::from("Stopped"),
+        PlayerStatus::Buffering => Line::from("Buffering"),
+        PlayerStatus::LoadingFile => Line::from("Loading file"),
     };
 
     let footer_block = if app.queue_has_next() {

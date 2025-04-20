@@ -1,5 +1,5 @@
 use crate::constants;
-use crate::event::DbusEvent::{Clear, Playing};
+use crate::event::DbusEvent::{Clear, Playing, Metadata, Paused};
 use crate::event::Event;
 use crate::event::Event::{Dbus, Draw};
 use crate::model::artist::Artist;
@@ -308,6 +308,7 @@ pub struct AppFlags {
     pub is_introducing_new_playlist_name: bool,
     pub is_introducing_to_year: bool,
     pub range_year_filter: bool,
+    pub seeking: bool,
 }
 
 #[derive(Default)]
@@ -730,6 +731,7 @@ impl App {
             }
         }
         self.update_queue_data();
+        self.player.restore_player();
         self.play_current(false);
         Ok(())
     }
@@ -1188,6 +1190,9 @@ impl App {
 
     pub fn toggle_playing_status(&mut self) -> AppResult<()> {
         self.player.toggle_play_pause();
+        if !self.app_focused {
+            self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
+        }
         Ok(())
     }
 
@@ -1310,13 +1315,27 @@ impl App {
         let events = self.player.ipc.events().clone();
         let mut events = events.lock().unwrap();
         while !events.is_empty() {
-            match events.pop().unwrap() {
+            let event = events.remove(0);
+            debug!("Processing event: {:?}", event);
+            match event {
                 IpcEvent::FileLoaded => {
-                    if self.player.player_status == PlayerStatus::Stopped {
-                        self.player.player_status = PlayerStatus::Playing;
+                    debug!("File loaded, buffering file");
+                    self.set_player_to_buffering();
+                }
+                IpcEvent::PlaybackRestart => {
+                    if self.app_flags.seeking {
+                        debug!("Skipping playback restart due to previous seeking");
+                        self.app_flags.seeking = false;
+                        return
+                    }
+                    if self.player.player_status == PlayerStatus::Buffering {
+                        debug!("Player was buffering, setting to playing status");
+                        self.set_player_to_playing();
+                    } else if self.player.player_status == PlayerStatus::Playing {
+                        debug!("Player was playing, setting to buffering status");
+                        self.set_player_to_buffering();
                     }
                 }
-                IpcEvent::PlaybackRestart => {}
                 IpcEvent::Eof(reason) => {
                     if reason == "eof" {
                         match self.loop_status {
@@ -1344,6 +1363,7 @@ impl App {
                     }
                 }
                 IpcEvent::Seek => {
+                    self.app_flags.seeking = true;
                     let playback_time = self.player.get_playback_time();
                     debug!("Got {} as playback time", playback_time);
                     if playback_time != -1.0 {
@@ -1370,6 +1390,30 @@ impl App {
                 IpcEvent::Error(_) => {}
                 IpcEvent::Unrecognized(_) => {}
             }
+        }
+    }
+    
+    fn set_player_to_playing(&mut self) {
+        self.player.player_status = PlayerStatus::Playing;
+        self.event_sender
+            .as_ref()
+            .unwrap()
+            .send(Dbus(Playing))
+            .unwrap();
+        if !self.app_focused {
+            self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
+        }
+    }
+
+    fn set_player_to_buffering(&mut self) {
+        self.player.player_status = PlayerStatus::Buffering;
+        self.event_sender
+            .as_ref()
+            .unwrap()
+            .send(Dbus(Paused))
+            .unwrap();
+        if !self.app_focused {
+            self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
         }
     }
 
@@ -1530,21 +1574,17 @@ impl App {
                     .get_song_url(self.now_playing.id.clone())
                     .as_str(),
             );
+            self.player.player_status = PlayerStatus::LoadingFile;
+            self.event_sender.as_ref().unwrap().send(Dbus(Paused)).unwrap();
         }
         self.app_flags.next_is_in_player_queue = false;
         self.app_flags.is_current_song_scrobbled = false;
-        if self.player.player_status == PlayerStatus::Paused {
-            self.player.toggle_play_pause();
-        }
-        self.event_sender
-            .as_ref()
-            .unwrap()
-            .send(Dbus(Playing))
-            .unwrap();
         self.ticks_during_playing_state = 0;
         if self.app_config.follow_cursor {
             self.list_states.queue_list_state.select(Some(self.queue_order[self.index_in_queue]));
         }
+        self.event_sender.as_ref().unwrap().send(Dbus(Metadata)).unwrap();
+                
         if !self.app_focused {
             self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
         }
@@ -1572,7 +1612,7 @@ impl App {
         Ok(())
     }
 
-    pub fn get_metada_for_current_song(&mut self) -> HashMap<String, String> {
+    pub fn get_metadata_for_current_song(&mut self) -> HashMap<String, String> {
         let mut metadata = HashMap::new();
         let song = self.database.get_song(self.now_playing.id.as_str());
         metadata.insert("title".to_string(), song.title().to_string());
