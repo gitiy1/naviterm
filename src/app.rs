@@ -1322,6 +1322,21 @@ impl App {
                     debug!("File loaded, buffering file");
                     self.set_player_to_buffering();
                 }
+                IpcEvent::PropertyChange(name, data) => {
+                    if name == "pause" {
+                        if data == "yes" && self.player.player_status == PlayerStatus::Playing {
+                            debug!("Detected pause status change while playing, setting status to buffering...");
+                            self.set_player_to_buffering();
+                        } else if data == "no" && self.player.player_status == PlayerStatus::Buffering {
+                            debug!("Detected pause status change while playing, setting status to playing...");
+                            self.set_player_to_playing();
+                        } else {
+                            debug!("Detected pause status change but will ignore it");
+                        }
+                    } else {
+                        debug!("Unrecognized property name {}", name);
+                    }
+                }
                 IpcEvent::PlaybackRestart => {
                     if self.app_flags.seeking {
                         debug!("Skipping playback restart due to previous seeking");

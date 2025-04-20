@@ -8,13 +8,14 @@ use std::os::unix::net::UnixStream;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
-use tokio::io;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream as OtherUnixStream;
 
 #[derive(Debug)]
 pub enum IpcEvent {
     FileLoaded,
     Eof(String),
+    PropertyChange(String,String),
     Seek,
     PlaybackRestart,
     Idle,
@@ -74,6 +75,7 @@ impl Ipc {
         debug!("Sending command to stop playback");
         self.send_ipc_command(msg, false);
     }
+
     pub fn set_replay_gain_mode(&mut self, mode: &str) {
         let msg = "{\"command\":[\"set_property\",\"replaygain\",\"".to_owned() + mode + "\"]}\n";
         debug!("Sending command to set replay-gain mode: {}", mode);
@@ -113,37 +115,47 @@ impl Ipc {
             -1.0
         }
     }
-
     pub async fn poll_events(&mut self) {
         let events = self.events.clone();
 
         tokio::spawn(async move {
-            let tokio_stream = OtherUnixStream::connect("/tmp/naviterm_mpv").await.unwrap();
+            let mut tokio_stream = OtherUnixStream::connect("/tmp/naviterm_mpv").await.unwrap();
+            // Give some time before writing
+            tokio::time::sleep(Duration::from_millis(200)).await;
+
+            // Observe pause status changes
+            let msg = String::from("{\"command\":[\"observe_property_string\", 0, \"pause\"]}\n");
+            let _ = tokio_stream.write_all(msg.as_bytes()).await;
+            let mut buf = [0; 4096];
+            
+            // Read loop
             loop {
-                // Wait for the socket to be readable
-                tokio_stream.readable().await.unwrap();
-
-                // Creating the buffer **after** the `await` prevents it from
-                // being stored in the async task.
-                let mut buf = [0; 4096];
-
-                // Try to read data, this may still fail with `WouldBlock`
-                // if the readiness event is a false positive.
-                match tokio_stream.try_read(&mut buf) {
-                    Ok(0) => break,
+                match tokio_stream.read(&mut buf).await {
+                    Ok(0) => {
+                        // EOF
+                        debug!("Socket closed");
+                        break;
+                    }
                     Ok(n) => {
-                        let buf_string = String::from_utf8(buf[0..n].to_vec()).unwrap();
+                        let buf_string = match String::from_utf8(buf[..n].to_vec()) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                error!("Invalid UTF-8: {}", e);
+                                continue;
+                            }
+                        };
+
                         debug!("Received message: {}", buf_string);
                         let parsed_events = parse_json_event(buf_string);
-                        let mut events = events.lock().unwrap();
-                        for event in parsed_events {
-                            events.push(event);
+                        match events.lock() {
+                            Ok(mut ev) => ev.extend(parsed_events),
+                            Err(e) => error!("Mutex poisoned: {}", e),
                         }
                     }
-                    Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        continue;
+                    Err(e) => {
+                        error!("Read error: {:?}", e);
+                        break;
                     }
-                    _ => {}
                 }
             }
         });

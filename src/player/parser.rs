@@ -1,4 +1,4 @@
-use log::{error, warn};
+use log::{debug, error, warn};
 use crate::player::ipc::IpcEvent;
 
 pub fn parse_json_event(event: String) -> Vec<IpcEvent> {
@@ -7,16 +7,27 @@ pub fn parse_json_event(event: String) -> Vec<IpcEvent> {
         let parsed_json = json::parse(line);
         if parsed_json.is_ok() {
             let json_event = parsed_json.unwrap();
-            match json_event["event"].as_str().unwrap() {
-                "seek" => events.push(IpcEvent::Seek),
-                "playback-restart" => events.push(IpcEvent::PlaybackRestart),
-                "file-loaded" => events.push(IpcEvent::FileLoaded),
-                "end-file" => {
-                    let reason = json_event["reason"].to_string();
-                    events.push(IpcEvent::Eof(reason));
+            match json_event["event"].as_str() {
+                Some(event) => match event {
+                    "seek" => events.push(IpcEvent::Seek),
+                    "playback-restart" => events.push(IpcEvent::PlaybackRestart),
+                    "file-loaded" => events.push(IpcEvent::FileLoaded),
+                    "property-change" => {
+                        let name = json_event["name"].to_string();
+                        let data = json_event["data"].to_string();
+                        events.push(IpcEvent::PropertyChange(name,data));
+                    }
+                    "end-file" => {
+                        let reason = json_event["reason"].to_string();
+                        events.push(IpcEvent::Eof(reason));
+                    }
+                    "idle" => events.push(IpcEvent::Idle),
+                    _ => {}
+                },
+                None => {
+                    debug!("Line {} does not contain a json event", line);
+                    return vec![];
                 }
-                "idle" => events.push(IpcEvent::Idle),
-                _ => {}
             }
         } else {
             events.push(IpcEvent::Error(String::from(line)))
