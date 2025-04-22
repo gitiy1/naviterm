@@ -1553,7 +1553,7 @@ impl App {
 
     pub fn try_play_current(&mut self) -> bool {
         if !self.now_playing.id.is_empty() {
-            return if self.player.player_status == PlayerStatus::Paused {
+            return if self.player.player_status == PlayerStatus::Paused || self.player.player_status == PlayerStatus::Buffering {
                 self.toggle_playing_status().unwrap();
                 true
             } else if self.player.player_status == PlayerStatus::Stopped {
