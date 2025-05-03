@@ -142,10 +142,13 @@ This section includes lists of all shortcuts you can use in the app, heavily Vim
 
 
 ## Known limitations
+### High CPU usage
 naviterm can be a bit heavy on the CPU side. It is in part due to the nature of ratatui, as it re-draws the whole ui on each call to the draw method. Even if there are no changes in the app state, it needs to compute all the widgets based on the app information, and compare the frame with the previous one. This can be CPU expensive, so I tried to reduce the painting calls to only twice per second (to ensure smooth playing time tracking) or whenever a key is pressed. If you find it still too heavy, you can disable the painting whenever the window looses focus, using the following configuration key:
 ```ini
 draw_while_unfocused=false
 ```
+### Big playlists
+When dealing with very big playlists, it is possible that you encounter an error stating that "414 Request-URI Too Long". This is due to the fact that when syncing a playlist with the server, we send the content of the playlist in the url. If the playlist have too many items, this could be an issue. There is another Subsonic API that could be used, but it makes playlist updating substantially harder, especially when dealing with songs reordering.
 
 ## Bug reporting and contributions
 Found a bug (*pretends to be shocked*)? Please open a bug report and try to describe the issue as much as possible. By default, naviterm logs some information at `/tmp/naviterm.log`. The verbosity of this log can be controlled using the environment variable `APP_DEBUG` (by default is set to INFO). Setting it to DEBUG prior to running the program can be very helpful for debugging issues:
