@@ -17,10 +17,18 @@ I was a happy user of the classic Linux music combo: ncmpcpp and mpd. But then I
 
 ## Installation
 
-Here you can find the possible installation methods. Please note that if you install from source, you will need a working version of `mpv` in your path.
+Here you can find the possible installation methods. Please note that if you install from source or use a provided binary, you will need a working version of `mpv` in your path.
+
+### Use provided binary
+
+Head over to the [releases page](https://gitlab.com/detoxify92/naviterm/-/releases) and download the latest one. Then, extract the contents and copy the binary to your desired path, for instance:
+```sh
+tar -xzf naviterm_amd64_X_Y_Z.tar.gz
+sudo cp target/release/naviterm /usr/bin/
+``` 
 
 ### Build from source
-Clone this repository and then run the following commands in the cloned directory:
+First, clone this repository and switch to the desired branch: `main` for latest release or `develop` for unstable. Then run the following commands in the cloned directory:
 ```sh
 cargo build
 ```
