@@ -45,7 +45,7 @@ A configuration file is needed for the program to start. It must be at `~/.confi
 
 | Parameter            | Definition                                                                                                                                                     | Default | Mandatory |
 |:---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------:|:---------:|
-| server_address       | The address your server is running in, including the path. It should have the following format (note no trailing slash): `http(s)://name-or-ip/music/subsonic` |    -    |    Yes    |
+| server_address       | The address your server is running in, including the path. It should have the following format (note no trailing slash): `http(s)://name-or-ip/navidrome`   |    -    |    Yes    |
 | user                 | Your user in navidrome                                                                                                                                         |    -    |    Yes    |
 | password             | The password for the user                                                                                                                                      |    -    |    Yes    |
 | server_auth          | The authentication method to use, to choose from plain or token                                                                                                |  token  |    No     |
@@ -59,7 +59,7 @@ A configuration file is needed for the program to start. It must be at `~/.confi
 
 The config file has to be a `ini` config file:
 ```ini
-server_address=https://your-navidrome-instance.com/music/subsonic
+server_address=https://your-navidrome-instance.com/navidrome
 user=joe
 password=secret_pass
 server_auth=token
