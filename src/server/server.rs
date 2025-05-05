@@ -6,7 +6,7 @@ use chrono;
 use log::{debug, error, warn};
 use md5;
 use rand::distributions::{Alphanumeric, DistString};
-use reqwest::header::{ACCEPT, CONTENT_TYPE};
+use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use reqwest::Client;
 use std::fmt::Display;
 use std::time::Duration;
@@ -373,6 +373,7 @@ impl Server {
             .get(url)
             .header(CONTENT_TYPE, "application/json")
             .header(ACCEPT, "application/json")
+            .header(USER_AGENT, format!("naviterm/{}", NAVITERM_VERSION))
             .send()
             .await;
 
@@ -572,6 +573,7 @@ async fn perform_request_async(url: String, sender: UnboundedSender<String>) {
         .get(&url)
         .header(CONTENT_TYPE, "application/json")
         .header(ACCEPT, "application/json")
+        .header(USER_AGENT, format!("naviterm/{}", NAVITERM_VERSION))
         .send()
         .await;
     
@@ -586,6 +588,7 @@ async fn perform_request_async(url: String, sender: UnboundedSender<String>) {
             .get(&url)
             .header(CONTENT_TYPE, "application/json")
             .header(ACCEPT, "application/json")
+            .header(USER_AGENT, format!("naviterm/{}", NAVITERM_VERSION))
             .send()
             .await;
     }

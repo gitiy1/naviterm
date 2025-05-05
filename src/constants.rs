@@ -4,4 +4,4 @@ pub const ALBUM_LIST_CHUNK_SIZE: usize = 300;
 pub const VOLUME_STEP: f64 = 0.02;
 pub const DEFAULT_ALBUM: &str = "naviterm-default-album";
 pub const DEFAULT_SONG: &str = "naviterm-default-song";
-pub const NAVITERM_VERSION: &str = "0.1.0";
+pub const NAVITERM_VERSION: &str = env!("CARGO_PKG_VERSION");
