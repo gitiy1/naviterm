@@ -27,6 +27,37 @@ tar -xzf naviterm_amd64_X_Y_Z.tar.gz
 sudo cp target/release/naviterm /usr/bin/
 ``` 
 
+### Use the flake
+
+**Run directly:**
+```nix
+nix run "gitlab:detoxify92/naviterm"
+```
+**Add to your NixOS config:** \
+Add the flake to your inputs.
+```nix
+{
+  inputs = {
+    ...
+    naviterm.url = "gitlab:detoxify92/naviterm";
+  }
+  ...
+}
+```
+Then add the package to your `environment.systemPackages` or `home.packages`.
+```nix
+{pkgs, inputs, ...}: {
+  ...
+  environment.systemPackages = [
+    ...
+    inputs.naviterm.packages.${pkgs.system}.default
+  ];
+}
+```
+> Currently only x86_64-linux is supported.
+
+> You don't need to install mpv seperately when using the flake.
+
 ### Build from source
 First, clone this repository and switch to the desired branch: `main` for latest release or `develop` for unstable. Then run the following commands in the cloned directory:
 ```sh
