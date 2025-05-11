@@ -26,6 +26,7 @@ use std::time::Duration;
 use chrono::NaiveDateTime;
 use tokio::sync::mpsc::UnboundedSender;
 use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
+use crate::mappings::Mappings;
 
 /// Enum with applications screens
 #[derive(Debug, PartialEq)]
@@ -35,6 +36,18 @@ pub enum CurrentScreen {
     Playlists,
     Artists,
     Queue,
+}
+
+impl CurrentScreen {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CurrentScreen::Home => "Home",
+            CurrentScreen::Albums => "Albums",
+            CurrentScreen::Playlists => "Playlists",
+            CurrentScreen::Artists => "Artists",
+            CurrentScreen::Queue => "Queue",
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -131,6 +144,16 @@ impl HomePane {
             HomePane::BottomRight => 5,
         }
     }
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            HomePane::Top => "top",
+            HomePane::TopLeft => "top_left",
+            HomePane::TopRight => "top_right",
+            HomePane::Bottom => "bottom",
+            HomePane::BottomLeft => "bottom_left",
+            HomePane::BottomRight => "bottom_right",
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -144,6 +167,12 @@ impl TwoPaneVertical {
         match self {
             TwoPaneVertical::Left => 0,
             TwoPaneVertical::Right => 1,
+        }
+    }
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TwoPaneVertical::Left => "left",
+            TwoPaneVertical::Right => "right",
         }
     }
 }
@@ -171,6 +200,24 @@ pub enum Popup {
     ConfirmPlaylistDeletion,
     None,
     ConnectionError,
+}
+
+impl Popup {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Popup::ConnectionTest => "connection_test",
+            Popup::AlbumInformation => "album_information",
+            Popup::AddTo => "add_to",
+            Popup::GenreFilter => "genre_filter",
+            Popup::YearFilter => "year_filter",
+            Popup::UpdateDatabase => "update_database",
+            Popup::SelectPlaylist => "select_playlist",
+            Popup::SynchronizePlaylist => "synchronize_playlist",
+            Popup::ConfirmPlaylistDeletion => "confirm_playlist_deletion",
+            Popup::ConnectionError => "connection_error",
+            Popup::None => "none",
+        }
+    }
 }
 
 /// Application result type.
@@ -214,7 +261,8 @@ pub struct App {
     pub app_colors: AppColors,
     pub loop_status: AppLoopStatus,
     pub app_config: AppConfig,
-    pub app_focused: bool
+    pub app_focused: bool,
+    pub shortcuts: Mappings,
 }
 
 #[derive(Default, Debug)]
@@ -410,6 +458,7 @@ impl Default for App {
             loop_status: AppLoopStatus::None,
             app_config: AppConfig::default(),
             app_focused: true,
+            shortcuts: Mappings::default()
         }
     }
 }

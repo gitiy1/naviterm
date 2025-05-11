@@ -23,3 +23,4 @@ pub mod music_database;
 pub mod constants;
 pub mod dbus;
 pub mod player;
+mod mappings;

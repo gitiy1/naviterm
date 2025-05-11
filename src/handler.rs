@@ -1,6 +1,6 @@
 use crate::app::{
     App, AppConnectionMode, AppLoopStatus, AppMovementInList, AppResult, AppStatus, CurrentScreen,
-    HomePane, MediaType, Popup, SortMode, TwoPaneVertical,
+    MediaType, Popup, SortMode, TwoPaneVertical,
 };
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
@@ -10,6 +10,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use log::debug;
 use std::collections::HashMap;
 use zbus::InterfaceRef;
+use crate::mappings::ShortcutAction;
 
 /// Handles the key events and updates the state of [`App`].
 pub async fn handle_key_events(
@@ -17,287 +18,31 @@ pub async fn handle_key_events(
     app: &mut App,
     iface_ref: &InterfaceRef<MediaPlayer2Player>,
 ) -> AppResult<()> {
-    if app.app_flags.getting_search_string {
-        match key_event.code {
-            KeyCode::Backspace => {
-                if !app.search_data.search_string.is_empty() {
-                    let mut chars = app.search_data.search_string.chars().collect::<Vec<char>>();
-                    chars.pop();
-                    app.search_data.search_string = chars.iter().collect::<String>();
-                }
-                app.clear_search_results()?;
-                if app.search_data.search_string.len() > 2 {
-                    app.search_in_current_list()?;
-                    app.go_next_in_search()?;
-                }
-            }
-            KeyCode::Enter => {
-                app.app_flags.getting_search_string = false;
-            }
-            KeyCode::Char(c) => {
-                app.search_data.search_string.push(c);
-                if app.search_data.search_string.len() > 2 {
-                    app.clear_search_results()?;
-                    app.search_in_current_list()?;
-                    app.go_next_in_search()?;
-                }
-            }
-            KeyCode::Esc => {
-                app.app_flags.getting_search_string = false;
-                app.clear_search()?;
-            }
-            _ => {}
+    let subpane = match app.current_screen {
+        CurrentScreen::Albums => app.album_pane.as_str(),
+        CurrentScreen::Playlists => app.playlist_pane.as_str(),
+        CurrentScreen::Artists => app.artist_pane.as_str(),
+        CurrentScreen::Home => app.home_pane.as_str(),
+        CurrentScreen::Queue => "any"
+    };
+    let flag = if app.app_flags.getting_search_string {"searching"}
+        else if app.app_flags.is_introducing_new_playlist_name {"introducing_playlist"}
+        else if app.app_flags.range_year_filter {"range_year"}
+        else {"none"};
+    let action_parsed = app.shortcuts.get_action_from_shortcut(key_event,app.current_screen.as_str(),subpane, app.current_popup.as_str(), flag);
+    debug!("action_parsed {:?}", action_parsed);
+    
+    match action_parsed {
+        ShortcutAction::AddItemEnd => {
+            app.add_queue_later()?;
+            app.current_popup = Popup::None;
         }
-        return Ok(());
-    }
-
-    if app.app_flags.is_introducing_new_playlist_name {
-        match key_event.code {
-            KeyCode::Backspace => {
-                if !app.new_name.is_empty() {
-                    let mut chars = app.new_name.chars().collect::<Vec<char>>();
-                    chars.pop();
-                    app.new_name = chars.iter().collect::<String>();
-                }
-            }
-            KeyCode::Enter => {
-                app.app_flags.is_introducing_new_playlist_name = false;
-                app.add_to_playlist()?;
-                app.current_popup = Popup::None;
-            }
-            KeyCode::Char(c) => {
-                app.new_name.push(c);
-            }
-            KeyCode::Esc => {
-                app.new_name.clear();
-                app.app_flags.is_introducing_new_playlist_name = false;
-            }
-            _ => {}
+        ShortcutAction::AddItemNext => {
+            app.add_queue_next()?;
+            app.current_popup = Popup::None;
         }
-        return Ok(());
-    }
-    if app.current_popup == Popup::None {
-        match app.current_screen {
-            CurrentScreen::Home => match key_event.code {
-                KeyCode::F(1) => {
-                    app.current_popup = Popup::ConnectionTest;
-                }
-                KeyCode::Char('h') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.try_go_left_pane()?
-                    }
-                }
-                KeyCode::Char('l') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
-                        app.try_go_right_pane()?
-                    }
-                }
-                KeyCode::Char('i') => {
-                    app.current_popup = Popup::AlbumInformation;
-                }
-                KeyCode::Char('a') => {
-                    if app.home_pane == HomePane::BottomRight {
-                        app.set_item_to_be_added(MediaType::Song)?;
-                    } else {
-                        app.set_item_to_be_added(MediaType::Album)?;
-                    }
-                    app.current_popup = Popup::AddTo;
-                }
-                KeyCode::Enter => {
-                    if app.home_pane == HomePane::BottomRight {
-                        app.set_item_to_be_added(MediaType::Song)?;
-                    } else {
-                        app.set_item_to_be_added(MediaType::Album)?;
-                    }
-                    app.add_queue_immediately()?;
-                }
-                // Other handlers you could add here.
-                _ => {}
-            },
-            CurrentScreen::Albums => match key_event.code {
-                KeyCode::Char('i') => {
-                    app.current_popup = Popup::AlbumInformation;
-                }
-                KeyCode::Char('a') => {
-                    if app.album_pane == TwoPaneVertical::Left {
-                        app.current_popup = Popup::AddTo;
-                        app.set_item_to_be_added(MediaType::Album)?;
-                    } else {
-                        app.current_popup = Popup::AddTo;
-                        app.set_item_to_be_added(MediaType::Song)?;
-                    }
-                }
-                KeyCode::Char('A') => {
-                    if app.album_pane == TwoPaneVertical::Right {
-                        app.current_popup = Popup::AddTo;
-                        app.set_item_to_be_added(MediaType::Album)?;
-                    }
-                }
-                KeyCode::Enter => {
-                    if app.album_pane == TwoPaneVertical::Left {
-                        app.set_item_to_be_added(MediaType::Album)?;
-                    } else {
-                        app.set_item_to_be_added(MediaType::Song)?;
-                    }
-                    app.add_queue_immediately()?;
-                }
-                KeyCode::Char('e') => {
-                    app.current_popup = Popup::GenreFilter;
-                }
-                KeyCode::Char('y') => {
-                    app.current_popup = Popup::YearFilter;
-                }
-                KeyCode::Char('m') => {
-                    app.album_sorting_mode = if app.album_sorting_mode == SortMode::Alphabetical {
-                        SortMode::Frequent
-                    } else {
-                        SortMode::Alphabetical
-                    };
-                    app.clear_search()?;
-                    app.list_states.album_state.select_first();
-                    app.process_filtered_album_list()?;
-                }
-                KeyCode::Char('r') => {
-                    app.clear_search()?;
-                    app.toggle_sort_order()?
-                }
-                _ => {}
-            },
-            CurrentScreen::Playlists => match key_event.code {
-                KeyCode::Char('K') => {
-                    if app.playlist_pane == TwoPaneVertical::Right {
-                        app.try_move_selection_up()?;
-                    }
-                }
-                KeyCode::Char('J') => {
-                    if app.playlist_pane == TwoPaneVertical::Right {
-                        app.try_move_selection_down()?;
-                    }
-                }
-                KeyCode::Char('a') => {
-                    app.current_popup = Popup::AddTo;
-                    if app.playlist_pane == TwoPaneVertical::Left {
-                        app.set_item_to_be_added(MediaType::Playlist)?;
-                    } else {
-                        app.set_item_to_be_added(MediaType::Song)?;
-                    }
-                }
-                KeyCode::Char('A') => {
-                    app.current_popup = Popup::AddTo;
-                    app.set_item_to_be_added(MediaType::Playlist)?;
-                }
-                KeyCode::Char('s') => {
-                    app.current_popup = Popup::SynchronizePlaylist;
-                }
-                KeyCode::Enter => {
-                    if app.playlist_pane == TwoPaneVertical::Left {
-                        app.set_item_to_be_added(MediaType::Playlist)?;
-                    } else {
-                        app.set_item_to_be_added(MediaType::Song)?;
-                    }
-                    app.add_queue_immediately()?;
-                }
-                KeyCode::Char('d') => {
-                    if app.playlist_pane == TwoPaneVertical::Left
-                        && key_event.modifiers != KeyModifiers::CONTROL
-                    {
-                        app.current_popup = Popup::ConfirmPlaylistDeletion;
-                    } else if app.playlist_pane == TwoPaneVertical::Right
-                        && key_event.modifiers != KeyModifiers::CONTROL
-                    {
-                        app.delete_selected_song_from_playlist()?;
-                    }
-                }
-                _ => {}
-            },
-            CurrentScreen::Artists => match key_event.code {
-                KeyCode::Char('a') => {
-                    app.current_popup = Popup::AddTo;
-                    if app.artist_pane == TwoPaneVertical::Left {
-                        app.set_item_to_be_added(MediaType::Artist)?;
-                    } else {
-                        app.set_item_to_be_added(app.artist_view_song_or_album())?;
-                    }
-                }
-                KeyCode::Enter => {
-                    if app.artist_pane == TwoPaneVertical::Left {
-                        app.set_item_to_be_added(MediaType::Artist)?;
-                    } else {
-                        app.set_item_to_be_added(app.artist_view_song_or_album())?;
-                    }
-                    app.add_queue_immediately()?;
-                }
-                KeyCode::Char('A') => {
-                    if app.artist_pane == TwoPaneVertical::Right {
-                        app.current_popup = Popup::AddTo;
-                        app.set_item_to_be_added(MediaType::Album)?;
-                    }
-                }
-                _ => {}
-            },
-            CurrentScreen::Queue => match key_event.code {
-                KeyCode::Char('a') => {
-                    app.clear_search()?;
-                    app.set_album_in_list_to_current_playing()?;
-                    app.album_pane = TwoPaneVertical::Right;
-                    app.current_screen = CurrentScreen::Albums;
-                }
-                KeyCode::Char('r') => {
-                    app.clear_search()?;
-                    app.set_artist_in_list_to_current_playing()?;
-                    app.artist_pane = TwoPaneVertical::Right;
-                    app.current_screen = CurrentScreen::Artists;
-                }
-                KeyCode::Char('e') => app.center_queue_cursor()?,
-                KeyCode::Char('>') => app.play_next()?,
-                KeyCode::Char('<') => app.play_previous()?,
-                KeyCode::Char('c') => {
-                    if key_event.modifiers != KeyModifiers::CONTROL {
-                        handle_stop_playback(app, iface_ref).await?;
-                        app.clear_queue()?;
-                    }
-                }
-                KeyCode::Enter => {
-                    app.play_queue_song()?;
-                }
-                _ => {}
-            },
-        }
-        // Exit application no matter the current_screen
-        // Exit application on `q` or  `<C-c>`
-        if key_event.code == KeyCode::Char('q')
-            || key_event.code == KeyCode::Char('c') && key_event.modifiers == KeyModifiers::CONTROL
-        {
-            debug!("Starting app shutdown");
-            app.quit();
-        } else if key_event.code == KeyCode::Char('1') {
-            app.clear_search()?;
-            app.current_screen = CurrentScreen::Home;
-        } else if key_event.code == KeyCode::Char('2') {
-            app.clear_search()?;
-            app.current_screen = CurrentScreen::Albums;
-        } else if key_event.code == KeyCode::Char('3') {
-            app.clear_search()?;
-            app.current_screen = CurrentScreen::Playlists;
-        } else if key_event.code == KeyCode::Char('4') {
-            app.clear_search()?;
-            app.current_screen = CurrentScreen::Artists;
-        } else if key_event.code == KeyCode::Char('5') {
-            app.clear_search()?;
-            app.current_screen = CurrentScreen::Queue;
-        } else if key_event.code == KeyCode::Char('/') {
-            app.app_flags.getting_search_string = true;
-        } else if key_event.code == KeyCode::Tab {
-            app.clear_search()?;
-            app.cycle_pane()?;
-        } else if key_event.code == KeyCode::Char('p') || key_event.code == KeyCode::Char(' ') {
-            handle_toggle_play_pause(app, iface_ref).await?
-        } else if key_event.code == KeyCode::Char('n') {
-            app.go_next_in_search()?;
-        } else if key_event.code == KeyCode::Char('N') {
-            app.go_previous_in_search()?;
-        } else if key_event.code == KeyCode::Char('l') && key_event.modifiers == KeyModifiers::NONE
-        {
+        ShortcutAction::AddItemPlaylist => app.current_popup = Popup::SelectPlaylist,
+        ShortcutAction::CycleLoopMode => {
             match app.loop_status {
                 AppLoopStatus::None => {
                     handle_loop_status_change(app, iface_ref, String::from("Track")).await?;
@@ -309,310 +54,384 @@ pub async fn handle_key_events(
                     handle_loop_status_change(app, iface_ref, String::from("None")).await?;
                 }
             }
-        } else if key_event.code == KeyCode::Char('o') {
-            handle_stop_playback(app, iface_ref).await?;
-        } else if key_event.code == KeyCode::Char('u') && key_event.modifiers.is_empty() && app.current_popup == Popup::None {
+        }
+        ShortcutAction::CyclePane => {
+            app.clear_search()?;
+            app.cycle_pane()?;
+        }
+        ShortcutAction::DeleteItemFromPlaylist => app.delete_selected_song_from_playlist()?,
+        ShortcutAction::GoAlbumPane => {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Albums;
+        }
+        ShortcutAction::GoArtistPane => {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Artists;
+        }
+        ShortcutAction::GoFirstInList => app.move_in_list(AppMovementInList::First)?,
+        ShortcutAction::GoHomePane => {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Home;
+        }
+        ShortcutAction::GoLastInList => app.move_in_list(AppMovementInList::Last)?,
+        ShortcutAction::GoPlaylistPane => {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Playlists;
+        }
+        ShortcutAction::GoPopupAddAlbumTo => {
+            app.set_item_to_be_added(MediaType::Album)?;
+            app.current_popup = Popup::AddTo;
+        }
+        ShortcutAction::GoPopupAddArtistItemTo => {
+            app.set_item_to_be_added(app.artist_view_song_or_album())?;
+            app.current_popup = Popup::AddTo;
+        }
+        ShortcutAction::GoPopupAddArtistTo => {
+            app.set_item_to_be_added(MediaType::Artist)?;
+            app.current_popup = Popup::AddTo;
+        }
+        ShortcutAction::GoPopupAddPlaylistTo => {
+            app.set_item_to_be_added(MediaType::Playlist)?;
+            app.current_popup = Popup::AddTo;
+        }
+        ShortcutAction::GoPopupAddSongTo => {
+            app.set_item_to_be_added(MediaType::Song)?;
+            app.current_popup = Popup::AddTo;
+        }
+        ShortcutAction::GoPopupAlbumInfo => app.current_popup = Popup::AlbumInformation,
+        ShortcutAction::GoPopupDeletePlaylist => app.current_popup = Popup::ConfirmPlaylistDeletion,
+        ShortcutAction::GoPopupGenreFilter => app.current_popup = Popup::GenreFilter,
+        ShortcutAction::GoPopupSyncPlaylist => app.current_popup = Popup::SynchronizePlaylist,
+        ShortcutAction::GoPopupTestConnection => app.current_popup = Popup::ConnectionTest,
+        ShortcutAction::GoPopupUpdateDatabase => {
             app.get_selected_album_for_update()?;
             app.current_popup = Popup::UpdateDatabase;
         }
-    } else {
-        match app.current_popup {
-            Popup::ConnectionTest => match key_event.code {
-                KeyCode::Char('r') => {
-                    app.renew_credentials()?;
-                }
-                KeyCode::Char('t') => {
-                    app.test_connection().await?;
-                }
-                _ => {}
-            },
-            Popup::AlbumInformation => match key_event.code {
-                KeyCode::Enter => {
-                    app.set_item_to_be_added(MediaType::Song)?;
-                    app.add_queue_immediately()?;
-                    app.current_popup = Popup::None;
-                }
-                KeyCode::Char('a') => {
-                    app.current_popup = Popup::AddTo;
-                    app.set_item_to_be_added(MediaType::Song)?;
-                }
-                KeyCode::Char('A') => {
-                    app.current_popup = Popup::AddTo;
-                    app.set_item_to_be_added(MediaType::Album)?;
-                }
-                _ => {}
-            },
-            Popup::AddTo => match key_event.code {
-                KeyCode::Char('n') => {
-                    app.add_queue_next()?;
-                    app.current_popup = Popup::None;
-                }
-                KeyCode::Char('e') => {
-                    app.add_queue_later()?;
-                    app.current_popup = Popup::None;
-                }
-                KeyCode::Char('p') => {
-                    app.current_popup = Popup::SelectPlaylist;
-                }
-                _ => {}
-            },
-            Popup::GenreFilter => match key_event.code {
-                KeyCode::Enter => {
-                    app.list_states.album_state.select_first();
-                    app.set_genre_filter()?;
-                    app.process_filtered_album_list()?;
-                    app.current_popup = Popup::None;
-                    app.clear_search()?;
-                }
-                KeyCode::Char('f') => {
-                    app.toggle_favorite_genre()?;
-                }
-                KeyCode::Char(c) => {
-                    if c.is_ascii_digit() && c != '0' {
-                        let position = c.to_digit(10).unwrap() as usize;
-                        if position <= app.database.favorite_genres().len() {
-                            app.list_states.album_state.select_first();
-                            app.set_favorite_genre_filter(position)?;
-                            app.process_filtered_album_list()?;
-                            app.current_popup = Popup::None;
-                            app.clear_search()?;
-                        }
-                    }
-                }
-                _ => {}
-            },
-            Popup::YearFilter => match key_event.code {
-                KeyCode::Backspace => {
-                    let input_string = if app.app_flags.is_introducing_to_year {
-                        &app.album_filters.year_to_filter_new
-                    } else {
-                        &app.album_filters.year_from_filter_new
-                    };
-                    if !input_string.is_empty() {
-                        let mut chars = input_string.chars().collect::<Vec<char>>();
-                        chars.pop();
-                        if app.app_flags.is_introducing_to_year {
-                            app.album_filters.year_to_filter_new = chars.iter().collect::<String>()
-                        } else {
-                            app.album_filters.year_from_filter_new =
-                                chars.iter().collect::<String>()
-                        }
-                    }
-                }
-                KeyCode::Enter => {
-                    if app.app_flags.range_year_filter {
-                        app.validate_year_filters()?;
-                    }
-                    if app.album_filters.filter_message.is_empty() {
-                        app.album_filters.year_from_filter =
-                            app.album_filters.year_from_filter_new.clone();
-                        app.album_filters.year_to_filter =
-                            app.album_filters.year_to_filter_new.clone();
-                        app.process_filtered_album_list()?;
-                        app.current_popup = Popup::None;
-                    }
-                }
-                KeyCode::Tab => {
-                    if app.app_flags.range_year_filter {
-                        app.app_flags.is_introducing_to_year =
-                            !app.app_flags.is_introducing_to_year;
-                    }
-                }
-                KeyCode::Char('r') => {
-                    if app.app_flags.range_year_filter {
-                        app.app_flags.range_year_filter = false;
-                        app.app_flags.is_introducing_to_year = false;
-                        app.album_filters.year_to_filter.clear();
-                        app.album_filters.year_to_filter_new.clear();
-                    } else {
-                        app.app_flags.range_year_filter = true;
-                    }
-                }
-                KeyCode::Char(c) => {
-                    if c.is_ascii_digit() {
-                        if app.app_flags.is_introducing_to_year {
-                            app.album_filters.year_to_filter_new.push(c);
-                        } else {
-                            app.album_filters.year_from_filter_new.push(c);
-                        }
-                    }
-                }
-                KeyCode::Esc => {
-                    app.album_filters.year_from_filter.clear();
-                    app.album_filters.year_to_filter.clear();
-                    app.album_filters.year_from_filter_new.clear();
-                    app.album_filters.year_to_filter_new.clear();
-                    app.app_flags.is_introducing_to_year = false;
-                }
-                _ => {}
-            },
-            Popup::UpdateDatabase => match key_event.code {
-                KeyCode::Char('p') => {
-                    app.update_playlists_async(true)?;
-                    app.current_popup = Popup::None;
-                    app.selected_album_id_to_update.clear();
-                }
-                KeyCode::Char('b') => {
-                    app.update_alphabetical_albums_async(true)?;
-                    app.current_popup = Popup::None;
-                    app.selected_album_id_to_update.clear();
-                }
-                KeyCode::Char('y') => {
-                    app.update_playlists_async(true)?;
-                    app.current_popup = Popup::None;
-                    app.selected_album_id_to_update.clear();
-                }
-                KeyCode::Char('s') => {
-                    app.populate_db(false)?;
-                    app.current_popup = Popup::None;
-                    app.selected_album_id_to_update.clear();
-                }
-                KeyCode::Char('a') => {
-                    app.populate_db(true)?;
-                    app.current_popup = Popup::None;
-                    app.selected_album_id_to_update.clear();
-                }
-                KeyCode::Enter => {
-                    if !app.selected_album_id_to_update.is_empty() {
-                        app.update_selected_album()?;
-                        app.current_popup = Popup::None;
-                        app.selected_album_id_to_update.clear();
-                    }
-                }
-                _ => {}
-            },
-            Popup::SelectPlaylist => match key_event.code {
-                KeyCode::Enter => {
-                    if app
-                        .list_states
-                        .popup_select_playlist_list_state
-                        .selected()
-                        .unwrap()
-                        == 0
-                    {
-                        app.app_flags.is_introducing_new_playlist_name = true;
-                    } else {
-                        app.add_to_playlist()?;
-                        app.current_popup = Popup::None;
-                    }
-                }
-                _ => {}
-            },
-            Popup::SynchronizePlaylist => {
-                if app.is_selected_playlist_local()? {
-                    match key_event.code {
-                        KeyCode::Char('y') => {
-                            app.push_local_playlist()?;
-                            app.current_popup = Popup::None;
-                        }
-                        KeyCode::Char('n') => {
-                            app.current_popup = Popup::None;
-                        }
-                        _ => {}
-                    }
-                } else {
-                    match key_event.code {
-                        KeyCode::Char('l') => {
-                            app.push_local_playlist()?;
-                            app.current_popup = Popup::None;
-                        }
-                        KeyCode::Char('r') => {
-                            app.pull_remote_playlist()?;
-                            app.current_popup = Popup::None;
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            Popup::ConfirmPlaylistDeletion => match key_event.code {
-                KeyCode::Char('y') => {
-                    app.delete_selected_playlist()?;
-                    app.current_popup = Popup::None;
-                }
-                KeyCode::Char('n') => {
-                    app.current_popup = Popup::None;
-                }
-                _ => {}
-            },
-            Popup::ConnectionError => match key_event.code {
-                KeyCode::Char('r') => {
-                    app.clear_errors_in_operations()?;
-                    app.status = AppStatus::Updating;
-                    app.current_popup = Popup::None;
-                }
-                KeyCode::Char('o') => {
-                    app.mode = AppConnectionMode::Offline;
-                    app.clear_queue()?;
-                    app.current_popup = Popup::None;
-                }
-                _ => {}
-            },
-            Popup::None => {}
+        ShortcutAction::GoPopupYearFilter => app.current_popup = Popup::YearFilter,
+        ShortcutAction::GoQueuePane => {
+            app.clear_search()?;
+            app.current_screen = CurrentScreen::Queue;
         }
-        // Exit popup no matter the current_popup
-        if key_event.code == KeyCode::Esc || key_event.code == KeyCode::Char('q') {
+        ShortcutAction::GoToTrackAlbum => {
+            app.clear_search()?;
+            app.set_album_in_list_to_current_playing()?;
+            app.album_pane = TwoPaneVertical::Right;
+            app.current_screen = CurrentScreen::Albums;
+        }
+        ShortcutAction::GoToTrackArtist => {
+            app.clear_search()?;
+            app.set_artist_in_list_to_current_playing()?;
+            app.artist_pane = TwoPaneVertical::Right;
+            app.current_screen = CurrentScreen::Artists;
+        }
+        ShortcutAction::MoveDownInList => app.move_in_list(AppMovementInList::Next)?,
+        ShortcutAction::MovePageDown => app.move_in_list(AppMovementInList::PageDown)?,
+        ShortcutAction::MovePageUp => app.move_in_list(AppMovementInList::PageUp)?,
+        ShortcutAction::MovePaneDown => {
+            app.clear_search()?;
+            app.try_go_down_pane()?
+        }
+        ShortcutAction::MovePaneLeft => {
+            app.clear_search()?;
+            app.try_go_left_pane()?
+        }
+        ShortcutAction::MovePaneRight => {
+            app.clear_search()?;
+            app.try_go_right_pane()?
+        },
+        ShortcutAction::MovePaneUp => {
+            app.clear_search()?;
+            app.try_go_up_pane()?
+        }
+        ShortcutAction::MoveSelectionDown => app.try_move_selection_down()?,
+        ShortcutAction::MoveSelectionUp => app.try_move_selection_up()?,
+        ShortcutAction::MoveUpInList => app.move_in_list(AppMovementInList::Previous)?,
+        ShortcutAction::None => {}
+        ShortcutAction::PlayImmediatelyArtist => {
+            app.set_item_to_be_added(MediaType::Artist)?;
+            app.add_queue_immediately()?;
+        }
+        ShortcutAction::PlayImmediatelyAlbum => {
+            app.set_item_to_be_added(MediaType::Album)?;
+            app.add_queue_immediately()?;
+        }
+        ShortcutAction::PlayImmediatelyPlaylist => {
+            app.set_item_to_be_added(MediaType::Playlist)?;
+            app.add_queue_immediately()?;
+        }
+        ShortcutAction::PlayImmediatelySong => {
+            app.set_item_to_be_added(MediaType::Song)?;
+            app.add_queue_immediately()?;
+        }
+        ShortcutAction::PlayImmediatelyArtistItem => {
+            app.set_item_to_be_added(app.artist_view_song_or_album())?;
+            app.add_queue_immediately()?;
+        }
+        ShortcutAction::PopupClose => {
             app.current_popup = Popup::None;
             app.selected_album_id_to_update.clear();
         }
-    }
+        ShortcutAction::PopupConfirmDeletionPlaylistNo => app.current_popup = Popup::None,
+        ShortcutAction::PopupConfirmDeletionPlaylistYes => {
+            app.delete_selected_playlist()?;
+            app.current_popup = Popup::None;
+        }
+        ShortcutAction::PopupConnectionErrorRetry => {
+            app.clear_errors_in_operations()?;
+            app.status = AppStatus::Updating;
+            app.current_popup = Popup::None;
+        }
+        ShortcutAction::PopupConnectionErrorOffline => {
+            app.mode = AppConnectionMode::Offline;
+            app.clear_queue()?;
+            app.current_popup = Popup::None;
+        }
+        ShortcutAction::PopupGenreAcceptSelected => {
+            app.list_states.album_state.select_first();
+            app.set_genre_filter()?;
+            app.process_filtered_album_list()?;
+            app.current_popup = Popup::None;
+            app.clear_search()?;
+        }
+        ShortcutAction::PopupGenreSelectFavorite => {
+            if let KeyCode::Char(c) = key_event.code {
+                if c.is_ascii_digit() && c != '0' {
+                    let position = c.to_digit(10).unwrap() as usize;
+                    if position <= app.database.favorite_genres().len() {
+                        app.list_states.album_state.select_first();
+                        app.set_favorite_genre_filter(position)?;
+                        app.process_filtered_album_list()?;
+                        app.current_popup = Popup::None;
+                        app.clear_search()?;
+                    }
+                }
+            }
+        }
+        ShortcutAction::PopupGenreToggleFavorite => app.toggle_favorite_genre()?,
+        ShortcutAction::PopupPlaylistAcceptPlaylistName => {
+            app.app_flags.is_introducing_new_playlist_name = false;
+            app.add_to_playlist()?;
+            app.current_popup = Popup::None;
+        }
+        ShortcutAction::PopupPlaylistAcceptSelected => {
+            if app.list_states.popup_select_playlist_list_state.selected().unwrap() == 0
+            {
+                app.app_flags.is_introducing_new_playlist_name = true;
+            } else {
+                app.add_to_playlist()?;
+                app.current_popup = Popup::None;
+            }
+        }
+        ShortcutAction::PopupPlaylistAddCharToPlaylistName => {
+            if let KeyCode::Char(c) = key_event.code {
+                app.new_name.push(c);
+            }
+        }
+        ShortcutAction::PopupPlaylistCancelNewPlaylist => {
+            app.new_name.clear();
+            app.app_flags.is_introducing_new_playlist_name = false;
+        }
+        ShortcutAction::PopupPlaylistRemoveCharFromPlaylistName => {
+            if !app.new_name.is_empty() {
+                let mut chars = app.new_name.chars().collect::<Vec<char>>();
+                chars.pop();
+                app.new_name = chars.iter().collect::<String>();
+            }
+        }
+        ShortcutAction::PopupSynchronizePlaylistPushLocal => {
+            if !app.is_selected_playlist_local()? {
+                app.push_local_playlist()?;
+                app.current_popup = Popup::None;
+            }
+        }
+        ShortcutAction::PopupSynchronizePlaylistPullRemote => {
+            if !app.is_selected_playlist_local()? {
+                app.pull_remote_playlist()?;
+                app.current_popup = Popup::None;
+            }
+        }
+        ShortcutAction::PopupSynchronizeLocalPlaylistPushYes => {
+            if app.is_selected_playlist_local()? {
+                app.push_local_playlist()?;
+                app.current_popup = Popup::None;
+            } 
+        }
+        ShortcutAction::PopupSynchronizeLocalPlaylistPushNo => {
+            if app.is_selected_playlist_local()? {
+                app.current_popup = Popup::None;
+            }
+        }
+        ShortcutAction::PopupTestConnectionGenerate => app.renew_credentials()?,
+        ShortcutAction::PopupTestConnectionTest => app.test_connection().await?,
+        ShortcutAction::PopupUpdateDatabaseUpdateAlbums => {
+            app.update_alphabetical_albums_async(true)?;
+            app.current_popup = Popup::None;
+            app.selected_album_id_to_update.clear();
+        }
+        ShortcutAction::PopupUpdateDatabaseUpdateAllFull => {
+            app.populate_db(true)?;
+            app.current_popup = Popup::None;
+            app.selected_album_id_to_update.clear();
+        }
+        ShortcutAction::PopupUpdateDatabaseUpdateAllQuick => {
+            app.populate_db(false)?;
+            app.current_popup = Popup::None;
+            app.selected_album_id_to_update.clear();
+        }
+        ShortcutAction::PopupUpdateDatabaseUpdateCurrentlySelected => {
+            if !app.selected_album_id_to_update.is_empty() {
+                app.update_selected_album()?;
+                app.current_popup = Popup::None;
+                app.selected_album_id_to_update.clear();
+            }
+        }
+        ShortcutAction::PopupUpdateDatabaseUpdatePlaylists => {
+            app.update_playlists_async(true)?;
+            app.current_popup = Popup::None;
+            app.selected_album_id_to_update.clear();
+        }
+        ShortcutAction::PopupYearAcceptFilter => {
+            if app.app_flags.range_year_filter {
+                app.validate_year_filters()?;
+            }
+            if app.album_filters.filter_message.is_empty() {
+                app.album_filters.year_from_filter =
+                    app.album_filters.year_from_filter_new.clone();
+                app.album_filters.year_to_filter =
+                    app.album_filters.year_to_filter_new.clone();
+                app.process_filtered_album_list()?;
+                app.current_popup = Popup::None;
+            }
+        }
+        ShortcutAction::PopupYearAddDigit => {
+            if let KeyCode::Char(c) = key_event.code {
+                if c.is_ascii_digit() {
+                    if app.app_flags.is_introducing_to_year {
+                        app.album_filters.year_to_filter_new.push(c);
+                    } else {
+                        app.album_filters.year_from_filter_new.push(c);
+                    }
+                }
+            }
+        }
+        ShortcutAction::PopupYearRemoveDigit => {
+            let input_string = if app.app_flags.is_introducing_to_year {
+                &app.album_filters.year_to_filter_new
+            } else {
+                &app.album_filters.year_from_filter_new
+            };
+            if !input_string.is_empty() {
+                let mut chars = input_string.chars().collect::<Vec<char>>();
+                chars.pop();
+                if app.app_flags.is_introducing_to_year {
+                    app.album_filters.year_to_filter_new = chars.iter().collect::<String>()
+                } else {
+                    app.album_filters.year_from_filter_new =
+                        chars.iter().collect::<String>()
+                }
+            }
 
-    // Keycodes that should be considered not matter if in popup or not
-    if key_event.code == KeyCode::Char('j') {
-        if key_event.modifiers == KeyModifiers::CONTROL {
+        }
+        ShortcutAction::PopupYearToggleFromTo => {
+            if app.app_flags.range_year_filter {
+                app.app_flags.is_introducing_to_year =
+                    !app.app_flags.is_introducing_to_year;
+            }
+        }
+        ShortcutAction::PopupYearToggleRangeInput => {
+            if app.app_flags.range_year_filter {
+                app.app_flags.range_year_filter = false;
+                app.app_flags.is_introducing_to_year = false;
+                app.album_filters.year_to_filter.clear();
+                app.album_filters.year_to_filter_new.clear();
+            } else {
+                app.app_flags.range_year_filter = true;
+            }
+        }
+        ShortcutAction::PopupYearClearAndClose => {
+            app.album_filters.year_from_filter.clear();
+            app.album_filters.year_to_filter.clear();
+            app.album_filters.year_from_filter_new.clear();
+            app.album_filters.year_to_filter_new.clear();
+            app.app_flags.is_introducing_to_year = false;
+            app.current_popup = Popup::None;
+        }
+        ShortcutAction::QueueCenterCursor => app.center_queue_cursor()?,
+        ShortcutAction::QueueClear => {
+            if key_event.modifiers != KeyModifiers::CONTROL {
+                handle_stop_playback(app, iface_ref).await?;
+                app.clear_queue()?;
+            }
+        }
+        ShortcutAction::QueuePlaySong => app.play_queue_song()?,
+        ShortcutAction::QuitApp => {
+            debug!("Starting app shutdown");
+            app.quit();
+        }
+        ShortcutAction::SearchAccept => {
+            app.app_flags.getting_search_string = false;
+        }
+        ShortcutAction::SearchAddCharToSearchString => {
+             if let KeyCode::Char(c) = key_event.code {
+                app.search_data.search_string.push(c);
+                if app.search_data.search_string.len() > 2 {
+                    app.clear_search_results()?;
+                    app.search_in_current_list()?;
+                    app.go_next_in_search()?;
+                }
+            }
+        }
+        ShortcutAction::SearchClear => app.clear_search()?,
+        ShortcutAction::SearchEnd => {
+            app.app_flags.getting_search_string = false;
             app.clear_search()?;
-            app.try_go_down_pane()?
-        } else {
-            app.move_in_list(AppMovementInList::Next)?
+        }
+        ShortcutAction::SearchRemoveCharFromSearchString => {
+            if !app.search_data.search_string.is_empty() {
+                let mut chars = app.search_data.search_string.chars().collect::<Vec<char>>();
+                chars.pop();
+                app.search_data.search_string = chars.iter().collect::<String>();
+            }
+            app.clear_search_results()?;
+            if app.search_data.search_string.len() > 2 {
+                app.search_in_current_list()?;
+                app.go_next_in_search()?;
+            }
+        }
+        ShortcutAction::SearchStart => app.app_flags.getting_search_string = true,
+        ShortcutAction::SearchGoNext => app.go_next_in_search()?,
+        ShortcutAction::SearchGoPrevious => app.go_previous_in_search()?,
+        ShortcutAction::SeekBackwards => handle_seek_backwards(app, iface_ref).await?,
+        ShortcutAction::SeekForward => handle_seek_forward(app, iface_ref).await?,
+        ShortcutAction::StopPlayback => handle_stop_playback(app, iface_ref).await?,
+        ShortcutAction::TogglePlayPause => handle_toggle_play_pause(app, iface_ref).await?,
+        ShortcutAction::ToggleRandomPlayback => handle_shuffle_update(app, iface_ref).await?,
+        ShortcutAction::ToggleSortMethod => {
+            app.album_sorting_mode = if app.album_sorting_mode == SortMode::Alphabetical {
+                SortMode::Frequent
+            } else {
+                SortMode::Alphabetical
+            };
+            app.clear_search()?;
+            app.list_states.album_state.select_first();
+            app.process_filtered_album_list()?;
+        }
+        ShortcutAction::ToggleSortOrder => {
+            app.clear_search()?;
+            app.toggle_sort_order()?
+        }
+        ShortcutAction::TrackNext => app.play_next()?,
+        ShortcutAction::TrackPrevious => app.play_previous()?,
+        ShortcutAction::VolumeDown => {
+            let volume = app.get_volume_as_f64()?;
+            handle_volume_change(app, iface_ref, volume + VOLUME_STEP).await?;
+        }
+        ShortcutAction::VolumeUp => {
+            let volume = app.get_volume_as_f64()?;
+            handle_volume_change(app, iface_ref, volume - VOLUME_STEP).await?;
         }
     }
-    if key_event.code == KeyCode::Char('k') {
-        if key_event.modifiers == KeyModifiers::CONTROL {
-            app.clear_search()?;
-            app.try_go_up_pane()?
-        } else {
-            app.move_in_list(AppMovementInList::Previous)?
-        }
-    }
-    if key_event.code == KeyCode::Char('h') && key_event.modifiers == KeyModifiers::CONTROL {
-        app.clear_search()?;
-        app.try_go_left_pane()?;
-    }
-    if key_event.code == KeyCode::Char('l') && key_event.modifiers == KeyModifiers::CONTROL {
-        app.clear_search()?;
-        app.try_go_right_pane()?;
-    }
-    if key_event.code == KeyCode::Char('d') && key_event.modifiers == KeyModifiers::CONTROL {
-        app.move_in_list(AppMovementInList::PageDown)?;
-    }
-    if key_event.code == KeyCode::Char('u') && key_event.modifiers == KeyModifiers::CONTROL {
-        app.move_in_list(AppMovementInList::PageUp)?;
-    }
-    if key_event.code == KeyCode::Char('g') {
-        app.move_in_list(AppMovementInList::First)?;
-    }
-    if key_event.code == KeyCode::Char('G') {
-        app.move_in_list(AppMovementInList::Last)?;
-    }
-    if key_event.code == KeyCode::Char('z') {
-        handle_shuffle_update(app, iface_ref).await?
-    };
-    if key_event.code == KeyCode::Right {
-        handle_seek_forward(app, iface_ref).await?
-    };
-    if key_event.code == KeyCode::Left {
-        handle_seek_backwards(app, iface_ref).await?
-    };
-    if key_event.code == KeyCode::Esc {
-        app.clear_search()?;
-    };
-    if key_event.code == KeyCode::Up {
-        let volume = app.get_volume_as_f64()?;
-        handle_volume_change(app, iface_ref, volume + VOLUME_STEP).await?;
-    }
-    if key_event.code == KeyCode::Down {
-        let volume = app.get_volume_as_f64()?;
-        handle_volume_change(app, iface_ref, volume - VOLUME_STEP).await?;
-    }
+    
     Ok(())
 }
 
