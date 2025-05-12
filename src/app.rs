@@ -2534,7 +2534,7 @@ impl App {
                                 .unwrap(),
                         )
                         .song_list()
-                        .get(self.list_states.playlist_selected_state.selected().unwrap())
+                        .get(self.list_states.playlist_selected_state.selected().unwrap_or(0))
                         .unwrap(),
                 )
                 .album_id().to_string()),
