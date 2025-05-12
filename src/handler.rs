@@ -107,7 +107,12 @@ pub async fn handle_key_events(
             app.get_selected_album_for_update()?;
             app.current_popup = Popup::UpdateDatabase;
         }
-        ShortcutAction::GoPopupYearFilter => app.current_popup = Popup::YearFilter,
+        ShortcutAction::GoPopupYearFilter => {
+            if !app.album_filters.year_to_filter.is_empty() {
+                app.app_flags.range_year_filter = true;
+            }
+            app.current_popup = Popup::YearFilter
+        },
         ShortcutAction::GoQueuePane => {
             app.clear_search()?;
             app.current_screen = CurrentScreen::Queue;
@@ -300,6 +305,7 @@ pub async fn handle_key_events(
                 app.album_filters.year_to_filter =
                     app.album_filters.year_to_filter_new.clone();
                 app.process_filtered_album_list()?;
+                app.app_flags.range_year_filter = false;
                 app.current_popup = Popup::None;
             }
         }
@@ -354,6 +360,7 @@ pub async fn handle_key_events(
             app.album_filters.year_from_filter_new.clear();
             app.album_filters.year_to_filter_new.clear();
             app.app_flags.is_introducing_to_year = false;
+            app.app_flags.range_year_filter = false;
             app.current_popup = Popup::None;
         }
         ShortcutAction::QueueCenterCursor => app.center_queue_cursor()?,
