@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult};
+use crate::mappings::ShortcutAction;
 use crate::ui::utils;
 use ratatui::layout::Constraint::{Length, Min, Percentage};
 use ratatui::layout::Layout;
@@ -81,7 +82,14 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
 
     let popup_footer = Paragraph::new(vec![
         Line::from(""),
-        Line::from("(CR) select genre, (f) toggle favorite, (1-9) select favorite").style(
+        Line::from(format!(
+            "{} select genre, {} toggle favorite, (1-9) select favorite",
+            app.shortcuts
+                .get_key_combo_for_operation(ShortcutAction::PopupGenreAcceptSelected, None),
+            app.shortcuts
+                .get_key_combo_for_operation(ShortcutAction::PopupGenreToggleFavorite, None)
+        ))
+        .style(
             Style::default()
                 .fg(app.app_colors.secondary_accent)
                 .add_modifier(Modifier::ITALIC),

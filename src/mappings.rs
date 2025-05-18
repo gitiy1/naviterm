@@ -1,8 +1,12 @@
+use std::cmp::PartialEq;
 use std::collections::HashMap;
+use std::fmt::Debug;
+use config::Config;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use log::debug;
+use log::{debug, warn};
+use regex::Regex;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ShortcutAction {
     AddItemEnd,
     AddItemNext,
@@ -109,6 +113,8 @@ pub struct Mappings {
     // For popup shortcuts, pane and subpane slice are absent
     // Modifier can be "none" or "ctrl"
     mappings: HashMap<String, ShortcutAction>,
+    old_mappings: HashMap<String, ShortcutAction>,
+    mappings_to_remove: Vec<String>,
 }
 
 impl Default for Mappings {
@@ -120,6 +126,8 @@ impl Default for Mappings {
 impl Mappings {
     pub fn new() -> Self {
         Mappings {
+            old_mappings: HashMap::new(),
+            mappings_to_remove: vec![],
             mappings: HashMap::from([
                 (String::from("Home_none_none_none_i"),ShortcutAction::GoPopupAlbumInfo),
                 (String::from("Home_none_none_none_f1"),ShortcutAction::GoPopupTestConnection),
@@ -131,7 +139,6 @@ impl Mappings {
                 (String::from("top_left_Home_none_none_none_enter"),ShortcutAction::PlayImmediatelyAlbum),
                 (String::from("top_right_Home_none_none_none_a"),ShortcutAction::GoPopupAddAlbumTo),
                 (String::from("top_right_Home_none_none_none_enter"),ShortcutAction::PlayImmediatelyAlbum),
-                (String::from("Albums_none_none_none_i"),ShortcutAction::GoPopupAlbumInfo),
                 (String::from("Albums_none_none_none_e"),ShortcutAction::GoPopupGenreFilter),
                 (String::from("Albums_none_none_none_y"),ShortcutAction::GoPopupYearFilter),
                 (String::from("Albums_none_none_none_m"),ShortcutAction::ToggleSortMethod),
@@ -255,10 +262,160 @@ impl Mappings {
                 (String::from("none_none_ctrl_l"),ShortcutAction::MovePaneRight),
                 (String::from("none_none_ctrl_j"),ShortcutAction::MovePaneDown),
                 (String::from("none_none_ctrl_k"),ShortcutAction::MovePaneUp),
-                (String::from("none_none_ctrl_d"),ShortcutAction::MovePageDown),
-                (String::from("none_none_ctrl_u"),ShortcutAction::MovePageUp),
+                (String::from("none_ctrl_d"),ShortcutAction::MovePageDown),
+                (String::from("none_ctrl_u"),ShortcutAction::MovePageUp),
                 ])
         }
+    }
+    
+    pub fn init_shortcuts(&mut self, config: Config) {
+
+        if let Ok(value) = config.get::<String>("move_pane_right") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneRight);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("move_pane_left") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneLeft);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("move_pane_up") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneUp);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("move_pane_down") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneDown);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("move_list_down") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MoveDownInList);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("move_list_up") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MoveUpInList);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("move_to_first") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoFirstInList);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("move_to_last") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoLastInList);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("move_page_up") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePageUp);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("move_page_down") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePageDown);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("volume_up") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::VolumeUp);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("volume_down") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::VolumeDown);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("seek_forward") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::SeekForward);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("seek_backwards") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::SeekBackwards);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("track_next") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::TrackNext);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("track_previous") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::TrackPrevious);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("add_item_next") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::AddItemNext);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_info") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAlbumInfo );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_test") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupTestConnection );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_add_song_to") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddSongTo );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_add_album_to") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddAlbumTo );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("close_popup") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupClose );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("play_immediately_song") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelySong );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("play_immediately_album") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyAlbum );
+            }
+        }
+
+        self.clean_old_shortcuts();
+
     }
 
     pub fn get_action_from_shortcut(&self, key_event: KeyEvent, pane: &str, subpane: &str, popup: &str, flag: &str) -> ShortcutAction {
@@ -280,7 +437,13 @@ impl Mappings {
             _ => "invalid".to_string()
         };
 
-        let mod_used = if key_event.modifiers == KeyModifiers::CONTROL {"ctrl".to_string()} else {"none".to_string()};
+        let mod_used = match key_event.modifiers {
+            KeyModifiers::CONTROL => "ctrl".to_string(),
+            KeyModifiers::ALT => "alt".to_string(),
+            KeyModifiers::SUPER => "super".to_string(),
+            _ => "none".to_string()
+        };
+        
         debug!("subpane:{}, pane:{}, popup:{}, flag:{} mod:{}, char:{}", subpane, pane, popup, flag, mod_used, key_pressed);
         
         let global_key = format!("{}_{}", mod_used, key_pressed);
@@ -329,4 +492,91 @@ impl Mappings {
         ShortcutAction::None
     }
 
+    fn use_custom_shortcut(&mut self, shortcut: &str, action: ShortcutAction) {
+        let mut old_key_strings = self.mappings.iter()
+            .filter(|(key,value)| **value == action && !key.contains("esc"))
+            .map(|(key, _)| key.clone()).collect::<Vec<String>>();
+        
+        if !old_key_strings.is_empty() {
+            for key in &old_key_strings { self.mappings_to_remove.push(key.to_string()); }
+        } else {
+            old_key_strings = self.old_mappings.iter()
+                .filter(|(_,value)| **value == action)
+                .map(|(key, _)| key.clone()).collect::<Vec<String>>();
+        }
+        
+        for old_key_string in old_key_strings {
+            let old_key = old_key_string.split('_').collect::<Vec<&str>>();
+            let mut new_shortcut = shortcut.split('_').collect::<Vec<&str>>();
+
+            if new_shortcut.len() == 1 {
+                new_shortcut.insert(0,"none");
+            }
+
+            let mut key = old_key[0..old_key.len() - 2].to_vec();
+            key.append(&mut new_shortcut);
+            let new_key = key.join("_").to_string();
+
+            if let Some(old_action) = self.mappings.get(&new_key) {
+                warn!("The shortcut {} was previously assigned to {:?}, and will override it", shortcut, old_action);
+                self.old_mappings.insert(new_key.clone(), old_action.clone());
+                self.mappings.remove(&new_key);
+                self.mappings_to_remove.retain(|key| key != &new_key);
+            }
+            self.mappings.insert(new_key, action.clone());
+        }
+
+    }
+
+    fn validate_shortcut(&self, shortcut: &str) -> bool {
+        let modifier_regex = Regex::new(r"^(ctrl_|alt_|super_)?([ -~]|right|left|up|down|enter|home|end|pageup|pagedown|tab|esc|f[1-9])$").unwrap();
+
+        if modifier_regex.is_match(shortcut) {
+            debug!("shortcut {} parsed correctly", shortcut);
+            true
+        }
+        else {
+            warn!("Could not parse shortcut {}. Should follow one of the following options: (modifier_shortcut | shortcut)", shortcut);
+            false
+        }
+
+    }
+    
+    pub fn get_key_combo_for_operation(&self, action: ShortcutAction, context: Option<&str>) -> String {
+        let key = self.mappings.iter()
+            .find_map(|(key, map_action)| {
+                match context {
+                    Some(context) => {
+                        if *map_action == action && key.contains(context) { Some(key.to_string()) } else { None }
+                    }
+                    None => {
+                        if *map_action == action { Some(key.to_string()) } else { None }
+                    }
+                }
+            });
+        
+        match key {
+            None => {
+                warn!("Could not find key for operation {:?}", action);
+                "()".to_string()
+            }
+            Some(key_string) => {
+                let key_parts = key_string.split('_').collect::<Vec<&str>>();
+                if key_parts[key_parts.len() - 2] == "none" {
+                    format!("({})", key_parts[key_parts.len() - 1])
+                }
+                else {
+                    format!("({})", key_parts[key_parts.len()-2..].join("-"))
+                }
+            }
+        }
+        
+    }
+
+    fn clean_old_shortcuts(&mut self)  {
+        for key in self.mappings_to_remove.iter() {
+            self.mappings.remove(key);
+        }
+    }
+    
 }

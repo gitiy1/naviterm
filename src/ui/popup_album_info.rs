@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult, CurrentScreen, HomePane};
+use crate::mappings::ShortcutAction;
 use crate::ui::utils;
 use crate::ui::utils::{get_text_for_album_info, get_text_for_song_item, FormatFlags};
 use ratatui::layout::{Constraint, Direction, Layout};
@@ -10,6 +11,7 @@ use ratatui::Frame;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(60, 60, frame.size());
+    let context = "album_information";
 
     let album = match app.current_screen {
         CurrentScreen::Home => match app.home_pane {
@@ -97,12 +99,19 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         .style(Style::default().fg(Color::default()))
         .highlight_symbol("-> ")
         .highlight_spacing(HighlightSpacing::Always);
-    let popup_footer = Paragraph::new(Line::from("(a) add selected item (A) add whole album"))
-        .style(
-            Style::default()
-                .fg(app.app_colors.secondary_accent)
-                .add_modifier(Modifier::ITALIC),
-        ).centered();
+    let popup_footer = Paragraph::new(Line::from(format!(
+        "{} add selected item {} add whole album",
+        app.shortcuts
+            .get_key_combo_for_operation(ShortcutAction::GoPopupAddSongTo, Some(context)),
+        app.shortcuts
+            .get_key_combo_for_operation(ShortcutAction::GoPopupAddAlbumTo, Some(context))
+    )))
+    .style(
+        Style::default()
+            .fg(app.app_colors.secondary_accent)
+            .add_modifier(Modifier::ITALIC),
+    )
+    .centered();
 
     let block = Block::bordered()
         .title(Line::raw("Album details").centered())

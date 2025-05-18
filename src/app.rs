@@ -26,7 +26,7 @@ use std::time::Duration;
 use chrono::NaiveDateTime;
 use tokio::sync::mpsc::UnboundedSender;
 use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
-use crate::mappings::Mappings;
+use crate::mappings::{Mappings};
 
 /// Enum with applications screens
 #[derive(Debug, PartialEq)]
@@ -605,6 +605,9 @@ impl App {
                 warn!("Could not load draw while unfocused, using default. {}", e);
             }
         }
+        
+        self.shortcuts.init_shortcuts(config);
+
         Ok(())
     }
 

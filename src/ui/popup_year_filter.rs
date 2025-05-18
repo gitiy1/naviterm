@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult};
+use crate::mappings::ShortcutAction;
 use crate::ui::utils;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::prelude::{Modifier, Span, Style};
@@ -8,7 +9,7 @@ use ratatui::widgets::{Block, Clear, Padding, Paragraph};
 use ratatui::Frame;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
-    let area = utils::centered_rect(40, 30, frame.size());
+    let area = utils::centered_rect(50, 30, frame.size());
 
     let block = Block::bordered()
         .title(Line::raw("Year filter").centered())
@@ -75,7 +76,16 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let popup_paragraph = Paragraph::new(filter_data);
     let popup_footer = if app.app_flags.range_year_filter {
         Paragraph::new(
-            Line::from("(CR) accept, (r) input single year, (TAB) toggle input field").style(
+            Line::from(format!(
+                "{} accept, {} input single year, {} toggle input field",
+                app.shortcuts
+                    .get_key_combo_for_operation(ShortcutAction::PopupYearAcceptFilter, None),
+                app.shortcuts
+                    .get_key_combo_for_operation(ShortcutAction::PopupYearToggleRangeInput, None),
+                app.shortcuts
+                    .get_key_combo_for_operation(ShortcutAction::PopupYearToggleFromTo, None)
+            ))
+            .style(
                 Style::default()
                     .fg(app.app_colors.secondary_accent)
                     .add_modifier(Modifier::ITALIC),
@@ -83,7 +93,14 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         )
     } else {
         Paragraph::new(
-            Line::from("(CR) accept, (r) input year range").style(
+            Line::from(format!(
+                "{} accept, {} input year range",
+                app.shortcuts
+                    .get_key_combo_for_operation(ShortcutAction::PopupYearAcceptFilter, None),
+                app.shortcuts
+                    .get_key_combo_for_operation(ShortcutAction::PopupYearToggleRangeInput, None),
+            ))
+            .style(
                 Style::default()
                     .fg(app.app_colors.secondary_accent)
                     .add_modifier(Modifier::ITALIC),

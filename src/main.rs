@@ -33,8 +33,8 @@ async fn main() -> AppResult<()> {
         .add_source(config::Environment::with_prefix("APP"))
         .build() {
         Ok(conf) => conf,
-        Err(_) => {
-            println!("You need to have a config file: HOME/.config/naviterm/config.ini");
+        Err(e) => {
+            println!("Error loading configuration at HOME/.config/naviterm/config.ini: {}", e);
             exit(1);
         }
     };

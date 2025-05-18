@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult};
+use crate::mappings::ShortcutAction;
 use crate::ui::utils;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::prelude::{Modifier, Span};
@@ -77,7 +78,12 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         .highlight_symbol("-> ")
         .highlight_spacing(HighlightSpacing::Always);
     let popup_footer = Paragraph::new(
-        Line::from("(CR) select playlist").style(
+        Line::from(format!(
+            "{} select playlist",
+            app.shortcuts
+                .get_key_combo_for_operation(ShortcutAction::PopupPlaylistAcceptSelected, None)
+        ))
+        .style(
             Style::default()
                 .fg(app.app_colors.secondary_accent)
                 .add_modifier(Modifier::ITALIC),

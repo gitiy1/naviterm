@@ -5,6 +5,7 @@ use ratatui::prelude::{Line, Modifier, Span};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
+use crate::mappings::ShortcutAction;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(40, 30, frame.size());
@@ -32,7 +33,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         Line::from(""),
         Line::from(vec![
             Span {
-                content: "(y)".into(),
+                content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::PopupConfirmDeletionPlaylistYes, None).into(),
                 style: Style::default()
                     .fg(app.app_colors.primary_accent)
                     .add_modifier(Modifier::BOLD),
@@ -44,7 +45,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         ]),
         Line::from(vec![
             Span {
-                content: "(n)".into(),
+                content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::PopupConfirmDeletionPlaylistNo, None).into(),
                 style: Style::default()
                     .fg(app.app_colors.primary_accent)
                     .add_modifier(Modifier::BOLD),

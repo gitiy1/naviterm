@@ -49,7 +49,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         Popup::SelectPlaylist => popup_select_playlist::draw_popup(app, frame).unwrap(),
         Popup::SynchronizePlaylist => popup_synchronize_playlist::draw_popup(app, frame).unwrap(),
         Popup::ConfirmPlaylistDeletion => popup_deletion_playlist::draw_popup(app, frame).unwrap(),
-        Popup::ConnectionError => popup_connection_error::draw_popup(frame).unwrap(),
+        Popup::ConnectionError => popup_connection_error::draw_popup(app, frame).unwrap(),
         Popup::None => {}
     }
 

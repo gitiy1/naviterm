@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult};
+use crate::mappings::ShortcutAction;
 use crate::ui::utils;
 use ratatui::layout::Alignment;
 use ratatui::prelude::{Line, Modifier, Span};
@@ -25,7 +26,13 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             Line::from(""),
             Line::from(vec![
                 Span {
-                    content: "(y)".into(),
+                    content: app
+                        .shortcuts
+                        .get_key_combo_for_operation(
+                            ShortcutAction::PopupSynchronizeLocalPlaylistPushYes,
+                            None,
+                        )
+                        .into(),
                     style: Style::default()
                         .fg(app.app_colors.primary_accent)
                         .add_modifier(Modifier::BOLD),
@@ -37,7 +44,13 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             ]),
             Line::from(vec![
                 Span {
-                    content: "(n)".into(),
+                    content: app
+                        .shortcuts
+                        .get_key_combo_for_operation(
+                            ShortcutAction::PopupSynchronizeLocalPlaylistPushNo,
+                            None,
+                        )
+                        .into(),
                     style: Style::default()
                         .fg(app.app_colors.primary_accent)
                         .add_modifier(Modifier::BOLD),
@@ -54,7 +67,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         Line::from(""),
         Line::from(vec![
             Span{
-                content: "(l)".into(),
+                content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::PopupSynchronizePlaylistPushLocal, None).into(),
                 style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
             },
             Span{
@@ -64,7 +77,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         ]),
         Line::from(vec![
             Span{
-                content: "(r)".into(),
+                content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::PopupSynchronizePlaylistPullRemote, None).into(),
                 style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
             },
             Span{
@@ -73,7 +86,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             },
         ])]
     };
-    
+
     let popup_content = Paragraph::new(popup_lines);
 
     let popup_block = popup_content

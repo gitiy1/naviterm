@@ -5,6 +5,7 @@ use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
 use ratatui::prelude::{Modifier, Span};
 use crate::app::{App, AppResult, MediaType};
+use crate::mappings::ShortcutAction;
 use crate::ui::utils;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
@@ -30,7 +31,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         Line::from(""),
         Line::from(vec![
             Span{
-                content: "(n)".into(),
+                content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::AddItemNext, None).into(),
                 style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
             },
             Span{
@@ -40,7 +41,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         ]),
         Line::from(vec![
             Span{
-                content: "(e)".into(),
+                content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::AddItemEnd, None).into(),
                 style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
             },
             Span{
@@ -50,7 +51,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         ]),
         Line::from(vec![
             Span{
-                content: "(p)".into(),
+                content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::AddItemPlaylist, None).into(),
                 style: Style::default().fg(app.app_colors.primary_accent).add_modifier(Modifier::BOLD),
             },
             Span{

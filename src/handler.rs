@@ -174,6 +174,7 @@ pub async fn handle_key_events(
         }
         ShortcutAction::PopupClose => {
             app.current_popup = Popup::None;
+            app.app_flags.range_year_filter = false;
             app.selected_album_id_to_update.clear();
         }
         ShortcutAction::PopupConfirmDeletionPlaylistNo => app.current_popup = Popup::None,
@@ -431,11 +432,11 @@ pub async fn handle_key_events(
         ShortcutAction::TrackPrevious => app.play_previous()?,
         ShortcutAction::VolumeDown => {
             let volume = app.get_volume_as_f64()?;
-            handle_volume_change(app, iface_ref, volume + VOLUME_STEP).await?;
+            handle_volume_change(app, iface_ref, volume - VOLUME_STEP).await?;
         }
         ShortcutAction::VolumeUp => {
             let volume = app.get_volume_as_f64()?;
-            handle_volume_change(app, iface_ref, volume - VOLUME_STEP).await?;
+            handle_volume_change(app, iface_ref, volume + VOLUME_STEP).await?;
         }
     }
     
