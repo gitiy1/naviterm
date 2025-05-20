@@ -79,24 +79,24 @@ pub async fn handle_key_events(
             app.current_screen = CurrentScreen::Playlists;
         }
         ShortcutAction::GoPopupAddAlbumTo => {
-            app.set_item_to_be_added(MediaType::Album)?;
             app.current_popup = Popup::AddTo;
+            app.set_item_to_be_added(MediaType::Album)?;
         }
         ShortcutAction::GoPopupAddArtistItemTo => {
-            app.set_item_to_be_added(app.artist_view_song_or_album())?;
             app.current_popup = Popup::AddTo;
+            app.set_item_to_be_added(app.artist_view_song_or_album())?;
         }
         ShortcutAction::GoPopupAddArtistTo => {
-            app.set_item_to_be_added(MediaType::Artist)?;
             app.current_popup = Popup::AddTo;
+            app.set_item_to_be_added(MediaType::Artist)?;
         }
         ShortcutAction::GoPopupAddPlaylistTo => {
-            app.set_item_to_be_added(MediaType::Playlist)?;
             app.current_popup = Popup::AddTo;
+            app.set_item_to_be_added(MediaType::Playlist)?;
         }
         ShortcutAction::GoPopupAddSongTo => {
-            app.set_item_to_be_added(MediaType::Song)?;
             app.current_popup = Popup::AddTo;
+            app.set_item_to_be_added(MediaType::Song)?;
         }
         ShortcutAction::GoPopupAlbumInfo => app.current_popup = Popup::AlbumInformation,
         ShortcutAction::GoPopupDeletePlaylist => app.current_popup = Popup::ConfirmPlaylistDeletion,

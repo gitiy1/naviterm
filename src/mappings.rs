@@ -272,145 +272,307 @@ impl Mappings {
 
         if let Ok(value) = config.get::<String>("move_pane_right") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneRight);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneRight, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("move_pane_left") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneLeft);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneLeft, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("move_pane_up") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneUp);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneUp, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("move_pane_down") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneDown);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePaneDown, None);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("cycle_subpane") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::CyclePane, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("move_list_down") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::MoveDownInList);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MoveDownInList, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("move_list_up") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::MoveUpInList);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MoveUpInList, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("move_to_first") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoFirstInList);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoFirstInList, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("move_to_last") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoLastInList);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoLastInList, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("move_page_up") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePageUp);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePageUp, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("move_page_down") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePageDown);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MovePageDown, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("volume_up") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::VolumeUp);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::VolumeUp, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("volume_down") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::VolumeDown);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::VolumeDown, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("seek_forward") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::SeekForward);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::SeekForward, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("seek_backwards") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::SeekBackwards);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::SeekBackwards, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("track_next") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::TrackNext);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::TrackNext, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("track_previous") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::TrackPrevious);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::TrackPrevious, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("add_item_next") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::AddItemNext);
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::AddItemNext, None);
             }
         }
 
         if let Ok(value) = config.get::<String>("go_popup_info") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAlbumInfo );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAlbumInfo, None );
             }
         }
 
         if let Ok(value) = config.get::<String>("go_popup_test") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupTestConnection );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupTestConnection, None );
             }
         }
 
-        if let Ok(value) = config.get::<String>("go_popup_add_song_to") {
+        if let Ok(value) = config.get::<String>("go_popup_add_item_to") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddSongTo );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddSongTo, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddAlbumTo, Some("Home") );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddAlbumTo, Some("left_Albums") );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddPlaylistTo, Some("left") );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddArtistTo, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddArtistItemTo, None );
             }
         }
 
-        if let Ok(value) = config.get::<String>("go_popup_add_album_to") {
+        if let Ok(value) = config.get::<String>("go_popup_add_parent_to") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddAlbumTo );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddAlbumTo, Some("right_Albums") );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddAlbumTo, Some("right_Artists") );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddAlbumTo, Some("album_information") );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddPlaylistTo, Some("right") );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_genre") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupGenreFilter, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("genre_toggle_favorite") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupGenreToggleFavorite, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_year") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupYearFilter, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("year_input_range") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupYearToggleRangeInput, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_sync_playlist") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupSyncPlaylist, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_delete_playlist") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupDeletePlaylist, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_update") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupUpdateDatabase, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("update_all_quick") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupUpdateDatabaseUpdateAllQuick, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("update_all_full") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupUpdateDatabaseUpdateAllFull, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("update_albums") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupUpdateDatabaseUpdateAlbums, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("update_playlists") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupUpdateDatabaseUpdatePlaylists, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("update_current") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupUpdateDatabaseUpdateCurrentlySelected, None );
             }
         }
 
         if let Ok(value) = config.get::<String>("close_popup") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupClose );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupClose, None );
             }
         }
 
-        if let Ok(value) = config.get::<String>("play_immediately_song") {
+        if let Ok(value) = config.get::<String>("play_immediately") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelySong );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelySong, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyAlbum, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyPlaylist, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyArtist, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyArtistItem, None );
             }
         }
 
-        if let Ok(value) = config.get::<String>("play_immediately_album") {
+        if let Ok(value) = config.get::<String>("stop_playback") {
             if self.validate_shortcut(value.as_str()) {
-                self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyAlbum );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::StopPlayback, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("toggle_play_pause") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::TogglePlayPause, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("toggle_random") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::ToggleRandomPlayback, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("cycle_loop_mode") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::CycleLoopMode, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("search_start") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::SearchStart, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("search_accept") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::SearchAccept, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("search_next") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::SearchGoNext, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("search_previous") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::SearchGoPrevious, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_pane_home") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoHomePane, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_pane_albums") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoAlbumPane, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_pane_playlists") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPlaylistPane, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_pane_artists") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoArtistPane, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_pane_queue") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoQueuePane, None );
             }
         }
 
@@ -492,16 +654,22 @@ impl Mappings {
         ShortcutAction::None
     }
 
-    fn use_custom_shortcut(&mut self, shortcut: &str, action: ShortcutAction) {
+    fn use_custom_shortcut(&mut self, shortcut: &str, action: ShortcutAction, context: Option<&str>) {
+        let shortcut = if shortcut == "space" {
+            " "
+        } else { shortcut };
+        let context_str = context.unwrap_or("");
         let mut old_key_strings = self.mappings.iter()
-            .filter(|(key,value)| **value == action && !key.contains("esc"))
+            .filter(|(key,value)| 
+                **value == action && !key.contains("esc") && (context_str.is_empty() || key.contains(context_str)))
             .map(|(key, _)| key.clone()).collect::<Vec<String>>();
         
         if !old_key_strings.is_empty() {
             for key in &old_key_strings { self.mappings_to_remove.push(key.to_string()); }
         } else {
             old_key_strings = self.old_mappings.iter()
-                .filter(|(_,value)| **value == action)
+                .filter(|(key, value)| 
+                    **value == action && !key.contains("esc") && (context_str.is_empty() || key.contains(context_str)))
                 .map(|(key, _)| key.clone()).collect::<Vec<String>>();
         }
         
@@ -529,7 +697,7 @@ impl Mappings {
     }
 
     fn validate_shortcut(&self, shortcut: &str) -> bool {
-        let modifier_regex = Regex::new(r"^(ctrl_|alt_|super_)?([ -~]|right|left|up|down|enter|home|end|pageup|pagedown|tab|esc|f[1-9])$").unwrap();
+        let modifier_regex = Regex::new(r"^(ctrl_|alt_|super_)?([ -~]|space|right|left|up|down|enter|home|end|pageup|pagedown|tab|esc|f[1-9])$").unwrap();
 
         if modifier_regex.is_match(shortcut) {
             debug!("shortcut {} parsed correctly", shortcut);
