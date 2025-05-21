@@ -9,6 +9,7 @@ use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Padding, Paragra
 use ratatui::Frame;
 use ratatui::layout::Constraint::{Length};
 use ratatui::prelude::Constraint::Max;
+use crate::mappings::ShortcutAction;
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let chunks = Layout::default()
@@ -233,7 +234,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         let navigation_options = Paragraph::new(vec![
             Line::from(vec![
                 Span {
-                    content: "(a)".into(),
+                    content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::GoToTrackAlbum, None).into(),
                     style: Style::default()
                         .fg(app.app_colors.primary_accent)
                         .add_modifier(Modifier::BOLD),
@@ -245,7 +246,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             ]),
             Line::from(vec![
                 Span {
-                    content: "(r)".into(),
+                    content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::GoToTrackArtist, None).into(),
                     style: Style::default()
                         .fg(app.app_colors.primary_accent)
                         .add_modifier(Modifier::BOLD),

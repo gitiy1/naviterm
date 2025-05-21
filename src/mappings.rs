@@ -378,6 +378,18 @@ impl Mappings {
             }
         }
 
+        if let Ok(value) = config.get::<String>("add_item_last") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::AddItemEnd, None);
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("add_item_playlist") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::AddItemPlaylist, None);
+            }
+        }
+
         if let Ok(value) = config.get::<String>("go_popup_info") {
             if self.validate_shortcut(value.as_str()) {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAlbumInfo, None );
@@ -504,6 +516,18 @@ impl Mappings {
             }
         }
 
+        if let Ok(value) = config.get::<String>("queue_clear") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::QueueClear, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("queue_center_cursor") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::QueueCenterCursor, None );
+            }
+        }
+
         if let Ok(value) = config.get::<String>("toggle_play_pause") {
             if self.validate_shortcut(value.as_str()) {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::TogglePlayPause, None );
@@ -558,9 +582,51 @@ impl Mappings {
             }
         }
 
+        if let Ok(value) = config.get::<String>("toggle_album_sort_method") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::ToggleSortMethod, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("toggle_album_sort_order") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::ToggleSortOrder, None );
+            }
+        }
+
         if let Ok(value) = config.get::<String>("go_pane_playlists") {
             if self.validate_shortcut(value.as_str()) {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPlaylistPane, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("playlist_delete_item") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::DeleteItemFromPlaylist, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("playlist_move_selected_up") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MoveSelectionUp, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("playlist_move_selected_down") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::MoveSelectionDown, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("playlist_pull_remote") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupSynchronizePlaylistPullRemote, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("playlist_push_local") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupSynchronizePlaylistPushLocal, None );
             }
         }
 
@@ -573,6 +639,24 @@ impl Mappings {
         if let Ok(value) = config.get::<String>("go_pane_queue") {
             if self.validate_shortcut(value.as_str()) {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::GoQueuePane, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("queue_go_to_album") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoToTrackAlbum, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("queue_go_to_artist") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoToTrackArtist, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("quit_application") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::QuitApp, None );
             }
         }
 
@@ -616,38 +700,48 @@ impl Mappings {
         let flag_string = String::from(flag);
         let flag_key = flag_string.clone() + "_" + global_key.as_str();
         if let Some(action) = self.mappings.get(&flag_key) {
+            debug!("Got global shortcut with key: {}", &flag_key);
             return action.clone()
         };
         // Check if we are introducing a single char, we don't have an entry in the hashmap for
         // every possibility
         let mut chars = flag_key.chars().collect::<Vec<char>>();
         chars.pop();
-        if let Some(action) = self.mappings.get(&chars.iter().collect::<String>()) {
-            return action.clone()
-        };
+        if chars.last() == Some(&'_') {
+            if let Some(action) = self.mappings.get(&chars.iter().collect::<String>()) {
+                debug!("Got global shortcut with key: {}", &chars.iter().collect::<String>());
+                return action.clone()
+            };
+        }
 
         let popup_string = String::from(popup);
         let popup_key = popup_string.clone() + "_" + flag_key.as_str();
         if let Some(action) = self.mappings.get(popup_key.as_str()) {
+            debug!("Got popup shortcut with key: {}", &popup_key);
             return action.clone()
         };
         // Check if we are introducing a single char, we don't have an entry in the hashmap for
         // every possibility
         let mut chars = popup_key.chars().collect::<Vec<char>>();
         chars.pop();
-        if let Some(action) = self.mappings.get(&chars.iter().collect::<String>()) {
-            return action.clone()
-        };
+        if chars.last() == Some(&'_') {
+            if let Some(action) = self.mappings.get(&chars.iter().collect::<String>()) {
+                debug!("Got popup shortcut with key: {}", &chars.iter().collect::<String>());
+                return action.clone()
+            };
+        }
 
         let pane_string = String::from(pane);
         let pane_key = pane_string.clone() + "_" + popup_key.as_str();
         if let Some(action) = self.mappings.get(pane_key.as_str()) {
+            debug!("Got pane shortcut with key: {}", &pane_key);
             return action.clone()
         };
 
         let subpane_string = String::from(subpane);
         let subpane_key = subpane_string + "_" + pane_key.as_str();
         if let Some(action) = self.mappings.get(subpane_key.as_str()) {
+            debug!("Got pane shortcut with key: {}", &subpane_key);
             return action.clone()
         };
         

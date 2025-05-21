@@ -103,82 +103,115 @@ follow_cursor_queue=true
 draw_while_unfocused=false
 ```
 
+Shortcuts can also be configured. Refer to the Shortcuts section for more information.
+
 ## Usage
 If your config file is correct, the program should start and begin building a local database of your music collection, which will be stored at `~/.config/naviterm/database.bin`. Please wait until is finished. After that you can start using naviterm to play some music!
 
 ### Shortcuts
-This section includes lists of all shortcuts you can use in the app, heavily Vim inspired (media keys shortcuts have not been included, as they are self-explanatory).
+This section includes lists of all shortcuts you can use in the app, heavily Vim inspired (media keys shortcuts have not been included, as they are self-explanatory). Most of them can be configured to your liking by using the key in the config file and assigning a new shortcut like `mod_key`:
+```ini
+go_pane_home=ctrl_1
+```
+Valid modifiers are `ctrl|alt|super`, valid keys should include all ASCII characters. Please note the following considerations:
+1. To use a blank space as a key, use the word `space`.
+2. For other special keys, use the following mapping:
+    - Up,down,left and right arrows: `up`,`down`,`left`,`right`
+    - Enter: `enter`
+    - Home, end: `home`,`end`
+    - PageUp, PageDown: `pageup`, `pagedown`
+    - Tab: `tab`
+    - Escape: `esc`
+    - Function keys F1 to F9: `f1`..`f9`
+3. To use a single quote or double quote char, escape it with a backwards slash: `\'` or `\"`.
 
 ### Global shortcuts
 
-| Shortcut            | Description                                                |
-|:--------------------|:-----------------------------------------------------------|
-| `1,2,3,4,5`         | Navigate to corresponding pane                             |
-| `j,k`               | Move the cursor down, up                                   |
-| `g,G`               | Move the cursor to the first, last element in list         |
-| `<Ctrl-d>,<Ctrl-u>` | Move the cursor down, up by 5 elements                     |
-| `<Crl-c> \| q`      | Quit the program                                           |
-| `<Tab>`             | Cycle through sub-panes                                    |
-| `<Ctrl-h><Ctrl-l>`  | Move to the sub-pane to the left,right                     |
-| `<Enter>`           | Start playing item immediately                             |
-| `/`                 | Start search                                               |
-| `<Enter>`           | Confirm the entered term to allow navigating the results   |
-| `n \| N`            | Cycle through search results in one direction or the other |
-| `<ESC>`             | Cancel and clears the search                               |
-| `l`                 | Cycle through loop playing modes                           |
-| `<space-bar> \| p ` | Toggle play-pause                                          |
-| `o`                 | Stop playback                                              |
-| `z`                 | Toggles random playback on/off                             |
-| `<Right>`           | Seek 10s forward                                           |
-| `<Left>`            | Seek 10s backwards                                         |
-| `<Up>`              | Increase the volume                                        |
-| `<Down>`            | Decreases the volume                                       |
-| `u`                 | Open Update Database popup                                 |
+| Shortcut            | Key in config                                                                             | Description                                                |
+|:--------------------|-------------------------------------------------------------------------------------------|:-----------------------------------------------------------|
+| `1,2,3,4,5`         | `go_pane_home`, `go_pane_albums`, `go_pane_playlists`, `go_pane_artists`, `go_pane_queue` | Navigate to corresponding pane                             |
+| `j,k`               | `move_list_down`, `move_list_up`                                                          | Move the cursor down, up                                   |
+| `g,G`               | `move_to_first`, `move_to_last`                                                           | Move the cursor to the first, last element in list         |
+| `<Ctrl-d>,<Ctrl-u>` | `move_page_down`, `move_page_up`                                                          | Move the cursor down, up by 5 elements                     |
+| `q`                 | `quit_application`                                                                        | Quit the program                                           |
+| `<Tab>`             | `cycle_subpane`                                                                           | Cycle through sub-panes                                    |
+| `<Ctrl-h><Ctrl-l>`  | `move_pane_left`, `move_pane_right`                                                       | Move to the sub-pane to the left,right                     |
+| `<Enter>`           | `play_immediately`                                                                        | Start playing item immediately                             |
+| `/`                 | `search_start`                                                                            | Start search                                               |
+| `<Enter>`           | `search_accept`                                                                           | Confirm the entered term to allow navigating the results   |
+| `n \| N`            | `search_next`, `search_previous`                                                          | Cycle through search results in one direction or the other |
+| `<ESC>`             |                                                                                           | Cancel and clears the search                               |
+| `l`                 | `cycle_loop_mode`                                                                         | Cycle through loop playing modes                           |
+| `<space>`           | `toggle_play_pause`                                                                       | Toggle play-pause                                          |
+| `o`                 | `stop_playback`                                                                           | Stop playback                                              |
+| `z`                 | `toggle_random`                                                                           | Toggles random playback on/off                             |
+| `<Right>`           | `seek_forward`                                                                            | Seek 10s forward                                           |
+| `<Left>`            | `seek_backwards`                                                                          | Seek 10s backwards                                         |
+| `<Up>`              | `volume_up`                                                                               | Increase the volume                                        |
+| `<Down>`            | `volume_down`                                                                             | Decreases the volume                                       |
+| `u`                 | `go_popup_update`                                                                         | Open Update Database popup                                 |
 
 ### Home pane shortcuts
-| Shortcut            | Description                                                |
-|:--------------------|:-----------------------------------------------------------|
-| `<F1>`              | Open Connection Testing popup                              |
-| `<Ctrl-j><Ctrl-k>`  | Move to the sub-pane up,down                               |
-| `i`                 | Open the Album Information popup of the selected item      |
-| `a`                 | Open the Add To popup for the selected item                |
+| Shortcut            | Key in config                    | Description                                                |
+|:--------------------|----------------------------------|:-----------------------------------------------------------|
+| `<F1>`              | `go_popup_test`                  | Open Connection Testing popup                              |
+| `<Ctrl-j><Ctrl-k>`  | `move_pane_down`, `move_pane_up` | Move to the sub-pane up,down                               |
+| `i`                 | `go_popup_info`                  | Open the Album Information popup of the selected item      |
+| `a`                 | `go_popup_add_item_to`           | Open the Add To popup for the selected item                |
 
 ### Album pane shortcuts
-| Shortcut            | Description                                                |
-|:--------------------|:-----------------------------------------------------------|
-| `A`                 | Open the Add To popup for whole album of selected item     |
-| `a`                 | Open the Add To popup for the selected item                |
-| `i`                 | Open the Album Information popup of the selected item      |
-| `e`                 | Open the Genre Filter popup                                |
-| `y`                 | Open the Year Filter popup                                 |
-| `m`                 | Toggle the sorting mode: alphabetical, most played         |
-| `r`                 | Toggle the sorting direction: ascending, descending        |
+| Shortcut            | Key in config              | Description                                                |
+|:--------------------|----------------------------|:-----------------------------------------------------------|
+| `A`                 | `go_popup_add_parent_to`   | Open the Add To popup for whole album of selected item     |
+| `a`                 | `go_popup_add_item_to`     | Open the Add To popup for the selected item                |
+| `i`                 | `go_popup_info`            | Open the Album Information popup of the selected item      |
+| `e`                 | `go_popup_genre`           | Open the Genre Filter popup                                |
+| `y`                 | `go_popup_year`            | Open the Year Filter popup                                 |
+| `m`                 | `toggle_album_sort_method` | Toggle the sorting mode: alphabetical, most played         |
+| `r`                 | `toggle_album_sort_order`  | Toggle the sorting direction: ascending, descending        |
 
 ### Playlist pane shortcuts
-| Shortcut | Description                                                                                            |
-|:---------|:-------------------------------------------------------------------------------------------------------|
-| `J,K`    | Move the selected song item in playlist down, up                                                       |
-| `A`      | Open the Add To popup for whole playlist of selected item                                              |
-| `a`      | Open the Add To popup for the selected item                                                            |
-| `s`      | Open the Synchronize Playlist popup                                                                    |
-| `d`      | Delete selected playlist (with confirmation) or the selected song from playlist (without confirmation) |
+| Shortcut | Key in config                                                                        | Description                                                    |
+|:---------|--------------------------------------------------------------------------------------|:---------------------------------------------------------------|
+| `J,K`    | `playlist_move_selected_down `, `playlist_move_selected_up`                          | Move the selected song item in playlist down, up               |
+| `A`      | `go_popup_add_parent_to`                                                             | Open the Add To popup for whole playlist of selected item      |
+| `a`      | `go_popup_add_item_to`                                                               | Open the Add To popup for the selected item                    |
+| `s`      | `go_popup_sync_playlist`                                                             | Open the Synchronize Playlist popup                            |
+| `d`      | `go_popup_delete_playlist`                                                           | Open the Delete playlist popup                                 |
+| `d`      | `playlist_delete_item`                                                               | Deletes the selected song from playlist (without confirmation) |
 
 ### Artist pane shortcuts
-| Shortcut | Description                                            |
-|:---------|:-------------------------------------------------------|
-| `A`      | Open the Add To popup for whole album of selected item |
-| `a`      | Open the Add To popup for the selected item            |
+| Shortcut | Key in config            | Description                                            |
+|:---------|--------------------------|:-------------------------------------------------------|
+| `A`      | `go_popup_add_parent_to` | Open the Add To popup for whole album of selected item |
+| `a`      | `go_popup_add_item_to`   | Open the Add To popup for the selected item            |
 
 ### Queue pane shortcuts
-| Shortcut | Description                                            |
-|:---------|:-------------------------------------------------------|
-| `a`      | Go to album of the selected queue item in Albums pane  |
-| `r`      | Go to artist of the selected queue item in Artist pane |
-| `e`      | Center cursor in currently playing song                |
-| `>`      | Play next song in queue                                |
-| `<`      | Play previous song in queue                            |
-| `c`      | Clear queue and stop playback                          |
+| Shortcut | Key in config          | Description                                            |
+|:---------|------------------------|:-------------------------------------------------------|
+| `a`      | `queue_go_to_album`    | Go to album of the selected queue item in Albums pane  |
+| `r`      | `queue_go_to_artist`   | Go to artist of the selected queue item in Artist pane |
+| `e`      | `queue_center_cursor`  | Center cursor in currently playing song                |
+| `>`      | `track_next`           | Play next song in queue                                |
+| `<`      | `track_previous`       | Play previous song in queue                            |
+| `c`      | `queue_clear`          | Clear queue and stop playback                          |
 
+### Popup shortcuts
+| Shortcut | Key in config            | Popup                 | Description                                                         |
+|:---------|--------------------------|-----------------------|:--------------------------------------------------------------------|
+| `a`      | `go_popup_add_item_to`   | Album information     | Open the Add To popup for the selected item                         |
+| `A`      | `go_popup_add_parent_to` | Album information     | Open the Add To popup for whole album                               |
+| `n`      | `add_item_next`          | Add item to           | Add item to the queue after track currently being played            |
+| `e`      | `add_item_end`           | Add item to           | Add item to the queue at the end of the queue                       |
+| `p`      | `add_item_playlist`      | Add item to           | Open the playlist popup to select a playlist for adding the item to |
+| `r`      | `playlist_pull_remote`   | Synchronize playlist  | Pull the remote version of the selected playlist                    |
+| `l`      | `playlist_push_local`    | Synchronize playlist  | Push the local version of the selected playlist                     |
+| `y`      | -                        | Delete playlist       | Confirm playlist deletion                                           |
+| `n`      | -                        | Delete playlist       | Cancel playlist deletion                                            |
+| `r`      | -                        | Test Navidrome server | Generate new salt and token                                         |
+| `t`      | -                        | Test Navidrome server | Test connection to server                                           |
+| `o`      | -                        | Connection Error      | Switch to offline mode after error communicating with server        |
+| `r`      | -                        | Connection Error      | Retry after error communicating with server                         |
 
 ## Known limitations
 ### High CPU usage

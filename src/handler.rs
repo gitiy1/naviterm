@@ -6,7 +6,7 @@ use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
 use crate::player::mpv::PlayerStatus;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent};
 use log::debug;
 use std::collections::HashMap;
 use zbus::InterfaceRef;
@@ -366,10 +366,8 @@ pub async fn handle_key_events(
         }
         ShortcutAction::QueueCenterCursor => app.center_queue_cursor()?,
         ShortcutAction::QueueClear => {
-            if key_event.modifiers != KeyModifiers::CONTROL {
-                handle_stop_playback(app, iface_ref).await?;
-                app.clear_queue()?;
-            }
+            handle_stop_playback(app, iface_ref).await?;
+            app.clear_queue()?;
         }
         ShortcutAction::QueuePlaySong => app.play_queue_song()?,
         ShortcutAction::QuitApp => {
