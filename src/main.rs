@@ -20,6 +20,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::process::exit;
 use which::which;
+use naviterm::dbus::MediaPlayer2Player;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -110,6 +111,19 @@ async fn main() -> AppResult<()> {
         }
     }
 
+    let use_dbus: Result<String, ConfigError> = settings.get("use_dbus");
+    let is_dbus = match use_dbus {
+        Ok(value) => {
+            value == "true"
+        }
+        Err(_) => {
+            info!("Starting dbus by default, no flag found");
+            true
+        }
+    };
+    debug!("Use dbus: {}", is_dbus);
+
+
     // Create an application.
     let mut app = App::new();
     app.mode = mode;
@@ -178,6 +192,7 @@ async fn main() -> AppResult<()> {
         app.set_replay_gain("track")?;
     }
 
+
     app.poll_player_events().await?;
     info!("Started polling mpv events!");
     // Initialize the terminal user interface.
@@ -185,16 +200,26 @@ async fn main() -> AppResult<()> {
     let terminal = Terminal::new(backend)?;
     let events = EventHandler::new(250);
     app.set_event_handler(events.sender.clone()).await?;
-    let dbus_connection = dbus::set_up_mpris(events.sender.clone()).await?;
+    
+    let iface_ref: zbus::InterfaceRef<MediaPlayer2Player>;
+    let dbus_handler = if is_dbus {
+        let dbus_connection = dbus::set_up_mpris(events.sender.clone()).await?;
+        let object_server = dbus_connection.object_server();
+        iface_ref = object_server
+            .interface::<_,MediaPlayer2Player>("/org/mpris/MediaPlayer2")
+            .await?.clone();
+        info!("Initialized dbus interface!");
+        Some(&iface_ref)
+    } else {
+        info!("Dbus interface initialization skipped");
+        None
+    };
+    
+    
+
     let mut tui = Tui::new(terminal, events);
     tui.init()?;
     info!("TUI initialized!");
-
-    let iface_ref = dbus_connection
-        .object_server()
-        .interface::<_, dbus::MediaPlayer2Player>("/org/mpris/MediaPlayer2")
-        .await?;
-    info!("Initialized dbus interface!");
 
     // Start the main loop.
     while app.app_flags.running {
@@ -205,12 +230,12 @@ async fn main() -> AppResult<()> {
                 if let Err(e) = app.tick() { error!("Unmanaged error while processing the tick event: {}", e) }
             },
             Event::Key(key_event) => {
-                if let Err(e) = handle_key_events(key_event, &mut app, &iface_ref).await { error!("Unmanaged error while processing the key event: {}", e) }
+                if let Err(e) = handle_key_events(key_event, &mut app, dbus_handler).await { error!("Unmanaged error while processing the key event: {}", e) }
                 if let Err(e) = tui.draw(&mut app) { error!("Unmanaged error while drawing the UI: {}", e) }
             },
             Event::Resize(_, _) => {}
             Event::Dbus(dbus_event) => {
-                if let Err(e) = handle_dbus_events(dbus_event, &mut app, &iface_ref).await { error!("Unmanaged error while processing the dbus event: {}", e) }
+                if let Err(e) = handle_dbus_events(dbus_event, &mut app, dbus_handler).await { error!("Unmanaged error while processing the dbus event: {}", e) }
             }
             Event::Draw(force_draw) => {
                 if app.app_focused || force_draw {

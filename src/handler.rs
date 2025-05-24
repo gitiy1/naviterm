@@ -16,7 +16,7 @@ use crate::mappings::ShortcutAction;
 pub async fn handle_key_events(
     key_event: KeyEvent,
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
 ) -> AppResult<()> {
     let subpane = match app.current_screen {
         CurrentScreen::Albums => app.album_pane.as_str(),
@@ -444,11 +444,13 @@ pub async fn handle_key_events(
 pub async fn handle_dbus_events(
     dbus_event: DbusEvent,
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
 ) -> AppResult<()> {
     match dbus_event {
         DbusEvent::PlayPause => {
             if *app.player.player_status() == PlayerStatus::Stopped && app.try_play_current() {
+                if iface_ref.is_none() { return Ok(()) }
+                let iface_ref = iface_ref.unwrap();
                 let mut iface = iface_ref.get_mut().await;
                 iface.update_position((app.get_playback_time() * 1000000) as i64);
                 iface.set_playback_status(String::from("Playing"));
@@ -462,6 +464,8 @@ pub async fn handle_dbus_events(
         DbusEvent::Next => app.play_next()?,
         DbusEvent::Previous => app.play_previous()?,
         DbusEvent::Playing => {
+            if iface_ref.is_none() { return Ok(()) }
+            let iface_ref = iface_ref.unwrap();
             let mut iface = iface_ref.get_mut().await;
             iface.update_position((app.get_playback_time() * 1000000) as i64);
             iface.set_playback_status(String::from("Playing"));
@@ -470,6 +474,8 @@ pub async fn handle_dbus_events(
                 .await?;
         }
         DbusEvent::Paused => {
+            if iface_ref.is_none() { return Ok(()) }
+            let iface_ref = iface_ref.unwrap();
             let mut iface = iface_ref.get_mut().await;
             iface.update_position((app.get_playback_time() * 1000000) as i64);
             iface.set_playback_status(String::from("Paused"));
@@ -479,6 +485,8 @@ pub async fn handle_dbus_events(
         }
         DbusEvent::Play => {
             if app.try_play_current() {
+                if iface_ref.is_none() { return Ok(()) }
+                let iface_ref = iface_ref.unwrap();
                 let mut iface = iface_ref.get_mut().await;
                 iface.update_position((app.get_playback_time() * 1000000) as i64);
                 iface.set_playback_status(String::from("Playing"));
@@ -489,6 +497,8 @@ pub async fn handle_dbus_events(
         }
         DbusEvent::Pause => {
             if app.try_pause_current() {
+                if iface_ref.is_none() { return Ok(()) }
+                let iface_ref = iface_ref.unwrap();
                 let mut iface = iface_ref.get_mut().await;
                 iface.update_position((app.get_playback_time() * 1000000) as i64);
                 iface.set_playback_status(String::from("Paused"));
@@ -518,6 +528,8 @@ pub async fn handle_dbus_events(
             handle_position_change(app, iface_ref, new_position).await?;
         }
         DbusEvent::Metadata => {
+            if iface_ref.is_none() { return Ok(()) }
+            let iface_ref = iface_ref.unwrap();
             let mut iface = iface_ref.get_mut().await;
             iface.update_position((app.get_playback_time() * 1000000) as i64);
             iface.set_metadata(app.get_metadata_for_current_song());
@@ -529,23 +541,27 @@ pub async fn handle_dbus_events(
 
 async fn handle_shuffle_update(
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
 ) -> AppResult<()> {
+    app.toggle_random_playback()?;
+
+    if iface_ref.is_none() { return Ok(()) }
+    let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
-
-    app.toggle_random_playback()?;
     iface.update_shuffle(app.app_flags.random_playback);
     iface.shuffle_changed(iface_ref.signal_context()).await?;
     Ok(())
 }
 async fn handle_seek_forward(
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
 ) -> AppResult<()> {
-    let mut iface = iface_ref.get_mut().await;
-
     app.player_seek_forward()?;
+
+    if iface_ref.is_none() { return Ok(()) }
+    let iface_ref = iface_ref.unwrap();
+    let mut iface = iface_ref.get_mut().await;
     let new_position = (app.get_playback_time() * 1000000) as i64;
     iface.update_position(new_position);
     MediaPlayer2Player::seeked(iface_ref.signal_context(), new_position).await?;
@@ -554,11 +570,13 @@ async fn handle_seek_forward(
 }
 async fn handle_seek_backwards(
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
 ) -> AppResult<()> {
-    let mut iface = iface_ref.get_mut().await;
-
     app.player_seek_backwards()?;
+
+    if iface_ref.is_none() { return Ok(()) }
+    let iface_ref = iface_ref.unwrap();
+    let mut iface = iface_ref.get_mut().await;
     let new_position = (app.get_playback_time() * 1000000) as i64;
     iface.update_position(new_position);
     MediaPlayer2Player::seeked(iface_ref.signal_context(), new_position).await?;
@@ -567,9 +585,12 @@ async fn handle_seek_backwards(
 }
 async fn handle_toggle_play_pause(
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
 ) -> AppResult<()> {
     app.toggle_playing_status()?;
+
+    if iface_ref.is_none() { return Ok(()) }
+    let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
     if *app.player.player_status() == PlayerStatus::Playing {
@@ -586,10 +607,13 @@ async fn handle_toggle_play_pause(
 
 async fn handle_stop_playback(
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
 ) -> AppResult<()> {
     if *app.player.player_status() != PlayerStatus::Stopped {
         app.stop_playback();
+
+        if iface_ref.is_none() { return Ok(()) }
+        let iface_ref = iface_ref.unwrap();
         let mut iface = iface_ref.get_mut().await;
         iface.update_position((app.get_playback_time() * 1000000) as i64);
         iface.set_playback_status(String::from("Stopped"));
@@ -600,7 +624,9 @@ async fn handle_stop_playback(
 
     Ok(())
 }
-async fn handle_clear_queue(iface_ref: &InterfaceRef<MediaPlayer2Player>) -> AppResult<()> {
+async fn handle_clear_queue(iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>) -> AppResult<()> {
+    if iface_ref.is_none() { return Ok(()) }
+    let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.set_metadata(HashMap::new());
     iface.metadata_changed(iface_ref.signal_context()).await?;
@@ -608,11 +634,14 @@ async fn handle_clear_queue(iface_ref: &InterfaceRef<MediaPlayer2Player>) -> App
 }
 async fn handle_volume_change(
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
     volume: f64,
 ) -> AppResult<()> {
     let new_volume = volume.clamp(0.0, 1.0);
     app.set_volume(new_volume)?;
+
+    if iface_ref.is_none() { return Ok(()) }
+    let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
     iface.update_volume(new_volume);
@@ -622,10 +651,13 @@ async fn handle_volume_change(
 
 async fn handle_loop_status_change(
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
     new_loop_status: String,
 ) -> AppResult<()> {
     app.set_loop_mode(new_loop_status.as_str())?;
+
+    if iface_ref.is_none() { return Ok(()) }
+    let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
     iface.update_loop_status(new_loop_status);
@@ -637,10 +669,13 @@ async fn handle_loop_status_change(
 
 async fn handle_position_change(
     app: &mut App,
-    iface_ref: &InterfaceRef<MediaPlayer2Player>,
+    iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>,
     new_position: i64,
 ) -> AppResult<()> {
     app.set_playback_time(new_position);
+
+    if iface_ref.is_none() { return Ok(()) }
+    let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
     Ok(())
