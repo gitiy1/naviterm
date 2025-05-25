@@ -8,8 +8,9 @@ use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
 use ratatui::{symbols, Frame};
 
-use crate::app::{App, AppLoopStatus};
+use crate::app::App;
 use crate::player::mpv::PlayerStatus;
+use crate::player_data::AppLoopStatus;
 use crate::ui::utils::{duration_to_hhmmss, ellipse_line};
 
 pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
@@ -21,7 +22,7 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
                 duration_to_hhmmss(seconds_played.as_str()),
                 duration_to_hhmmss(
                     app.database
-                        .get_song(app.now_playing.id.as_str())
+                        .get_song(app.player_data.now_playing.id.as_str())
                         .duration()
                 )
             )
@@ -73,11 +74,11 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
     let max_width = current_song_section.width as usize;
 
     let mut ratio;
-    let current_song_info = if app.now_playing.id.is_empty() {
+    let current_song_info = if app.player_data.now_playing.id.is_empty() {
         ratio = 0f64;
         Paragraph::new("")
     } else {
-        let song = app.database.get_song(app.now_playing.id.as_str());
+        let song = app.database.get_song(app.player_data.now_playing.id.as_str());
         if app.app_focused {
             ratio = (app.ticks_during_playing_state / 4) as f64
                 / song.duration().parse::<usize>().unwrap() as f64;
@@ -112,7 +113,7 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         .line_set(symbols::line::THICK)
         .ratio(ratio);
 
-    let random_status = if app.app_flags.random_playback {
+    let random_status = if app.player_data.random_playback {
         Span {
             content: "on".into(),
             style: Style::default()
@@ -126,14 +127,14 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         }
     };
 
-    let loop_status = if app.loop_status == AppLoopStatus::None {
+    let loop_status = if app.player_data.loop_status == AppLoopStatus::None {
         Span {
-            content: app.loop_status.as_str().into(),
+            content: app.player_data.loop_status.as_str().into(),
             style: Style::default(),
         }
     } else {
         Span {
-            content: app.loop_status.as_str().into(),
+            content: app.player_data.loop_status.as_str().into(),
             style: Style::default()
                 .fg(app.app_colors.primary_accent)
                 .add_modifier(Modifier::BOLD),
@@ -171,9 +172,9 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
     frame.render_widget(progress, status_progress_bar_area);
 
     if app.queue_has_next() {
-        let next_song_id = app
+        let next_song_id = app.player_data
             .queue
-            .get(*app.queue_order.get(app.index_in_queue + 1).unwrap())
+            .get(*app.player_data.queue_order.get(app.player_data.index_in_queue + 1).unwrap())
             .unwrap();
         let song = app.database.get_song(next_song_id);
         let next_song_info = Paragraph::new(Text::from(vec![

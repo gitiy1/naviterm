@@ -27,6 +27,7 @@ use chrono::NaiveDateTime;
 use tokio::sync::mpsc::UnboundedSender;
 use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
 use crate::mappings::{Mappings};
+use crate::player_data::{AppLoopStatus, PlayerData};
 
 /// Enum with applications screens
 #[derive(Debug, PartialEq)]
@@ -105,22 +106,6 @@ pub enum AppMovementInList {
 pub enum AppHomeTabMode {
     OneColumn,
     TwoColumns,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum AppLoopStatus {
-    None,
-    Track,
-    Playlist,
-}
-impl AppLoopStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            AppLoopStatus::None => "off",
-            AppLoopStatus::Track => "track",
-            AppLoopStatus::Playlist => "playlist",
-        }
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -238,11 +223,7 @@ pub struct App {
     pub database: MusicDatabase,
     pub list_states: AppListStates,
     pub item_to_be_added: ItemToBeAdded,
-    pub queue: Vec<String>,
-    pub queue_order: Vec<usize>,
-    pub now_playing: NowPlaying,
     pub player: Mpv,
-    pub index_in_queue: usize,
     pub ticks_during_playing_state: usize,
     pub album_filters: AlbumFilters,
     pub album_sorting_mode: SortMode,
@@ -257,9 +238,8 @@ pub struct App {
     pub playlist_pane: TwoPaneVertical,
     pub new_name: String,
     pub selected_album_id_to_update: String,
-    pub queue_data: QueueData,
+    pub player_data: PlayerData,
     pub app_colors: AppColors,
-    pub loop_status: AppLoopStatus,
     pub app_config: AppConfig,
     pub app_focused: bool,
     pub shortcuts: Mappings,
@@ -270,6 +250,7 @@ pub struct AppConfig {
     pub list_size: usize,
     pub follow_cursor: bool,
     pub draw_while_unfocused: bool,
+    pub save_player_status: bool,
 }
 
 pub struct AlbumFilters {
@@ -343,8 +324,6 @@ impl Default for SearchData {
 #[derive(Debug, Default, PartialEq)]
 pub struct AppFlags {
     pub running: bool,
-    pub random_playback: bool,
-    pub next_is_in_player_queue: bool,
     pub getting_search_string: bool,
     pub move_to_next_in_search: bool,
     pub upper_case_search: bool,
@@ -357,12 +336,6 @@ pub struct AppFlags {
     pub is_introducing_to_year: bool,
     pub range_year_filter: bool,
     pub seeking: bool,
-}
-
-#[derive(Default)]
-pub struct NowPlaying {
-    pub id: String,
-    pub duration: String,
 }
 
 pub struct AppListStates {
@@ -413,12 +386,6 @@ impl AppListStates {
     }
 }
 
-#[derive(Default)]
-pub struct QueueData {
-    pub duration_total: String,
-    pub duration_left: String,
-}
-
 impl Default for App {
     fn default() -> Self {
         Self {
@@ -434,11 +401,8 @@ impl Default for App {
             database: MusicDatabase::new(),
             list_states: AppListStates::default(),
             item_to_be_added: ItemToBeAdded::default(),
-            queue: vec![],
-            queue_order: vec![],
-            now_playing: NowPlaying::default(),
             player: Mpv::default(),
-            index_in_queue: 0,
+            player_data: PlayerData::default(),
             ticks_during_playing_state: 0,
             album_filters: AlbumFilters::default(),
             album_sorting_mode: SortMode::Alphabetical,
@@ -453,9 +417,7 @@ impl Default for App {
             playlist_pane: TwoPaneVertical::Left,
             new_name: String::from(""),
             selected_album_id_to_update: String::from(""),
-            queue_data: QueueData::default(),
             app_colors: AppColors::default(),
-            loop_status: AppLoopStatus::None,
             app_config: AppConfig::default(),
             app_focused: true,
             shortcuts: Mappings::default()
@@ -479,24 +441,24 @@ impl App {
             self.ticks_during_playing_state += 1;
             // If we have only 10 seconds left for the current track
             if self.get_playback_time() + 10
-                > self.now_playing.duration.as_str().parse::<usize>().unwrap()
+                > self.player_data.now_playing.duration.as_str().parse::<usize>().unwrap()
             {
                 // If there is a next element in queue, add it to mpv queue if it has not been yet added
-                if !self.app_flags.next_is_in_player_queue && self.queue_has_next() {
-                    let next_index = self.queue_order.get(self.index_in_queue + 1).unwrap();
+                if !self.player_data.next_is_in_player_queue && self.queue_has_next() {
+                    let next_index = self.player_data.queue_order.get(self.player_data.index_in_queue + 1).unwrap();
                     self.player.add_next_song_to_queue(
                         self.server
-                            .get_song_url(self.queue.get(*next_index).unwrap().clone())
+                            .get_song_url(self.player_data.queue.get(*next_index).unwrap().clone())
                             .as_str(),
                     );
-                    self.app_flags.next_is_in_player_queue = true;
+                    self.player_data.next_is_in_player_queue = true;
                 }
 
                 if !self.app_flags.is_current_song_scrobbled {
                     // Update last listened album id to remember it for next startup
                     let now_playing_album_id = self
                         .database
-                        .get_song(self.now_playing.id.as_str())
+                        .get_song(self.player_data.now_playing.id.as_str())
                         .album_id()
                         .to_string();
                     self.database
@@ -515,9 +477,9 @@ impl App {
                     }
                     recent_albums.insert(0, now_playing_album_id.clone());
                     // Increase playing count in server and locally
-                    self.server.scrobble_song_async(self.now_playing.id.clone());
+                    self.server.scrobble_song_async(self.player_data.now_playing.id.clone());
                     self.increase_play_count_for_current_song_in_database(
-                        self.now_playing.id.clone(),
+                        self.player_data.now_playing.id.clone(),
                     );
                     self.app_flags.is_current_song_scrobbled = true;
                 }
@@ -602,10 +564,19 @@ impl App {
         match config.get::<bool>("draw_while_unfocused") {
             Ok(value) => self.app_config.draw_while_unfocused = value,
             Err(e) => {
-                warn!("Could not load draw while unfocused, using default. {}", e);
+                warn!("Could not load draw while unfocused, while draw always. {}", e);
+                self.app_config.draw_while_unfocused = true;
             }
         }
-        
+
+        match config.get::<bool>("save_player_status") {
+            Ok(value) => self.app_config.save_player_status = value,
+            Err(e) => {
+                info!("Could not option to save player status, will not save by default. {}", e);
+                self.app_config.save_player_status = false;
+            }
+        }
+
         self.shortcuts.init_shortcuts(config);
 
         Ok(())
@@ -706,33 +677,33 @@ impl App {
             warn!("Item to be added empty, could not add queue immediately.");
             return Ok(());
         }
-        self.index_in_queue = 0;
+        self.player_data.index_in_queue = 0;
         match self.item_to_be_added.media_type {
             MediaType::Song => {
-                self.queue.clear();
-                self.queue_order.clear();
-                self.queue.push(self.item_to_be_added.id.clone());
-                self.queue_order.push(self.queue.len() - 1);
+                self.player_data.queue.clear();
+                self.player_data.queue_order.clear();
+                self.player_data.queue.push(self.item_to_be_added.id.clone());
+                self.player_data.queue_order.push(self.player_data.queue.len() - 1);
                 self.change_current_playing_to(self.item_to_be_added.id.clone().as_str());
             }
             MediaType::Album => {
-                self.queue.clear();
-                self.queue_order.clear();
+                self.player_data.queue.clear();
+                self.player_data.queue_order.clear();
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
-                    self.queue.push(song.clone());
+                    self.player_data.queue.push(song.clone());
                 }
-                self.queue_order = (0..self.queue.len()).collect();
-                if self.app_flags.random_playback {
+                self.player_data.queue_order = (0..self.player_data.queue.len()).collect();
+                if self.player_data.random_playback {
                     let mut rng = thread_rng();
-                    let random_index = rng.gen_range(0..self.queue.len());
+                    let random_index = rng.gen_range(0..self.player_data.queue.len());
                     self.shuffle_queue_order_starting_at_index(random_index);
                 }
-                self.change_current_playing_to(self.queue[self.queue_order[0]].clone().as_str());
+                self.change_current_playing_to(self.player_data.queue[self.player_data.queue_order[0]].clone().as_str());
             }
             MediaType::Playlist => {
-                self.queue.clear();
-                self.queue_order.clear();
+                self.player_data.queue.clear();
+                self.player_data.queue_order.clear();
                 for song_id in self
                     .database
                     .playlists()
@@ -745,19 +716,19 @@ impl App {
                     .unwrap()
                     .song_list()
                 {
-                    self.queue.push(song_id.clone());
+                    self.player_data.queue.push(song_id.clone());
                 }
-                self.queue_order = (0..self.queue.len()).collect();
-                if self.app_flags.random_playback {
+                self.player_data.queue_order = (0..self.player_data.queue.len()).collect();
+                if self.player_data.random_playback {
                     let mut rng = thread_rng();
-                    let random_index = rng.gen_range(0..self.queue.len());
+                    let random_index = rng.gen_range(0..self.player_data.queue.len());
                     self.shuffle_queue_order_starting_at_index(random_index);
                 }
-                self.change_current_playing_to(self.queue[self.queue_order[0]].clone().as_str());
+                self.change_current_playing_to(self.player_data.queue[self.player_data.queue_order[0]].clone().as_str());
             }
             MediaType::Artist => {
-                self.queue.clear();
-                self.queue_order.clear();
+                self.player_data.queue.clear();
+                self.player_data.queue_order.clear();
                 let albums = self
                     .database
                     .get_artist(
@@ -770,16 +741,16 @@ impl App {
                 for album_id in albums {
                     let album = self.database.get_album(album_id.as_str());
                     for song in album.songs() {
-                        self.queue.push(song.clone());
+                        self.player_data.queue.push(song.clone());
                     }
                 }
-                self.queue_order = (0..self.queue.len()).collect();
-                if self.app_flags.random_playback {
+                self.player_data.queue_order = (0..self.player_data.queue.len()).collect();
+                if self.player_data.random_playback {
                     let mut rng = thread_rng();
-                    let random_index = rng.gen_range(0..self.queue.len());
+                    let random_index = rng.gen_range(0..self.player_data.queue.len());
                     self.shuffle_queue_order_starting_at_index(random_index);
                 }
-                self.change_current_playing_to(self.queue[self.queue_order[0]].clone().as_str());
+                self.change_current_playing_to(self.player_data.queue[self.player_data.queue_order[0]].clone().as_str());
             }
         }
         self.update_queue_data();
@@ -790,27 +761,27 @@ impl App {
 
     pub fn add_queue_next(&mut self) -> AppResult<()> {
         let mut was_empty = false;
-        let mut index_to_insert_to = if self.queue.is_empty() {
+        let mut index_to_insert_to = if self.player_data.queue.is_empty() {
             was_empty = true;
             0
         } else {
-            self.queue
+            self.player_data.queue
                 .iter()
-                .position(|x| x == &self.now_playing.id)
+                .position(|x| x == &self.player_data.now_playing.id)
                 .unwrap()
                 + 1
         };
         match self.item_to_be_added.media_type {
             MediaType::Song => {
-                self.queue
+                self.player_data.queue
                     .insert(index_to_insert_to, self.item_to_be_added.id.clone());
-                self.queue_order.push(self.queue.len() - 1);
+                self.player_data.queue_order.push(self.player_data.queue.len() - 1);
             }
             MediaType::Album => {
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
-                    self.queue.insert(index_to_insert_to, song.clone());
-                    self.queue_order.push(self.queue.len() - 1);
+                    self.player_data.queue.insert(index_to_insert_to, song.clone());
+                    self.player_data.queue_order.push(self.player_data.queue.len() - 1);
                     index_to_insert_to += 1;
                 }
             }
@@ -827,8 +798,8 @@ impl App {
                     .unwrap()
                     .song_list()
                 {
-                    self.queue.insert(index_to_insert_to, song_id.clone());
-                    self.queue_order.push(self.queue.len() - 1);
+                    self.player_data.queue.insert(index_to_insert_to, song_id.clone());
+                    self.player_data.queue_order.push(self.player_data.queue.len() - 1);
                     index_to_insert_to += 1;
                 }
             }
@@ -840,32 +811,32 @@ impl App {
                 {
                     let album = self.database.get_album(album_id.as_str());
                     for song in album.songs() {
-                        self.queue.insert(index_to_insert_to, song.clone());
-                        self.queue_order.push(self.queue.len() - 1);
+                        self.player_data.queue.insert(index_to_insert_to, song.clone());
+                        self.player_data.queue_order.push(self.player_data.queue.len() - 1);
                         index_to_insert_to += 1;
                     }
                 }
             }
         }
         if was_empty {
-            self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
+            self.change_current_playing_to(self.player_data.queue.first().unwrap().clone().as_str());
         }
         self.update_queue_data();
         Ok(())
     }
 
     pub fn add_queue_later(&mut self) -> AppResult<()> {
-        let was_empty = self.queue.is_empty();
+        let was_empty = self.player_data.queue.is_empty();
         match self.item_to_be_added.media_type {
             MediaType::Song => {
-                self.queue.push(self.item_to_be_added.id.clone());
-                self.queue_order.push(self.queue.len() - 1);
+                self.player_data.queue.push(self.item_to_be_added.id.clone());
+                self.player_data.queue_order.push(self.player_data.queue.len() - 1);
             }
             MediaType::Album => {
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
-                    self.queue.push(song.clone());
-                    self.queue_order.push(self.queue.len() - 1);
+                    self.player_data.queue.push(song.clone());
+                    self.player_data.queue_order.push(self.player_data.queue.len() - 1);
                 }
             }
             MediaType::Playlist => {
@@ -881,8 +852,8 @@ impl App {
                     .unwrap()
                     .song_list()
                 {
-                    self.queue.push(song_id.clone());
-                    self.queue_order.push(self.queue.len() - 1);
+                    self.player_data.queue.push(song_id.clone());
+                    self.player_data.queue_order.push(self.player_data.queue.len() - 1);
                 }
             }
             MediaType::Artist => {
@@ -893,14 +864,14 @@ impl App {
                 {
                     let album = self.database.get_album(album_id.as_str());
                     for song in album.songs() {
-                        self.queue.push(song.clone());
-                        self.queue_order.push(self.queue.len() - 1);
+                        self.player_data.queue.push(song.clone());
+                        self.player_data.queue_order.push(self.player_data.queue.len() - 1);
                     }
                 }
             }
         }
         if was_empty {
-            self.change_current_playing_to(self.queue.first().unwrap().clone().as_str());
+            self.change_current_playing_to(self.player_data.queue.first().unwrap().clone().as_str());
         }
         self.update_queue_data();
         Ok(())
@@ -1024,18 +995,18 @@ impl App {
         // Walk the queue and add songs duration to the total duration field. If the loop index is
         // greater than the index in queue, we add that song duration to the remaining duration as
         // well.
-        for (i, index_in_order_queue) in self.queue_order.iter().enumerate() {
+        for (i, index_in_order_queue) in self.player_data.queue_order.iter().enumerate() {
             let song = self
                 .database
-                .get_song(self.queue.get(*index_in_order_queue).unwrap());
+                .get_song(self.player_data.queue.get(*index_in_order_queue).unwrap());
             duration_total += song.duration().parse::<usize>().unwrap();
-            if i >= self.index_in_queue {
+            if i >= self.player_data.index_in_queue {
                 duration_left += song.duration().parse::<usize>().unwrap();
             }
         }
 
-        self.queue_data.duration_total = duration_total.to_string();
-        self.queue_data.duration_left = duration_left.to_string();
+        self.player_data.duration_total = duration_total.to_string();
+        self.player_data.duration_left = duration_left.to_string();
     }
 
     pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
@@ -1294,26 +1265,26 @@ impl App {
         Ok(())
     }
     pub fn toggle_random_playback(&mut self) -> AppResult<()> {
-        if self.queue.len() > 1 {
-            if self.app_flags.random_playback {
-                self.index_in_queue = *self.queue_order.get(self.index_in_queue).unwrap();
-                self.queue_order.clear();
-                self.queue_order = (0..self.queue.len()).collect();
+        if self.player_data.queue.len() > 1 {
+            if self.player_data.random_playback {
+                self.player_data.index_in_queue = *self.player_data.queue_order.get(self.player_data.index_in_queue).unwrap();
+                self.player_data.queue_order.clear();
+                self.player_data.queue_order = (0..self.player_data.queue.len()).collect();
             } else {
-                self.shuffle_queue_order_starting_at_index(self.index_in_queue);
-                self.index_in_queue = 0;
+                self.shuffle_queue_order_starting_at_index(self.player_data.index_in_queue);
+                self.player_data.index_in_queue = 0;
             }
         }
         if self.app_flags.replay_gain_auto {
-            if self.app_flags.random_playback {
+            if self.player_data.random_playback {
                 self.player.set_replay_gain("album");
             } else {
                 self.player.set_replay_gain("track");
             }
         }
-        self.app_flags.random_playback = !self.app_flags.random_playback;
+        self.player_data.random_playback = !self.player_data.random_playback;
         self.update_queue_data();
-        self.app_flags.next_is_in_player_queue = false;
+        self.player_data.next_is_in_player_queue = false;
         Ok(())
     }
 
@@ -1322,7 +1293,7 @@ impl App {
             return Ok(());
         }
         if self.get_playback_time() + 10
-            > self.now_playing.duration.as_str().parse::<usize>().unwrap()
+            > self.player_data.now_playing.duration.as_str().parse::<usize>().unwrap()
         {
             self.play_next()?;
         } else {
@@ -1345,7 +1316,7 @@ impl App {
         if self.queue_has_next() {
             self.go_next_queue();
             self.play_current(false);
-        } else if self.loop_status == AppLoopStatus::Playlist {
+        } else if self.player_data.loop_status == AppLoopStatus::Playlist {
             debug!("Looping to first element in playlist");
             self.go_first_in_queue();
             self.play_current(false);
@@ -1405,7 +1376,7 @@ impl App {
                 }
                 IpcEvent::Eof(reason) => {
                     if reason == "eof" {
-                        match self.loop_status {
+                        match self.player_data.loop_status {
                             AppLoopStatus::None => {
                                 if self.queue_has_next() {
                                     self.go_next_queue();
@@ -1435,10 +1406,10 @@ impl App {
                     debug!("Got {} as playback time", playback_time);
                     if playback_time != -1.0 {
                         self.ticks_during_playing_state = (playback_time * 4.0).floor() as usize;
-                        if playback_time <= 1.0 && self.loop_status == AppLoopStatus::Track {
+                        if playback_time <= 1.0 && self.player_data.loop_status == AppLoopStatus::Track {
                             // This means mpv forced the seek to 0 due to loop
-                            debug!("Restarting song due to loop {}", self.loop_status.as_str());
-                            self.app_flags.next_is_in_player_queue = true;
+                            debug!("Restarting song due to loop {}", self.player_data.loop_status.as_str());
+                            self.player_data.next_is_in_player_queue = true;
                             self.play_current(true);
                         }
                     }
@@ -1485,18 +1456,18 @@ impl App {
     }
 
     pub fn queue_has_next(&self) -> bool {
-        if self.queue.len() <= 1 {
+        if self.player_data.queue.len() <= 1 {
             false
         } else {
-            self.index_in_queue < self.queue_order.len() - 1
+            self.player_data.index_in_queue < self.player_data.queue_order.len() - 1
         }
     }
 
     fn queue_has_previous(&self) -> bool {
-        if self.queue.len() <= 1 {
+        if self.player_data.queue.len() <= 1 {
             false
         } else {
-            self.index_in_queue > 0
+            self.player_data.index_in_queue > 0
         }
     }
 
@@ -1505,7 +1476,7 @@ impl App {
     }
 
     pub fn set_playback_time(&mut self, new_position_micros: i64) {
-        let duration_micros = self.now_playing.duration.parse::<i64>().unwrap() * 1000000;
+        let duration_micros = self.player_data.now_playing.duration.parse::<i64>().unwrap() * 1000000;
         let new_position: f64 = if new_position_micros < 0 {
             0.0
         } else if new_position_micros > duration_micros  {
@@ -1521,23 +1492,23 @@ impl App {
     }
 
     fn go_next_queue(&mut self) {
-        self.index_in_queue += 1;
+        self.player_data.index_in_queue += 1;
         self.resolve_next_queue();
     }
 
     fn go_previous_queue(&mut self) {
-        self.index_in_queue -= 1;
+        self.player_data.index_in_queue -= 1;
         self.resolve_next_queue();
     }
 
     fn go_first_in_queue(&mut self) {
-        self.index_in_queue = 0;
+        self.player_data.index_in_queue = 0;
         self.resolve_next_queue();
     }
 
     fn resolve_next_queue(&mut self) {
-        let next_index = self.queue_order.get(self.index_in_queue).unwrap();
-        self.change_current_playing_to(self.queue.get(*next_index).unwrap().clone().as_str());
+        let next_index = self.player_data.queue_order.get(self.player_data.index_in_queue).unwrap();
+        self.change_current_playing_to(self.player_data.queue.get(*next_index).unwrap().clone().as_str());
         self.update_queue_data();
     }
 
@@ -1545,30 +1516,30 @@ impl App {
         match loop_mode {
             "Track" => {
                 debug!("Track loop");
-                self.loop_status = AppLoopStatus::Track;
+                self.player_data.loop_status = AppLoopStatus::Track;
                 self.player.set_loop_mode("inf");
             }
             "Playlist" => {
                 debug!("Playlist loop");
-                self.loop_status = AppLoopStatus::Playlist;
+                self.player_data.loop_status = AppLoopStatus::Playlist;
                 self.player.set_loop_mode("no");
             }
             "None" => {
                 debug!("None loop");
-                self.loop_status = AppLoopStatus::None;
+                self.player_data.loop_status = AppLoopStatus::None;
                 self.player.set_loop_mode("no");
             }
             _ => {
                 warn!("Loop setting unrecognized {}", loop_mode);
             }
         }
-        self.app_flags.next_is_in_player_queue = false;
+        self.player_data.next_is_in_player_queue = false;
         Ok(())
     }
 
     pub fn play_queue_song(&mut self) -> AppResult<()> {
         self.change_current_playing_to(
-            self.queue
+            self.player_data.queue
                 .get(self.list_states.queue_list_state.selected().unwrap())
                 .unwrap()
                 .clone()
@@ -1577,13 +1548,13 @@ impl App {
         debug!(
             "Selected: {}, queue_order: {:?}",
             self.list_states.queue_list_state.selected().unwrap(),
-            self.queue_order
+            self.player_data.queue_order
         );
-        self.index_in_queue = self.list_states.queue_list_state.selected().unwrap();
-        if self.app_flags.random_playback {
-            self.shuffle_queue_order_starting_at_index(self.index_in_queue);
-            debug!("queue_order after shuffling: {:?}", self.queue_order);
-            self.index_in_queue = 0;
+        self.player_data.index_in_queue = self.list_states.queue_list_state.selected().unwrap();
+        if self.player_data.random_playback {
+            self.shuffle_queue_order_starting_at_index(self.player_data.index_in_queue);
+            debug!("queue_order after shuffling: {:?}", self.player_data.queue_order);
+            self.player_data.index_in_queue = 0;
         }
         self.play_current(false);
         self.update_queue_data();
@@ -1591,10 +1562,10 @@ impl App {
     }
 
     pub fn clear_queue(&mut self) -> AppResult<()> {
-        self.queue.clear();
-        self.queue_order.clear();
-        self.now_playing.id.clear();
-        self.index_in_queue = 0;
+        self.player_data.queue.clear();
+        self.player_data.queue_order.clear();
+        self.player_data.now_playing.id.clear();
+        self.player_data.index_in_queue = 0;
         self.event_sender
             .as_ref()
             .unwrap()
@@ -1604,7 +1575,7 @@ impl App {
     }
 
     pub fn try_play_current(&mut self) -> bool {
-        if !self.now_playing.id.is_empty() {
+        if !self.player_data.now_playing.id.is_empty() {
             return if self.player.player_status == PlayerStatus::Paused || self.player.player_status == PlayerStatus::Buffering {
                 self.toggle_playing_status().unwrap();
                 true
@@ -1619,7 +1590,7 @@ impl App {
     }
 
     pub fn try_pause_current(&mut self) -> bool {
-        if !self.now_playing.id.is_empty() && self.player.player_status == PlayerStatus::Playing {
+        if !self.player_data.now_playing.id.is_empty() && self.player.player_status == PlayerStatus::Playing {
             self.toggle_playing_status().unwrap();
             return true;
         }
@@ -1634,21 +1605,21 @@ impl App {
     }
 
     fn play_current(&mut self, check_next_song: bool) {
-        if !check_next_song || !self.app_flags.next_is_in_player_queue {
-            debug!("Adding song {} to player queue", self.now_playing.id);
+        if !check_next_song || !self.player_data.next_is_in_player_queue {
+            debug!("Adding song {} to player queue", self.player_data.now_playing.id);
             self.player.play_song(
                 self.server
-                    .get_song_url(self.now_playing.id.clone())
+                    .get_song_url(self.player_data.now_playing.id.clone())
                     .as_str(),
             );
             self.player.player_status = PlayerStatus::LoadingFile;
             self.event_sender.as_ref().unwrap().send(Dbus(Paused)).unwrap();
         }
-        self.app_flags.next_is_in_player_queue = false;
+        self.player_data.next_is_in_player_queue = false;
         self.app_flags.is_current_song_scrobbled = false;
         self.ticks_during_playing_state = 0;
         if self.app_config.follow_cursor {
-            self.list_states.queue_list_state.select(Some(self.queue_order[self.index_in_queue]));
+            self.list_states.queue_list_state.select(Some(self.player_data.queue_order[self.player_data.index_in_queue]));
         }
         self.event_sender.as_ref().unwrap().send(Dbus(Metadata)).unwrap();
                 
@@ -1658,20 +1629,20 @@ impl App {
     }
 
     fn shuffle_queue_order_starting_at_index(&mut self, index: usize) {
-        let mut shuffled_vector = Vec::with_capacity(self.queue.len());
-        self.queue_order.swap_remove(index);
+        let mut shuffled_vector = Vec::with_capacity(self.player_data.queue.len());
+        self.player_data.queue_order.swap_remove(index);
         shuffled_vector.push(index);
 
         let mut rng = thread_rng();
-        self.queue_order.shuffle(&mut rng);
+        self.player_data.queue_order.shuffle(&mut rng);
 
-        shuffled_vector.append(&mut self.queue_order);
-        self.queue_order = shuffled_vector;
+        shuffled_vector.append(&mut self.player_data.queue_order);
+        self.player_data.queue_order = shuffled_vector;
     }
 
     fn change_current_playing_to(&mut self, new_id: &str) {
-        self.now_playing.id = String::from(new_id);
-        self.now_playing.duration = String::from(self.database.get_song(new_id).duration());
+        self.player_data.now_playing.id = String::from(new_id);
+        self.player_data.now_playing.duration = String::from(self.database.get_song(new_id).duration());
     }
 
     pub async fn set_event_handler(&mut self, sender: UnboundedSender<Event>) -> AppResult<()> {
@@ -1681,7 +1652,7 @@ impl App {
 
     pub fn get_metadata_for_current_song(&mut self) -> HashMap<String, String> {
         let mut metadata = HashMap::new();
-        let song = self.database.get_song(self.now_playing.id.as_str());
+        let song = self.database.get_song(self.player_data.now_playing.id.as_str());
         metadata.insert("title".to_string(), song.title().to_string());
         metadata.insert("album".to_string(), song.album().to_string());
         metadata.insert("artist".to_string(), song.artist().to_string());
@@ -1961,7 +1932,7 @@ impl App {
     pub fn center_queue_cursor(&mut self) -> AppResult<()> {
         self.list_states
             .queue_list_state
-            .select(Some(self.queue_order[self.index_in_queue]));
+            .select(Some(self.player_data.queue_order[self.player_data.index_in_queue]));
         Ok(())
     }
 
@@ -2275,7 +2246,7 @@ impl App {
                     result
                 }
             },
-            CurrentScreen::Queue => self
+            CurrentScreen::Queue => self.player_data
                 .queue
                 .iter()
                 .map(|song_id| self.database.get_song(song_id).title().to_string())
@@ -2559,7 +2530,7 @@ impl App {
                 self.list_states
                     .queue_list_state
                     .selected()
-                    .and_then(|i| self.queue.get(i))
+                    .and_then(|i| self.player_data.queue.get(i))
                     .map(|song_id| self.database.get_song(song_id).album_id().to_string())
             }
         };
@@ -2582,7 +2553,7 @@ impl App {
     }
     
     pub fn set_album_in_list_to_current_playing(&mut self) -> AppResult<()> {
-        let selected_queue_song = self.database.get_song(self.queue[self.list_states.queue_list_state.selected().unwrap()].as_str());
+        let selected_queue_song = self.database.get_song(self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str());
         let index = self.database.filtered_albums().iter().position(|album| {album == selected_queue_song.album_id()});
         match index {
             Some(index) => {
@@ -2597,7 +2568,7 @@ impl App {
     }
 
     pub fn set_artist_in_list_to_current_playing(&mut self) -> AppResult<()> {
-        let selected_queue_song = self.database.get_song(self.queue[self.list_states.queue_list_state.selected().unwrap()].as_str());
+        let selected_queue_song = self.database.get_song(self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str());
         let index = self.database.alphabetical_artists().iter().position(|artist| {artist == selected_queue_song.artist_id()});
         match index {
             Some(index) => {

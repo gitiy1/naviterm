@@ -1,5 +1,5 @@
 use crate::app::{
-    App, AppConnectionMode, AppLoopStatus, AppMovementInList, AppResult, AppStatus, CurrentScreen,
+    App, AppConnectionMode, AppMovementInList, AppResult, AppStatus, CurrentScreen,
     MediaType, Popup, SortMode, TwoPaneVertical,
 };
 use crate::constants::VOLUME_STEP;
@@ -11,6 +11,7 @@ use log::debug;
 use std::collections::HashMap;
 use zbus::InterfaceRef;
 use crate::mappings::ShortcutAction;
+use crate::player_data::AppLoopStatus;
 
 /// Handles the key events and updates the state of [`App`].
 pub async fn handle_key_events(
@@ -43,7 +44,7 @@ pub async fn handle_key_events(
         }
         ShortcutAction::AddItemPlaylist => app.current_popup = Popup::SelectPlaylist,
         ShortcutAction::CycleLoopMode => {
-            match app.loop_status {
+            match app.player_data.loop_status {
                 AppLoopStatus::None => {
                     handle_loop_status_change(app, iface_ref, String::from("Track")).await?;
                 }
@@ -549,7 +550,7 @@ async fn handle_shuffle_update(
     let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
-    iface.update_shuffle(app.app_flags.random_playback);
+    iface.update_shuffle(app.player_data.random_playback);
     iface.shuffle_changed(iface_ref.signal_context()).await?;
     Ok(())
 }

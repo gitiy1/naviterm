@@ -22,7 +22,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         .border_type(Rounded)
         .style(Style::default());
 
-    if app.queue.is_empty() {
+    if app.player_data.queue.is_empty() {
         frame.render_widget(
             Paragraph::new(
                 Line::from("\nNothing in the queue...")
@@ -40,14 +40,14 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .constraints([Constraint::Min(2), Constraint::Percentage(100)])
             .split(queue_block_inner);
 
-        let seconds_left = app.queue_data.duration_left.parse::<usize>().unwrap().saturating_sub(app.ticks_during_playing_state / 4);
+        let seconds_left = app.player_data.duration_left.parse::<usize>().unwrap().saturating_sub(app.ticks_during_playing_state / 4);
 
         let queue_info = Paragraph::new(
             Line::from(format!(
                 "Total duration: {} - Playing song {}/{} ({} left)",
-                duration_to_hhmmss(&app.queue_data.duration_total),
-                app.index_in_queue + 1,
-                app.queue.len(),
+                duration_to_hhmmss(&app.player_data.duration_total),
+                app.player_data.index_in_queue + 1,
+                app.player_data.queue.len(),
                 duration_to_hhmmss(seconds_left.to_string().as_str())
             ))
             .style(Style::default().fg(app.app_colors.secondary_accent)),
@@ -57,7 +57,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         frame.render_widget(queue_info, chunks_queue[0]);
 
         let mut items: Vec<ListItem> = Vec::new();
-        for (index, song_id) in app.queue.iter().enumerate() {
+        for (index, song_id) in app.player_data.queue.iter().enumerate() {
             items.push(get_text_for_song_item_queue(
                 &app.database,
                 &app.app_flags,
@@ -66,8 +66,8 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 index,
                 song_id,
                 &app.search_data,
-                &app.queue_order,
-                app.index_in_queue,
+                &app.player_data.queue_order,
+                app.player_data.index_in_queue,
             ));
         }
         let list = List::new(items)
@@ -97,7 +97,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         let [info_area, navigation_area] = vertical.areas(info_block_inner);
 
         let current_song = app.database.get_song(
-            app.queue
+            app.player_data.queue
                 .get(app.list_states.queue_list_state.selected().unwrap())
                 .unwrap(),
         );

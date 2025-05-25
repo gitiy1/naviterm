@@ -21,6 +21,7 @@ use std::path::Path;
 use std::process::exit;
 use which::which;
 use naviterm::dbus::MediaPlayer2Player;
+use naviterm::player_data::PlayerData;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -29,6 +30,7 @@ async fn main() -> AppResult<()> {
     let xdg_conf = home_dir.to_string_lossy().to_string() + "/.config/naviterm/";
     let config_file = xdg_conf.clone() + "config.ini";
     let database_file = xdg_conf.clone() + "database.bin";
+    let player_status_file = xdg_conf.clone() + "player_status.bin";
     let settings = match Config::builder()
         .add_source(config::File::with_name(config_file.as_str()))
         .add_source(config::Environment::with_prefix("APP"))
@@ -160,6 +162,27 @@ async fn main() -> AppResult<()> {
             false
         }
     };
+    
+    if app.app_config.save_player_status {
+        match load_from_disk::<PlayerData>(player_status_file.as_str()) {
+            Ok(loaded_data) => {
+                app.player_data = loaded_data;
+                info!("Loaded app status from file!");
+            }
+            Err(e) => {
+                error! {"Error loading app status file: {}", e};
+            }
+        };
+    } else {
+        match remove_file(config_file) {
+            Ok(_) => {
+                info!("Config file removed successfully!");
+            }
+            Err(e) => {
+                debug! {"Error deleting config file: {}", e};
+            }
+        }
+    }
 
     // Refresh database
     if app.mode == AppConnectionMode::Online {
@@ -265,35 +288,44 @@ async fn main() -> AppResult<()> {
         Ok(..) => info!("Database saved successfully!"),
         Err(e) => error!("Error saving database: {}", e.to_string()),
     }
+    
+    if app.app_config.save_player_status {
+        match save_to_disk(&app.player_data, player_status_file.as_str()) {
+            Ok(..) => info!("Player status saved successfully!"),
+            Err(e) => error!("Error saving player status: {}", e.to_string()),
+        }   
+    }
+    
     Ok(())
 }
 
-fn save_to_disk<T: Serialize>(data: &T, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn save_to_disk<T: Serialize>(data: &T, path: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Check if the file exists
-    if Path::new(filename).exists() {
-        debug!("Database already exists in disk, backing up before saving");
-        copy(filename, "/tmp/database_back.bin")?;
-        remove_file(filename)?;
+    let filename = path.split('/').next_back().unwrap();
+    if Path::new(path).exists() {
+        debug!("File already exists in disk, backing up before saving");
+        copy(path, format!("/tmp/{}", filename))?;
+        remove_file(path)?;
     }
     // Serialize the struct into a byte array
     let encoded: Vec<u8> = bincode::serialize(data)?;
     // Write the serialized data to a file
-    let mut file = File::create(filename)?;
+    let mut file = File::create(path)?;
     file.write_all(&encoded)?;
     // All went well, delete backup
-    remove_file("/tmp/database_back.bin")?;
+    remove_file(format!("/tmp/{}", filename))?;
     Ok(())
 }
 
 fn load_from_disk<T: for<'de> Deserialize<'de>>(
-    filename: &str,
+    path: &str,
 ) -> Result<T, Box<dyn std::error::Error>> {
     // Check if the file exists
-    if !Path::new(filename).exists() {
+    if !Path::new(path).exists() {
         return Err("File does not exist.".into());
     }
 
-    let mut file = File::open(filename)?;
+    let mut file = File::open(path)?;
     let mut encoded = Vec::new();
     file.read_to_end(&mut encoded)?;
 

@@ -24,3 +24,4 @@ pub mod constants;
 pub mod dbus;
 pub mod player;
 mod mappings;
+pub mod player_data;
