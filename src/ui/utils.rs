@@ -1,7 +1,7 @@
 use crate::app::{AppColors, AppFlags, SearchData};
 use crate::model::album::Album;
 use crate::music_database::MusicDatabase;
-use log::debug;
+use log::{debug, warn};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::prelude::Color::Black;
 use ratatui::prelude::{Line, Modifier, Span, Style, Stylize, Text};
@@ -39,7 +39,14 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 }
 
 pub fn duration_to_hhmmss(duration: &str) -> String {
-    let u_duration = duration.parse::<usize>().unwrap();
+    let u_duration = match duration.parse::<usize>() {
+        Ok(value) => value,
+        Err(e) => {
+            warn!("Could not parse duration from {}: {}", duration, e);
+            return "00:00:00".to_string();
+        }
+    };
+    
     let hhmmss;
 
     if u_duration > 3600 {
