@@ -88,6 +88,7 @@ A configuration file is needed for the program to start. It must be at `~/.confi
 | follow_cursor_queue  | Whether the cursor will follow the currently playing track in queue                                                                                       |  true   |    No     |
 | draw_while_unfocused | This flag controls whether the program will update its ui if the window loses focus. Setting to true could increase CPU usage.                            |  false  |    No     |
 | save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status.                                                     |  false  |    No     |
+| use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                                |  false  |    No     |
 
 The config file has to be a `ini` config file:
 ```ini
