@@ -88,7 +88,8 @@ A configuration file is needed for the program to start. It must be at `~/.confi
 | follow_cursor_queue  | Whether the cursor will follow the currently playing track in queue                                                                                       |  true   |    No     |
 | draw_while_unfocused | This flag controls whether the program will update its ui if the window loses focus. Setting to true could increase CPU usage.                            |  false  |    No     |
 | save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status.                                                     |  false  |    No     |
-| use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                                |  false  |    No     |
+| use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                                |  true   |    No     |
+| wait_for_ipc_ms      | Amount of time to wait before retrying to connect to the mpv process in ms.                                                                               |   200   |    No     |
 
 The config file has to be a `ini` config file:
 ```ini
@@ -220,6 +221,11 @@ Valid modifiers are `ctrl|alt|super`, valid keys should include all ASCII charac
 naviterm can be a bit heavy on the CPU side. It is in part due to the nature of ratatui, as it re-draws the whole ui on each call to the draw method. Even if there are no changes in the app state, it needs to compute all the widgets based on the app information, and compare the frame with the previous one. This can be CPU expensive, so I tried to reduce the painting calls to only twice per second (to ensure smooth playing time tracking) or whenever a key is pressed. If you find it still too heavy, you can disable the painting whenever the window looses focus, using the following configuration key:
 ```ini
 draw_while_unfocused=false
+```
+### Could not initialize ipc stream: Connection refused (os error 111)
+This error means that the connection with the mpv process could not be established. We currently wait for a predetermined time (200ms) and try again, but if it still fails, this error will raise. You can try increasing the waiting time using the option:
+```ini
+wait_for_ipc_ms=200
 ```
 ### Big playlists
 When dealing with very big playlists, it is possible that you encounter an error stating that "414 Request-URI Too Long". This is due to the fact that when syncing a playlist with the server, we send the content of the playlist in the url. If the playlist have too many items, this could be an issue. There is another Subsonic API that could be used, but it makes playlist updating substantially harder, especially when dealing with songs reordering.

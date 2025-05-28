@@ -251,6 +251,7 @@ pub struct AppConfig {
     pub follow_cursor: bool,
     pub draw_while_unfocused: bool,
     pub save_player_status: bool,
+    pub wait_for_ipc_ms: u64,
 }
 
 pub struct AlbumFilters {
@@ -532,6 +533,15 @@ impl App {
                 self.server.server_auth = "token".to_string();
             }
         }
+        match config.get::<u64>("wait_for_ipc_ms") {
+            Ok(wait_time) => {
+                self.app_config.wait_for_ipc_ms = wait_time;
+            },
+            Err(e) => {
+                warn!("Could not parse wait time for ipc, using default. {}", e);
+                self.app_config.wait_for_ipc_ms = 200;
+            }
+        }
         if let Ok(color) = config.get::<String>("primary_accent") {
             match parse_color(color.as_str()) {
                 Ok(parsed_color) => self.app_colors.primary_accent = parsed_color,
@@ -635,7 +645,7 @@ impl App {
             Ok(_) => Ok(()),
             Err(_) => {
                 warn!("Could not initialize ipc stream, retrying...");
-                sleep(Duration::from_millis(200));
+                sleep(Duration::from_millis(self.app_config.wait_for_ipc_ms));
                 self.player.initialize()
             }
         }
