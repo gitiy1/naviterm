@@ -493,7 +493,12 @@ impl App {
     /// Set running to false in order to quit the application.
     pub fn quit(&mut self) {
         self.player.quit_player();
+        self.player_data.player_volume = self.player.get_volume();
         self.app_flags.running = false;
+    }
+    
+    pub fn restore_volume(&mut self) {
+        self.player.set_volume(self.player_data.player_volume);
     }
 
     pub fn set_config(&mut self, config: Config) -> AppResult<()> {

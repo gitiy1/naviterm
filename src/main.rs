@@ -150,7 +150,7 @@ async fn main() -> AppResult<()> {
     }
 
     // Try to load database
-    let loaded = match load_from_disk::<MusicDatabase>(database_file.as_str()) {
+    let loaded = match load_from_disk::<MusicDatabase>(&database_file) {
         Ok(loaded_data) => {
             app.database = loaded_data;
             info!("Loaded database from file!");
@@ -163,27 +163,6 @@ async fn main() -> AppResult<()> {
         }
     };
     
-    if app.app_config.save_player_status {
-        match load_from_disk::<PlayerData>(player_status_file.as_str()) {
-            Ok(loaded_data) => {
-                app.player_data = loaded_data;
-                info!("Loaded app status from file!");
-            }
-            Err(e) => {
-                error! {"Error loading app status file: {}", e};
-            }
-        };
-    } else {
-        match remove_file(config_file) {
-            Ok(_) => {
-                info!("Config file removed successfully!");
-            }
-            Err(e) => {
-                debug! {"Error deleting config file: {}", e};
-            }
-        }
-    }
-
     // Refresh database
     if app.mode == AppConnectionMode::Online {
         // If we have not loaded a database, fetch it whole
@@ -202,6 +181,28 @@ async fn main() -> AppResult<()> {
         Err(e) => {
             error!("Could not initialize ipc stream: {}", e);
             panic!("Could not initialize ipc stream: {}", e);
+        }
+    }
+
+    if app.app_config.save_player_status {
+        match load_from_disk::<PlayerData>(&player_status_file) {
+            Ok(loaded_data) => {
+                app.player_data = loaded_data;
+                app.restore_volume();
+                info!("Loaded app status from file!");
+            }
+            Err(e) => {
+                error! {"Error loading app status file: {}", e};
+            }
+        };
+    } else {
+        match remove_file(&player_status_file) {
+            Ok(_) => {
+                info!("Status file removed successfully!");
+            }
+            Err(e) => {
+                debug! {"Error deleting status file: {}", e};
+            }
         }
     }
 

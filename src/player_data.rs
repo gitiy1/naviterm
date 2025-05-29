@@ -37,5 +37,6 @@ pub struct PlayerData {
     pub random_playback: bool,
     pub next_is_in_player_queue: bool,
     pub loop_status: AppLoopStatus,
+    pub player_volume: usize
 }
 
