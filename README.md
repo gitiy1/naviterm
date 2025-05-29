@@ -54,9 +54,9 @@ Then add the package to your `environment.systemPackages` or `home.packages`.
   ];
 }
 ```
-> Currently only x86_64-linux is supported.
+> Supported platforms: x86_64-linux and aarch64-linux.
 
-> You don't need to install mpv seperately when using the flake.
+> You don't need to install mpv separately when using the flake.
 
 ### Build from source
 First, clone this repository and switch to the desired branch: `main` for latest release or `develop` for unstable. Then run the following commands in the cloned directory:
