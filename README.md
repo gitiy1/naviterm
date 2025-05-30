@@ -91,7 +91,7 @@ A configuration file is needed for the program to start. It must be at `~/.confi
 | home_list_size       | The size of the lists for the home pane (recently listened, recently added, most listened albums and tracks).                                             |   30    |    No     |
 | follow_cursor_queue  | Whether the cursor will follow the currently playing track in queue                                                                                       |  true   |    No     |
 | draw_while_unfocused | This flag controls whether the program will update its ui if the window loses focus. Setting to true could increase CPU usage.                            |  false  |    No     |
-| save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status.                                                     |  false  |    No     |
+| save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status, and volume level.                                                     |  false  |    No     |
 | use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                                |  true   |    No     |
 | wait_for_ipc_ms      | Amount of time to wait before retrying to connect to the mpv process in ms.                                                                               |   200   |    No     |
 
