@@ -337,6 +337,7 @@ pub struct AppFlags {
     pub is_introducing_to_year: bool,
     pub range_year_filter: bool,
     pub seeking: bool,
+    pub was_paused: bool,
 }
 
 pub struct AppListStates {
@@ -1452,6 +1453,11 @@ impl App {
     }
     
     fn set_player_to_playing(&mut self) {
+        if self.app_flags.was_paused {
+            debug!("Player was paused, resuming playback");
+            self.player.restore_player();
+            self.app_flags.was_paused = false;
+        }
         self.player.player_status = PlayerStatus::Playing;
         self.event_sender
             .as_ref()
@@ -1632,6 +1638,7 @@ impl App {
                     .get_song_url(self.player_data.now_playing.id.clone())
                     .as_str(),
             );
+            if self.player.player_status == PlayerStatus::Paused { self.app_flags.was_paused = true; }
             self.player.player_status = PlayerStatus::LoadingFile;
             self.event_sender.as_ref().unwrap().send(Dbus(Paused)).unwrap();
         }
