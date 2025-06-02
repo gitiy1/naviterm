@@ -645,6 +645,11 @@ impl App {
         Ok(())
     }
 
+    pub fn initialize_player(&mut self, mpv_custom_args: Vec<String>) -> AppResult<()> {
+        self.player.create_player(mpv_custom_args)?;
+        Ok(())
+    }
+
     pub fn initialize_player_stream(&mut self) -> AppResult<()> {
         match self.player.initialize() {
             Ok(_) => Ok(()),

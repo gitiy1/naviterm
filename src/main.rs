@@ -125,9 +125,29 @@ async fn main() -> AppResult<()> {
     };
     debug!("Use dbus: {}", is_dbus);
 
+    let mpv_custom_args: Result<String, ConfigError> = settings.get("mpv_custom_args");
+    let mpv_args_vector = match mpv_custom_args {
+        Ok(value) => {
+            value.split(",").map(|s| s.to_string()).collect::<Vec<String>>()
+        }
+        Err(_) => {
+            info!("No custom arguments for mpv");
+            vec![]
+        }
+    };
+    debug!("Arguments for mpv: {:?}", mpv_args_vector);
+
 
     // Create an application.
     let mut app = App::new();
+    match app.initialize_player(mpv_args_vector) {
+        Ok(_) => debug!("Mpv initialized!"),
+        Err(e) => {
+            error!("Error initializing mpv: {}", e);
+            println!("Error initializing mpv: {}", e);
+            exit(1);
+        }
+    }
     app.mode = mode;
     app.app_flags.running = true;
     app.set_config(settings)?;

@@ -1,7 +1,7 @@
+use log::debug;
 use std::process::{Child, Command, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
-use log::debug;
 
 use crate::{app::AppResult, player::ipc::Ipc};
 
@@ -18,34 +18,40 @@ pub enum PlayerStatus {
 }
 
 pub struct Mpv {
-    mpv_process: Child,
+    mpv_process: Option<Child>,
     pub(crate) player_status: PlayerStatus,
     pub(crate) ipc: Ipc,
-    volume: usize
+    volume: usize,
 }
 
 impl Default for Mpv {
     fn default() -> Self {
         Self {
-            mpv_process: Command::new("mpv")
-                .arg("--no-video")
-                .arg("--idle")
-                .arg("--input-ipc-server=".to_owned() + MPV_SOCKET)
-                .arg("--prefetch-playlist=yes")
-                .arg("--log-file=".to_owned() + MPV_LOG)
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn()
-                .unwrap(),
+            mpv_process: None,
             player_status: PlayerStatus::Stopped,
             ipc: Ipc::default(),
-            volume: 100
+            volume: 100,
         }
     }
 }
 
 impl Mpv {
+    pub fn create_player(&mut self, custom_args: Vec<String>) -> AppResult<()> {
+        self.mpv_process = Some(
+            Command::new("mpv")
+                .arg("--no-video")
+                .arg("--idle")
+                .arg("--input-ipc-server=".to_owned() + MPV_SOCKET)
+                .arg("--prefetch-playlist=yes")
+                .arg("--log-file=".to_owned() + MPV_LOG)
+                .args(custom_args)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()?,
+        );
+        Ok(())
+    }
     pub fn initialize(&mut self) -> AppResult<()> {
         self.ipc.initialize_stream()?;
         Ok(())
@@ -55,6 +61,8 @@ impl Mpv {
         self.ipc.quit();
         debug!("Message to quit sent, waiting for mpv to exit");
         self.mpv_process
+            .take()
+            .unwrap()
             .wait()
             .expect("Could not wait mpv to finish");
     }
@@ -66,7 +74,7 @@ impl Mpv {
     pub fn add_next_song_to_queue(&mut self, song_url: &str) {
         self.ipc.load_file_next(song_url);
     }
-    
+
     pub fn restore_player(&mut self) {
         self.ipc.set_pause("false");
         self.ipc.set_volume(self.volume.to_string().as_str());
@@ -90,8 +98,8 @@ impl Mpv {
             _ => {}
         }
     }
-    
-    fn lower_volume_to_0 (&mut self) {
+
+    fn lower_volume_to_0(&mut self) {
         let mut v = self.volume;
         while v > 0 {
             self.ipc.set_volume(v.to_string().as_str());
@@ -100,7 +108,7 @@ impl Mpv {
         }
     }
 
-    fn raise_volume_from_0 (&mut self) {
+    fn raise_volume_from_0(&mut self) {
         let mut v = 0;
         while v < self.volume {
             if v + 5 > self.volume {
@@ -129,7 +137,7 @@ impl Mpv {
     pub fn set_playback_percentage(&mut self, percentage: &str) {
         self.ipc.seek_percentage(percentage);
     }
-    
+
     pub fn set_replay_gain(&mut self, replay_gain_mode: &str) {
         self.ipc.set_replay_gain_mode(replay_gain_mode);
     }
@@ -143,14 +151,16 @@ impl Mpv {
     pub fn get_playback_time(&mut self) -> f64 {
         self.ipc.get_playback_time()
     }
-    
-    pub fn get_volume(&self) -> usize { self.volume }
-    
+
+    pub fn get_volume(&self) -> usize {
+        self.volume
+    }
+
     pub fn set_volume(&mut self, new_volume: usize) {
         self.volume = new_volume;
         self.ipc.set_volume(new_volume.to_string().as_str());
     }
-    
+
     pub fn set_loop_mode(&mut self, loop_mode: &str) {
         self.ipc.set_loop_mode(loop_mode);
     }
