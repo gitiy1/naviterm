@@ -94,6 +94,7 @@ A configuration file is needed for the program to start. It must be at `~/.confi
 | save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status, and volume level.                                                     |  false  |    No     |
 | use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                                |  true   |    No     |
 | wait_for_ipc_ms      | Amount of time to wait before retrying to connect to the mpv process in ms.                                                                               |   200   |    No     |
+| mpv_custom_args      | Custom arguments for mpv, in a comma separated list (--arg1=value,--arg2=value,etc).                                                                               |   []   |    No     |
 
 The config file has to be a `ini` config file:
 ```ini
@@ -108,6 +109,10 @@ secondary_accent=gray
 home_list_size=30
 follow_cursor_queue=true
 draw_while_unfocused=false
+save_player_status=false
+use_dbus=true
+wait_for_ipc_ms=200
+mpv_custom_args=
 ```
 
 Shortcuts can also be configured. Refer to the Shortcuts section for more information.
