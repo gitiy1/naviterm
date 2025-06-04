@@ -79,9 +79,10 @@ pub fn draw_footer(app: &mut App, footer_area: Rect, frame: &mut Frame) {
         Paragraph::new("")
     } else {
         let song = app.database.get_song(app.player_data.now_playing.id.as_str());
-        if app.app_focused {
+        let duration = song.duration().parse::<usize>().unwrap() as f64;
+        if app.app_focused && duration != 0.0 {
             ratio = (app.ticks_during_playing_state / 4) as f64
-                / song.duration().parse::<usize>().unwrap() as f64;
+                / duration;
             ratio = if ratio > 1f64 { 1f64 } else { ratio };
         } else { 
             ratio = 0f64;
