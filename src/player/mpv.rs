@@ -152,6 +152,13 @@ impl Mpv {
         self.ipc.get_playback_time()
     }
 
+    pub fn get_duration(&mut self) -> f64 {
+        let duration = self.ipc.get_duration();
+        if duration != -1.0 {
+            duration
+        } else { 0.0 }
+    }
+
     pub fn get_volume(&self) -> usize {
         self.volume
     }

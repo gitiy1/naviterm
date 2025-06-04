@@ -53,7 +53,11 @@ impl Song {
     }
 
     pub fn duration(&self) -> &str {
-        &self.duration
+        if self.duration.is_empty() {
+            "0"
+        } else {
+            &self.duration
+        }
     }
 
     pub fn play_count(&self) -> &str {

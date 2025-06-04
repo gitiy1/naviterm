@@ -115,6 +115,23 @@ impl Ipc {
             -1.0
         }
     }
+
+    pub fn get_duration(&mut self) -> f64 {
+        let msg = String::from("{\"command\":[\"get_property_string\",\"duration\"]}\n");
+        debug!("Sending command to get duration");
+        self.parsed_value.clear();
+        self.send_ipc_command(msg, true);
+        if !self.parsed_value.is_empty() {
+            f64::from_str_radix(self.parsed_value.as_str(), 10).unwrap_or_else(|e| {
+                error!("Error while parsing response from mpv: {}", e);
+                -1.0
+            })
+        } else {
+            error!("Could not get playback time from response received from mpv");
+            -1.0
+        }
+    }
+    
     pub async fn poll_events(&mut self) {
         let events = self.events.clone();
 

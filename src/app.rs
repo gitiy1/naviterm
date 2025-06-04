@@ -1372,7 +1372,7 @@ impl App {
                             debug!("Detected pause status change while playing, setting status to buffering...");
                             self.set_player_to_buffering();
                         } else if data == "no" && self.player.player_status == PlayerStatus::Buffering {
-                            debug!("Detected pause status change while playing, setting status to playing...");
+                            debug!("Detected pause status change while buffering, setting status to playing...");
                             self.set_player_to_playing();
                         } else {
                             debug!("Detected pause status change but will ignore it");
@@ -1466,6 +1466,17 @@ impl App {
             .unwrap();
         if !self.app_focused {
             self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
+        }
+        if self.player_data.now_playing.duration == "0" {
+            warn!("Duration was 0, trying to get duration from mpv!");
+            let new_duration = self.player.get_duration();
+            let new_duration_string = new_duration.trunc().to_string();
+            debug!("New duration: {}", new_duration_string);
+            if new_duration_string != "0" {
+                self.database.get_song_mut(self.player_data.now_playing.id.as_str()).set_duration(new_duration_string.clone());
+                self.player_data.now_playing.duration = new_duration_string;
+                debug!("Modified song duration!");
+            }
         }
     }
 
