@@ -333,8 +333,10 @@ fn save_to_disk<T: Serialize>(data: &T, path: &str) -> Result<(), Box<dyn std::e
     // Write the serialized data to a file
     let mut file = File::create(path)?;
     file.write_all(&encoded)?;
-    // All went well, delete backup
-    remove_file(format!("/tmp/{}", filename))?;
+    // All went well, delete backup if there was one
+    if Path::new(format!("/tmp/{}", filename).as_str()).exists() {
+        remove_file(format!("/tmp/{}", filename))?;
+    }
     Ok(())
 }
 
