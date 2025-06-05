@@ -4,7 +4,7 @@ use crate::model::playlist::Playlist;
 use crate::model::song::Song;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use log::{error, warn};
+use log::{error, info, warn};
 use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -293,6 +293,13 @@ impl MusicDatabase {
         let artist = self.artists.get_mut(artist_id).unwrap();
         
         artist.albums_mut().retain(|album_id| self.albums.contains_key(album_id));
+        
+        // If the artist has no more albums, delete it
+        if artist.albums().is_empty() {
+            info!("Artist {} ({}) has no albums, deleting", artist.name(), artist_id);
+            self.artists.remove(artist_id);
+            return
+        }
         
         // Set the updated genres
         let updated_genres: Vec<String> = artist

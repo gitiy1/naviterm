@@ -18,7 +18,7 @@ use rand::{thread_rng, Rng};
 use ratatui::prelude::Color;
 use ratatui::widgets::ListState;
 use std::cmp::PartialEq;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error;
 use std::process::exit;
 use std::thread::sleep;
@@ -2457,7 +2457,19 @@ impl App {
         for album_id in missing_albums {
             if album_id != DEFAULT_ALBUM {
                 info!("Album {} not found in server, deleting", album_id);
+                // First we get all artists related to this album (through the songs)
+                let artist_ids: HashSet<_> = self.database
+                    .songs()
+                    .iter()
+                    .filter(|(_,song)| song.album_id() == album_id)
+                    .map(|(_,song)| song.artist_id().to_string())
+                    .collect();
+                // Then we remove the album
                 self.database.remove_album(album_id.as_str());
+                // Finally we update the artists
+                for artist_id in artist_ids {
+                    self.database.update_artist(artist_id.as_str());
+                }
             }
         }
     }
