@@ -338,6 +338,7 @@ pub struct AppFlags {
     pub range_year_filter: bool,
     pub seeking: bool,
     pub was_paused: bool,
+    pub invalidate_search: bool,
 }
 
 pub struct AppListStates {
@@ -435,6 +436,10 @@ impl App {
 
     /// Handles the tick event of the terminal.
     pub fn tick(&mut self) -> AppResult<()> {
+        if self.app_flags.invalidate_search {
+            self.clear_search_results()?;
+            self.app_flags.invalidate_search = false;
+        }
         if self.status != AppStatus::Disconnected && self.mode != AppConnectionMode::Offline {
             self.process_pending_requests();
         }
@@ -2176,12 +2181,14 @@ impl App {
                         .database
                         .recent_albums()
                         .iter()
+                        .take(self.app_config.list_size)
                         .map(|album_id| self.database.get_album(album_id).name().to_string())
                         .collect::<Vec<String>>(),
                     HomePane::Bottom => self
                         .database
                         .most_listened_albums()
                         .iter()
+                        .take(self.app_config.list_size)
                         .map(|album_id| self.database.get_album(album_id).name().to_string())
                         .collect::<Vec<String>>(),
                     _ => {
@@ -2193,24 +2200,28 @@ impl App {
                         .database
                         .recent_albums()
                         .iter()
+                        .take(self.app_config.list_size)
                         .map(|album_id| self.database.get_album(album_id).name().to_string())
                         .collect::<Vec<String>>(),
                     HomePane::TopRight => self
                         .database
                         .recently_added_albums()
                         .iter()
+                        .take(self.app_config.list_size)
                         .map(|album_id| self.database.get_album(album_id).name().to_string())
                         .collect::<Vec<String>>(),
                     HomePane::BottomLeft => self
                         .database
                         .most_listened_albums()
                         .iter()
+                        .take(self.app_config.list_size)
                         .map(|album_id| self.database.get_album(album_id).name().to_string())
                         .collect::<Vec<String>>(),
                     HomePane::BottomRight => self
                         .database
                         .most_listened_tracks()
                         .iter()
+                        .take(self.app_config.list_size)
                         .map(|song_id| self.database.get_song(song_id).title().to_string())
                         .collect::<Vec<String>>(),
                     _ => {

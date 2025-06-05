@@ -89,7 +89,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         for (index, album_id) in recent_albums.iter().take(app.app_config.list_size).enumerate() {
             items.push(get_text_for_album_item(
                 &app.database,
-                &app.app_flags,
+                &mut app.app_flags,
                 &app.app_colors,
                 app.list_states.home_tab_top_left.selected().unwrap(),
                 index,
@@ -140,7 +140,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         for (index, album_id) in most_listened_albums.iter().take(app.app_config.list_size).enumerate() {
             items.push(get_text_for_album_item(
                 &app.database,
-                &app.app_flags,
+                &mut app.app_flags,
                 &app.app_colors,
                 app.list_states.home_tab_bottom_left.selected().unwrap(),
                 index,
@@ -191,7 +191,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         for (index, song_id) in most_listened_tracks.iter().take(app.app_config.list_size).enumerate() {
             items.push(get_text_for_song_item(
                 &app.database,
-                &app.app_flags,
+                &mut app.app_flags,
                 &app.app_colors,
                 app.list_states.home_tab_bottom_right.selected(),
                 index,
@@ -242,7 +242,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         for (index, album_id) in recently_added_albums.iter().take(app.app_config.list_size).enumerate() {
             items.push(get_text_for_album_item(
                 &app.database,
-                &app.app_flags,
+                &mut app.app_flags,
                 &app.app_colors,
                 app.list_states.home_tab_top_right.selected().unwrap(),
                 index,

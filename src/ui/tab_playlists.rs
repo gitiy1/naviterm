@@ -52,7 +52,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         for (index, playlist_id) in app.database.alphabetical_playlists().iter().enumerate() {
             playlist_items.push(get_text_for_playlist_item(
                 &app.database,
-                &app.app_flags,
+                &mut app.app_flags,
                 &app.app_colors,
                 app.list_states.playlist_state.selected().unwrap(),
                 index,
@@ -161,7 +161,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             for (index, song_id) in selected_playlist_songs.iter().enumerate() {
                 items.push(get_text_for_song_item(
                     &app.database,
-                    &app.app_flags,
+                    &mut app.app_flags,
                     &app.app_colors,
                     app.list_states.playlist_selected_state.selected(),
                     index,

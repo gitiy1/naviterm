@@ -60,7 +60,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         for (index, song_id) in app.player_data.queue.iter().enumerate() {
             items.push(get_text_for_song_item_queue(
                 &app.database,
-                &app.app_flags,
+                &mut app.app_flags,
                 &app.app_colors,
                 app.list_states.queue_list_state.selected().unwrap(),
                 index,

@@ -88,7 +88,7 @@ pub fn ellipse_line(line: &str, max_width: usize) -> String {
 
 pub fn get_text_for_album_item<'a>(
     database: &'a MusicDatabase,
-    app_flags: &AppFlags,
+    app_flags: &mut AppFlags,
     app_colors: &AppColors,
     selected_index: usize,
     index: usize,
@@ -119,29 +119,34 @@ pub fn get_text_for_album_item<'a>(
             .match_indices(&search_data.search_string)
             .collect();
         debug!("match: {:?}", match_indices);
-        let (first_index, first_match) = match_indices[0];
-        let first_slice = &album.name()[0..first_index];
-        let matched_slice = &album.name()[first_index..first_index + first_match.len()];
-        let last_slice = &album.name()[first_index + first_match.len()..];
-        album_first_line_vector.push(
-            Span::from(first_slice.to_string()).style(
-                Style::default()
-                    .fg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
-        album_first_line_vector.push(
-            Span::from(matched_slice.to_string()).style(
-                Style::default()
-                    .fg(Black)
-                    .bg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
-        album_first_line_vector.push(
-            Span::from(last_slice.to_string())
-                .style(Style::default().fg(app_colors.primary_accent)),
-        );
+        if match_indices.is_empty() {
+            app_flags.invalidate_search = true;
+            album_first_line_vector.push(Span::from(album.name()).style(Style::default()))
+        } else {
+            let (first_index, first_match) = match_indices[0];
+            let first_slice = &album.name()[0..first_index];
+            let matched_slice = &album.name()[first_index..first_index + first_match.len()];
+            let last_slice = &album.name()[first_index + first_match.len()..];
+            album_first_line_vector.push(
+                Span::from(first_slice.to_string()).style(
+                    Style::default()
+                        .fg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            album_first_line_vector.push(
+                Span::from(matched_slice.to_string()).style(
+                    Style::default()
+                        .fg(Black)
+                        .bg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            album_first_line_vector.push(
+                Span::from(last_slice.to_string())
+                    .style(Style::default().fg(app_colors.primary_accent)),
+            );
+        }
     } else if index == selected_index {
         album_first_line_vector.push(
             Span::from(album.name()).style(
@@ -215,7 +220,7 @@ pub fn get_text_for_album_item<'a>(
 
 pub fn get_text_for_song_item_queue<'a>(
     database: &'a MusicDatabase,
-    app_flags: &AppFlags,
+    app_flags: &mut AppFlags,
     app_colors: &AppColors,
     selected_index: usize,
     index: usize,
@@ -254,29 +259,34 @@ pub fn get_text_for_song_item_queue<'a>(
             .match_indices(&search_data.search_string)
             .collect();
         debug!("match: {:?}", match_indices);
-        let (first_index, first_match) = match_indices[0];
-        let first_slice = &song.title()[0..first_index];
-        let matched_slice = &song.title()[first_index..first_index + first_match.len()];
-        let last_slice = &song.title()[first_index + first_match.len()..];
+        if match_indices.is_empty() {
+            app_flags.invalidate_search = true;
+            song_first_line_vector.push(Span::from(song.title()).style(style_playing))
+        } else {
+            let (first_index, first_match) = match_indices[0];
+            let first_slice = &song.title()[0..first_index];
+            let matched_slice = &song.title()[first_index..first_index + first_match.len()];
+            let last_slice = &song.title()[first_index + first_match.len()..];
 
-        song_first_line_vector.push(
-            Span::from(first_slice.to_string())
-                .style(style_playing)
-                .add_modifier(Modifier::BOLD),
-        );
-        song_first_line_vector.push(
-            Span::from(matched_slice.to_string()).style(
-                Style::default()
-                    .fg(Black)
-                    .bg(app_colors.primary_accent)
+            song_first_line_vector.push(
+                Span::from(first_slice.to_string())
+                    .style(style_playing)
                     .add_modifier(Modifier::BOLD),
-            ),
-        );
-        song_first_line_vector.push(
-            Span::from(last_slice.to_string())
-                .style(style_playing)
-                .add_modifier(Modifier::BOLD),
-        );
+            );
+            song_first_line_vector.push(
+                Span::from(matched_slice.to_string()).style(
+                    Style::default()
+                        .fg(Black)
+                        .bg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            song_first_line_vector.push(
+                Span::from(last_slice.to_string())
+                    .style(style_playing)
+                    .add_modifier(Modifier::BOLD),
+            );
+        }
     } else {
         song_first_line_vector.push(Span::from(song.title()).style(style_playing))
     }
@@ -304,7 +314,7 @@ pub fn get_text_for_song_item_queue<'a>(
 
 pub fn get_text_for_song_item<'a>(
     database: &'a MusicDatabase,
-    app_flags: &AppFlags,
+    app_flags: &mut AppFlags,
     app_colors: &AppColors,
     selected_index: Option<usize>,
     index: usize,
@@ -355,20 +365,25 @@ pub fn get_text_for_song_item<'a>(
             .match_indices(&search_data.search_string)
             .collect();
         debug!("match: {:?}", match_indices);
-        let (first_index, first_match) = match_indices[0];
-        let first_slice = &song.title()[0..first_index];
-        let matched_slice = &song.title()[first_index..first_index + first_match.len()];
-        let last_slice = &song.title()[first_index + first_match.len()..];
-        song_first_line_vector.push(Span::from(first_slice.to_string()).style(Style::default()));
-        song_first_line_vector.push(
-            Span::from(matched_slice.to_string()).style(
-                Style::default()
-                    .fg(Black)
-                    .bg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
-        song_first_line_vector.push(Span::from(last_slice.to_string()).style(Style::default()));
+        if match_indices.is_empty() {
+            app_flags.invalidate_search = true;
+            song_first_line_vector.push(Span::from(song.title()).style(Style::default()))
+        } else {
+            let (first_index, first_match) = match_indices[0];
+            let first_slice = &song.title()[0..first_index];
+            let matched_slice = &song.title()[first_index..first_index + first_match.len()];
+            let last_slice = &song.title()[first_index + first_match.len()..];
+            song_first_line_vector.push(Span::from(first_slice.to_string()).style(Style::default()));
+            song_first_line_vector.push(
+                Span::from(matched_slice.to_string()).style(
+                    Style::default()
+                        .fg(Black)
+                        .bg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            song_first_line_vector.push(Span::from(last_slice.to_string()).style(Style::default()));
+        }
     } else if selected_index.is_some() && index == selected_index.unwrap() {
         song_first_line_vector.push(
             Span::from(song.title()).style(
@@ -427,7 +442,7 @@ pub fn get_text_for_song_item<'a>(
 
 pub fn get_text_for_playlist_item<'a>(
     database: &'a MusicDatabase,
-    app_flags: &AppFlags,
+    app_flags: &mut AppFlags,
     app_colors: &AppColors,
     selected_index: usize,
     index: usize,
@@ -465,33 +480,41 @@ pub fn get_text_for_playlist_item<'a>(
             .match_indices(&search_data.search_string)
             .collect();
         debug!("match: {:?}", match_indices);
-        let (first_index, first_match) = match_indices[0];
-        let first_slice = &playlist.name()[0..first_index];
-        let matched_slice = &playlist.name()[first_index..first_index + first_match.len()];
-        let last_slice = &playlist.name()[first_index + first_match.len()..];
+        if match_indices.is_empty() {
+            app_flags.invalidate_search = true;
+            playlist_first_line_vector.push(Span {
+                content: playlist.name().into(),
+                style: Style::default(),
+            });
+        } else {
+            let (first_index, first_match) = match_indices[0];
+            let first_slice = &playlist.name()[0..first_index];
+            let matched_slice = &playlist.name()[first_index..first_index + first_match.len()];
+            let last_slice = &playlist.name()[first_index + first_match.len()..];
 
-        playlist_first_line_vector.push(
-            Span::from(first_slice.to_string()).style(
-                Style::default()
-                    .fg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
-        playlist_first_line_vector.push(
-            Span::from(matched_slice.to_string()).style(
-                Style::default()
-                    .fg(Black)
-                    .bg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
-        playlist_first_line_vector.push(
-            Span::from(last_slice.to_string()).style(
-                Style::default()
-                    .fg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
+            playlist_first_line_vector.push(
+                Span::from(first_slice.to_string()).style(
+                    Style::default()
+                        .fg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            playlist_first_line_vector.push(
+                Span::from(matched_slice.to_string()).style(
+                    Style::default()
+                        .fg(Black)
+                        .bg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            playlist_first_line_vector.push(
+                Span::from(last_slice.to_string()).style(
+                    Style::default()
+                        .fg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+        }
     } else if index == selected_index {
         playlist_first_line_vector.push(Span {
             content: playlist.name().into(),
@@ -537,7 +560,7 @@ pub fn get_text_for_playlist_item<'a>(
 
 pub fn get_text_for_artist_item<'a>(
     database: &'a MusicDatabase,
-    app_flags: &AppFlags,
+    app_flags: &mut AppFlags,
     app_colors: &AppColors,
     selected_index: usize,
     index: usize,
@@ -567,33 +590,41 @@ pub fn get_text_for_artist_item<'a>(
             .match_indices(&search_data.search_string)
             .collect();
         debug!("match: {:?}", match_indices);
-        let (first_index, first_match) = match_indices[0];
-        let first_slice = &artist.name()[0..first_index];
-        let matched_slice = &artist.name()[first_index..first_index + first_match.len()];
-        let last_slice = &artist.name()[first_index + first_match.len()..];
+        if match_indices.is_empty() {
+            app_flags.invalidate_search = true;
+            artist_first_line_vector.push(Span {
+                content: artist.name().into(),
+                style: Style::default(),
+            })
+        } else {
+            let (first_index, first_match) = match_indices[0];
+            let first_slice = &artist.name()[0..first_index];
+            let matched_slice = &artist.name()[first_index..first_index + first_match.len()];
+            let last_slice = &artist.name()[first_index + first_match.len()..];
 
-        artist_first_line_vector.push(
-            Span::from(first_slice.to_string()).style(
-                Style::default()
-                    .fg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
-        artist_first_line_vector.push(
-            Span::from(matched_slice.to_string()).style(
-                Style::default()
-                    .fg(Black)
-                    .bg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
-        artist_first_line_vector.push(
-            Span::from(last_slice.to_string()).style(
-                Style::default()
-                    .fg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
+            artist_first_line_vector.push(
+                Span::from(first_slice.to_string()).style(
+                    Style::default()
+                        .fg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            artist_first_line_vector.push(
+                Span::from(matched_slice.to_string()).style(
+                    Style::default()
+                        .fg(Black)
+                        .bg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            artist_first_line_vector.push(
+                Span::from(last_slice.to_string()).style(
+                    Style::default()
+                        .fg(app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+        }
     } else if index == selected_index {
         artist_first_line_vector.push(Span {
             content: artist.name().into(),

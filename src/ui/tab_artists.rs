@@ -50,7 +50,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         for (index, artist_id) in app.database.alphabetical_artists().iter().enumerate() {
             artists_items.push(get_text_for_artist_item(
                 &app.database,
-                &app.app_flags,
+                &mut app.app_flags,
                 &app.app_colors,
                 app.list_states.artist_state.selected().unwrap(),
                 index,
@@ -96,7 +96,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             };
             album_items.push(get_text_for_album_item(
                 &app.database,
-                &app.app_flags,
+                &mut app.app_flags,
                 &app.app_colors,
                 app.list_states.artist_selected_state.selected().unwrap(),
                 index,
@@ -110,7 +110,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 index += 1;
                 album_items.push(get_text_for_song_item(
                     &app.database,
-                    &app.app_flags,
+                    &mut app.app_flags,
                     &app.app_colors,
                     app.list_states.artist_selected_state.selected(),
                     index,

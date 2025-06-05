@@ -80,7 +80,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     for (index, song_id) in album.songs().iter().enumerate() {
         items.push(get_text_for_song_item(
             &app.database,
-            &app.app_flags,
+            &mut app.app_flags,
             &app.app_colors,
             app.list_states.popup_list_state.selected(),
             index,
