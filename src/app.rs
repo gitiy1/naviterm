@@ -3134,8 +3134,16 @@ impl App {
                             continue;
                         }
                         let force_update = *update;
-                        let playlist_list =
-                            Parser::parse_playlist_list(operation.result().to_string()).unwrap();
+                        let playlist_list = match
+                            Parser::parse_playlist_list(operation.result().to_string()) {
+                            Ok(playlist_list) => playlist_list,
+                            Err(e) => {
+                                warn!("Could not parse playlist list result: {}", operation.result());
+                                warn!("{}", e);
+                                operation.set_processed(true);
+                                continue;
+                            }
+                        };
                         operation.set_processed(true);
                         for playlist in playlist_list {
                             if self.database.contains_playlist(playlist.id()) && !force_update {
@@ -3194,9 +3202,18 @@ impl App {
                         {
                             continue;
                         }
+                        let playlist_songs = match Parser::parse_playlist(operation.result().to_string()) {
+                            Ok(playlist_songs) => playlist_songs,
+                            Err(e) => {
+                                warn!("Could not parse playlist result: {}", operation.result());
+                                warn!("{}", e);
+                                operation.set_processed(true);
+                                continue;
+                            }
+                        };
                         self.database.set_playlist_songs(
                             id,
-                            Parser::parse_playlist(operation.result().to_string()).unwrap(),
+                            playlist_songs,
                         );
                         // We have the latest version from server, so remove modified flag
                         self.database
@@ -3237,9 +3254,15 @@ impl App {
                         let force_update = *update;
                         let offset = *offset;
                         operation.set_processed(true);
-                        let mut album_list =
-                            Parser::parse_album_list_simple(operation.result().to_string())
-                                .unwrap();
+                        let mut album_list = match
+                            Parser::parse_album_list_simple(operation.result().to_string()) {
+                            Ok(album_list) => album_list,
+                            Err(e) => {
+                                warn!("Could not parse album list: {}", e);
+                                warn!("{}", e);
+                                continue
+                            }
+                        };
                         if !album_list.is_empty() {
                             let new_offset = offset + album_list.len();
                             for album_id in &album_list {
@@ -3286,7 +3309,13 @@ impl App {
                             Err(e) => {
                                 warn!("Could not parse album result: {}", operation.result());
                                 warn!("{}", e);
-                                operation.set_error(true);
+                                self.albums_being_updated -= 1;
+                                operation.set_processed(true);
+                                if self.albums_being_updated == 0
+                                    && !self.app_flags.updating_alphabetical_albums
+                                {
+                                    self.app_flags.updating_albums = false;
+                                }
                                 continue;
                             }
                         }
@@ -3363,9 +3392,15 @@ impl App {
                             continue;
                         }
                         operation.set_processed(true);
-                        let album_list =
-                            Parser::parse_album_list_simple(operation.result().to_string())
-                                .unwrap();
+                        let album_list = match
+                            Parser::parse_album_list_simple(operation.result().to_string()) {
+                            Ok(album_list) => album_list,
+                            Err(e) => {
+                                warn!("Could not parse album list result: {}", e);
+                                warn!("{}", e);
+                                continue
+                            }
+                        };
                         if !self.database.last_played_album_id().is_empty() {
                             debug!(
                                 "Last played album id is {}",
@@ -3401,9 +3436,15 @@ impl App {
                         }
                         let offset = *offset;
                         operation.set_processed(true);
-                        let mut album_list =
-                            Parser::parse_album_list_simple(operation.result().to_string())
-                                .unwrap();
+                        let mut album_list = match
+                            Parser::parse_album_list_simple(operation.result().to_string()) {
+                            Ok(album_list) => album_list,
+                            Err(e) => {
+                                warn!("Could not parse album list result: {}", e);
+                                warn!("{}", e);
+                                continue;
+                            }
+                        };
                         if !album_list.is_empty() {
                             let new_offset = offset + album_list.len();
                             self.result_list_most_listened.append(&mut album_list);
@@ -3421,21 +3462,34 @@ impl App {
                         {
                             continue;
                         }
-                        let mut genres =
-                            Parser::parse_genres_list(operation.result().to_string()).unwrap();
+                        operation.set_processed(true);
+                        let mut genres = match
+                            Parser::parse_genres_list(operation.result().to_string()) {
+                            Ok(genres) => genres,
+                            Err(e) => {
+                                warn!("Could not parse genres result: {}", e);
+                                warn!("{}", e);
+                                continue;
+                            }
+                        };
                         genres.sort();
                         self.database.set_genres(genres);
-                        operation.set_processed(true);
                     }
                     Operation::GetAlbumListRecentlyAdded() => {
                         if self.app_flags.updating_albums {
                             continue;
                         }
-                        let album_list =
-                            Parser::parse_album_list_simple(operation.result().to_string())
-                                .unwrap();
-                        self.database.set_recently_added_albums(album_list);
                         operation.set_processed(true);
+                        let album_list = match
+                            Parser::parse_album_list_simple(operation.result().to_string()) {
+                            Ok(album_list) => album_list,
+                            Err(e) => {
+                                warn!("Could not parse album list result: {}", e);
+                                warn!("{}", e);
+                                continue
+                            }
+                        };
+                        self.database.set_recently_added_albums(album_list);
                     }
                     Operation::Scrobble(id) => {
                         debug!("Scrobble operation done for song id: {}", id);

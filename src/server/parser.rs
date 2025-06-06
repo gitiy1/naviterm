@@ -43,7 +43,10 @@ impl Parser {
         let mut genres_list: Vec<String> = Vec::new();
         let root: minidom::Element = response.parse()?;
 
-        let list = root.get_child("genres", Self::NAMESPACE).unwrap();
+        let list = match root.get_child("genres", Self::NAMESPACE) {
+            None => { return Err("get child by 'genres' returned none".into())}
+            Some(value) => value
+        };
         for genre in list.children() {
             genres_list.push(parse_attribute(genre.text().as_str()));
         }
@@ -54,7 +57,10 @@ impl Parser {
         let root: minidom::Element = response.parse()?;
         let mut album_list = Vec::new();
 
-        let list = root.get_child("albumList", Self::NAMESPACE).unwrap();
+        let list = match root.get_child("albumList", Self::NAMESPACE) {
+            None => { return Err("get child by 'albumList' returned none".into())}
+            Some(value) => value
+        };
         for album in list.children() {
             let mut album_id = String::new();
             for attribute in album.attrs() {
@@ -73,7 +79,10 @@ impl Parser {
         let mut song_list = Vec::new();
         let mut song_ids_list = Vec::new();
 
-        let album = root.get_child("album", Self::NAMESPACE).unwrap();
+        let album = match root.get_child("album", Self::NAMESPACE) {
+            None => { return Err("get child by 'album' returned none".into()) },
+            Some(value) => value
+        };
         let mut new_album = Album::default();
         let mut new_artist = Artist::default();
         new_artist.set_number_of_albums(1);
@@ -179,7 +188,10 @@ impl Parser {
         let mut playlist_list: Vec<Playlist> = vec![]; 
         let root: minidom::Element = response.parse()?;
 
-        let playlists = root.get_child("playlists", Self::NAMESPACE).unwrap();
+        let playlists = match root.get_child("playlists", Self::NAMESPACE) {
+            None => { return Err("get child by 'playlists' returned none".into())},
+            Some(value) => value
+        };
         
         for playlist in playlists.children() {
             let mut new_playlist: Playlist = Playlist::default();
@@ -204,7 +216,10 @@ impl Parser {
         let mut playlists_songs: Vec<String> = vec![];
         let root: minidom::Element = response.parse()?;
 
-        let list = root.get_child("playlist", Self::NAMESPACE).unwrap();
+        let list = match root.get_child("playlist", Self::NAMESPACE) {
+            None => { return Err("get child by 'playlist' returned none".into())},
+            Some(value) => value
+        };
         for album in list.children() {
             let mut song_id = String::new();
             for attribute in album.attrs() {
@@ -221,7 +236,10 @@ impl Parser {
     pub fn parse_playlist_id(response: String) -> AppResult<String> {
         let root: minidom::Element = response.parse()?;
 
-        let playlist = root.get_child("playlist", Self::NAMESPACE).unwrap();
+        let playlist = match root.get_child("playlist", Self::NAMESPACE) {
+            None => { return Err("get child by 'playlist' returned none".into())},
+            Some(value) => value
+        };
         for attribute in playlist.attrs() {
             match attribute.0 {
                 "id" => return Ok(attribute.1.to_string()),
