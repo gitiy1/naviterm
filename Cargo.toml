@@ -1,6 +1,6 @@
 [package]
 name = "naviterm"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Jaime Pando Acedo <jaime@jpandoac.es>"]
 license = "GLPv3"
 edition = "2021"
