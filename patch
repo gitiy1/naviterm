@@ -1,0 +1,37 @@
+diff --git a/src/app.rs b/src/app.rs
+index ed544fe..1cb4a43 100644
+--- a/src/app.rs
++++ b/src/app.rs
+@@ -1,5 +1,5 @@
+ use crate::constants;
+-use crate::event::DbusEvent::{Clear, Playing, Metadata, Paused};
++use crate::event::DbusEvent::{Clear, Playing, Metadata, Paused, Stop};
+ use crate::event::Event;
+ use crate::event::Event::{Dbus, Draw};
+ use crate::model::artist::Artist;
+@@ -1443,7 +1443,11 @@ impl App {
+                 IpcEvent::Idle => {
+                     if self.player.player_status == PlayerStatus::Playing && !self.queue_has_next()
+                     {
+-                        self.player.player_status = PlayerStatus::Stopped;
++                        self.event_sender
++                            .as_ref()
++                            .unwrap()
++                            .send(Dbus(Stop))
++                            .unwrap();
+                         self.event_sender
+                             .as_ref()
+                             .unwrap()
+diff --git a/src/handler.rs b/src/handler.rs
+index 04188b4..507c792 100644
+--- a/src/handler.rs
++++ b/src/handler.rs
+@@ -616,7 +616,7 @@ async fn handle_stop_playback(
+         if iface_ref.is_none() { return Ok(()) }
+         let iface_ref = iface_ref.unwrap();
+         let mut iface = iface_ref.get_mut().await;
+-        iface.update_position((app.get_playback_time() * 1000000) as i64);
++        iface.update_position(0i64);
+         iface.set_playback_status(String::from("Stopped"));
+         iface
+             .playback_status_changed(iface_ref.signal_context())

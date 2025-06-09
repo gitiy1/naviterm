@@ -1,5 +1,5 @@
 use crate::constants;
-use crate::event::DbusEvent::{Clear, Playing, Metadata, Paused};
+use crate::event::DbusEvent::{Clear, Playing, Metadata, Paused, Stop};
 use crate::event::Event;
 use crate::event::Event::{Dbus, Draw};
 use crate::model::artist::Artist;
@@ -1443,7 +1443,11 @@ impl App {
                 IpcEvent::Idle => {
                     if self.player.player_status == PlayerStatus::Playing && !self.queue_has_next()
                     {
-                        self.player.player_status = PlayerStatus::Stopped;
+                        self.event_sender
+                            .as_ref()
+                            .unwrap()
+                            .send(Dbus(Stop))
+                            .unwrap();
                         self.event_sender
                             .as_ref()
                             .unwrap()

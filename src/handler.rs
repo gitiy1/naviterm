@@ -616,7 +616,7 @@ async fn handle_stop_playback(
         if iface_ref.is_none() { return Ok(()) }
         let iface_ref = iface_ref.unwrap();
         let mut iface = iface_ref.get_mut().await;
-        iface.update_position((app.get_playback_time() * 1000000) as i64);
+        iface.update_position(0i64);
         iface.set_playback_status(String::from("Stopped"));
         iface
             .playback_status_changed(iface_ref.signal_context())
