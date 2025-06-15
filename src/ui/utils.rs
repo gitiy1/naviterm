@@ -1,4 +1,4 @@
-use crate::app::{AppColors, AppFlags, SearchData};
+use crate::app::{AppColors, AppFlags, FourPaneGrid, SearchData};
 use crate::model::album::Album;
 use crate::music_database::MusicDatabase;
 use log::{debug, warn};
@@ -46,7 +46,7 @@ pub fn duration_to_hhmmss(duration: &str) -> String {
             return "00:00:00".to_string();
         }
     };
-    
+
     let hhmmss;
 
     if u_duration > 3600 {
@@ -79,7 +79,7 @@ pub fn ellipse_line(line: &str, max_width: usize) -> String {
     if line.is_empty() {
         String::new()
     } else if line.graphemes(true).count() > max_width {
-        let clipped_line: String = line.graphemes(true).take(max_width - 4).collect();
+        let clipped_line: String = line.graphemes(true).take(max_width.saturating_sub(4)).collect();
         clipped_line + "..."
     } else {
         String::from(line)
@@ -373,7 +373,8 @@ pub fn get_text_for_song_item<'a>(
             let first_slice = &song.title()[0..first_index];
             let matched_slice = &song.title()[first_index..first_index + first_match.len()];
             let last_slice = &song.title()[first_index + first_match.len()..];
-            song_first_line_vector.push(Span::from(first_slice.to_string()).style(Style::default()));
+            song_first_line_vector
+                .push(Span::from(first_slice.to_string()).style(Style::default()));
             song_first_line_vector.push(
                 Span::from(matched_slice.to_string()).style(
                     Style::default()
@@ -538,18 +539,17 @@ pub fn get_text_for_playlist_item<'a>(
 
     let playlist_second_line_vector: Vec<Span> = vec![
         Span {
-        content: playlist.song_count().into(),
-        style: Style::default()
-            .fg(app_colors.secondary_accent)
-            .add_modifier(Modifier::ITALIC),
-    },
-
+            content: playlist.song_count().into(),
+            style: Style::default()
+                .fg(app_colors.secondary_accent)
+                .add_modifier(Modifier::ITALIC),
+        },
         Span {
             content: " songs".into(),
             style: Style::default()
                 .fg(app_colors.secondary_accent)
                 .add_modifier(Modifier::ITALIC),
-        }
+        },
     ];
 
     ListItem::from(Text::from(vec![
@@ -662,6 +662,102 @@ pub fn get_text_for_artist_item<'a>(
         Line::from(artist_first_line_vector.clone()),
         Line::from(artist_second_line_vector.clone()),
     ]))
+}
+
+pub fn get_text_for_global_search_item<'a>(
+    index: usize,
+    item_id: &str,
+    database: &'a MusicDatabase,
+    app_colors: &AppColors,
+    selected_index: usize,
+    search_data: &SearchData,
+    current_pane: &FourPaneGrid,
+    pane_width: usize,
+) -> ListItem<'a> {
+    let mut line_vector: Vec<Span> = vec![];
+
+    match current_pane {
+        FourPaneGrid::TopLeft => {
+            let song = database.get_song(item_id);
+            let song_title = song.title().to_string().to_lowercase();
+            let line_style = if index == selected_index {
+                Style::default()
+                    .fg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            let match_indices: Vec<_> = song_title
+                .match_indices(&search_data.global_search_string.to_lowercase())
+                .collect();
+            let (first_index, first_match) = match_indices[0];
+            let first_slice = &song.title()[0..first_index];
+            let matched_slice = &song.title()[first_index..first_index + first_match.len()];
+            let last_slice = &song.title()[first_index + first_match.len()..];
+            if index == selected_index {
+                debug!("pane_width: {}, first_slice: {}, matched_slice: {}, last_slice: {}", pane_width, first_slice.len(), matched_slice.len(), last_slice.len());
+            }
+            if first_slice.len() + 3 >= pane_width {
+                line_vector
+                    .push(Span::from(ellipse_line(first_slice, pane_width.saturating_sub(3 + 3))).style(line_style));
+                if index == selected_index {
+                debug!("first");
+                }
+            } else if first_slice.len() + matched_slice.len() + 3 >= pane_width{
+                line_vector.push(Span::from(first_slice.to_string()).style(line_style));
+                line_vector.push(
+                    Span::from(ellipse_line(matched_slice, pane_width.saturating_sub(first_slice.len() + 3))).style(
+                        Style::default()
+                            .fg(Black)
+                            .bg(app_colors.primary_accent)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                );
+                if index == selected_index {
+                debug!("second");
+                }
+            } else if first_slice.len() + matched_slice.len() + last_slice.len() + 3 >= pane_width {
+                line_vector.push(Span::from(first_slice.to_string()).style(line_style));
+                line_vector.push(
+                    Span::from(matched_slice.to_string()).style(
+                        Style::default()
+                            .fg(Black)
+                            .bg(app_colors.primary_accent)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                );
+                line_vector.push(
+                    Span::from(ellipse_line(
+                        last_slice,
+                        pane_width.saturating_sub(first_slice.len() + matched_slice.len() + 3),
+                    ))
+                    .style(line_style),
+                );
+                if index == selected_index {
+                    debug!("third");
+                }
+            } else {
+                line_vector.push(Span::from(first_slice.to_string()).style(line_style));
+                line_vector.push(
+                    Span::from(matched_slice.to_string()).style(
+                        Style::default()
+                            .fg(Black)
+                            .bg(app_colors.primary_accent)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                );
+                line_vector.push(Span::from(last_slice.to_string()).style(line_style));
+                if index == selected_index {
+                    debug!("last");
+                }
+            }
+        }
+        FourPaneGrid::TopRight => {}
+        FourPaneGrid::BottomLeft => {}
+        FourPaneGrid::BottomRight => {}
+    }
+
+    ListItem::from(Text::from(Line::from(line_vector.clone())))
 }
 
 pub fn get_text_for_album_info<'a>(album: &'a Album, app_colors: &AppColors) -> Text<'a> {
