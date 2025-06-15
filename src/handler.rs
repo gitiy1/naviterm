@@ -120,16 +120,20 @@ pub async fn handle_key_events(
             app.current_screen = CurrentScreen::Queue;
         }
         ShortcutAction::GoToTrackAlbum => {
-            app.clear_search()?;
-            app.set_album_in_list_to_current_playing()?;
-            app.album_pane = TwoPaneVertical::Right;
-            app.current_screen = CurrentScreen::Albums;
+            if !app.player_data.queue.is_empty() {
+                app.clear_search()?;
+                app.set_album_in_list_to_current_playing()?;
+                app.album_pane = TwoPaneVertical::Right;
+                app.current_screen = CurrentScreen::Albums;
+            }
         }
         ShortcutAction::GoToTrackArtist => {
-            app.clear_search()?;
-            app.set_artist_in_list_to_current_playing()?;
-            app.artist_pane = TwoPaneVertical::Right;
-            app.current_screen = CurrentScreen::Artists;
+            if !app.player_data.queue.is_empty() {
+                app.clear_search()?;
+                app.set_artist_in_list_to_current_playing()?;
+                app.artist_pane = TwoPaneVertical::Right;
+                app.current_screen = CurrentScreen::Artists;
+            }
         }
         ShortcutAction::MoveDownInList => app.move_in_list(AppMovementInList::Next)?,
         ShortcutAction::MovePageDown => app.move_in_list(AppMovementInList::PageDown)?,
