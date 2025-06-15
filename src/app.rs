@@ -911,14 +911,7 @@ impl App {
             MediaType::Playlist => {
                 for song_id in self
                     .database
-                    .playlists()
-                    .get(
-                        self.database
-                            .alphabetical_playlists()
-                            .get(self.list_states.playlist_state.selected().unwrap())
-                            .unwrap(),
-                    )
-                    .unwrap()
+                    .get_playlist(self.item_to_be_added.id.as_str())
                     .song_list()
                 {
                     self.player_data
@@ -981,14 +974,7 @@ impl App {
             MediaType::Playlist => {
                 for song_id in self
                     .database
-                    .playlists()
-                    .get(
-                        self.database
-                            .alphabetical_playlists()
-                            .get(self.list_states.playlist_state.selected().unwrap())
-                            .unwrap(),
-                    )
-                    .unwrap()
+                    .get_playlist(self.item_to_be_added.id.as_str())
                     .song_list()
                 {
                     self.player_data.queue.push(song_id.clone());
@@ -1157,36 +1143,81 @@ impl App {
     pub fn global_search_set_item_to_be_added(&mut self) -> AppResult<()> {
         match self.global_search_pane {
             FourPaneGrid::TopLeft => {
-                let song = self.database.get_song(self
-                    .search_data
-                    .global_search_song_results
-                    .get(self.list_states.global_search_songs.selected().unwrap())
-                    .unwrap());
+                if self.search_data.global_search_song_results.is_empty() {
+                    return Err("Search results for songs is empty".into());
+                }
+                let song = self.database.get_song(
+                    self.search_data
+                        .global_search_song_results
+                        .get(self.list_states.global_search_songs.selected().unwrap())
+                        .unwrap(),
+                );
                 self.item_to_be_added.id = song.id().to_string();
                 self.item_to_be_added.media_type = MediaType::Song;
                 self.item_to_be_added.name = song.title().to_string();
                 self.item_to_be_added.parent_id = song.album_id().to_string();
             }
-            FourPaneGrid::TopRight => {}
-            FourPaneGrid::BottomLeft => {}
-            FourPaneGrid::BottomRight => {}
+            FourPaneGrid::TopRight => {
+                if self.search_data.global_search_albums_results.is_empty() {
+                    return Err("Album results for songs is empty".into());
+                }
+                let album = self.database.get_album(
+                    self.search_data
+                        .global_search_albums_results
+                        .get(self.list_states.global_search_albums.selected().unwrap())
+                        .unwrap(),
+                );
+                self.item_to_be_added.id = album.id().to_string();
+                self.item_to_be_added.media_type = MediaType::Album;
+                self.item_to_be_added.name = album.name().to_string();
+            }
+            FourPaneGrid::BottomLeft => {
+                if self.search_data.global_search_playlists_results.is_empty() {
+                    return Err("Playlist results for songs is empty".into());
+                }
+                let playlist = self.database.get_playlist(
+                    self.search_data
+                        .global_search_playlists_results
+                        .get(self.list_states.global_search_playlists.selected().unwrap())
+                        .unwrap(),
+                );
+                self.item_to_be_added.name = playlist.name().to_string();
+                self.item_to_be_added.id = playlist.id().to_string();
+                self.item_to_be_added.media_type = MediaType::Playlist;
+            }
+            FourPaneGrid::BottomRight => {
+                if self.search_data.global_search_artists_results.is_empty() {
+                    return Err("Artists results for songs is empty".into());
+                }
+                let artist = self.database.get_artist(
+                    self.search_data
+                        .global_search_artists_results
+                        .get(self.list_states.global_search_artists.selected().unwrap())
+                        .unwrap(),
+                );
+                self.item_to_be_added.name = artist.name().to_string();
+                self.item_to_be_added.id = artist.id().to_string();
+                self.item_to_be_added.media_type = MediaType::Artist;
+            }
         }
 
         Ok(())
     }
-    
+
     pub fn go_to_according_pane_for_search_item(&mut self) -> AppResult<()> {
         match self.global_search_pane {
             FourPaneGrid::TopLeft => {
-                let song = self.database.get_song(self
-                    .search_data
-                    .global_search_song_results
-                    .get(self.list_states.global_search_songs.selected().unwrap())
-                    .unwrap());
-                
+                let song = self.database.get_song(
+                    self.search_data
+                        .global_search_song_results
+                        .get(self.list_states.global_search_songs.selected().unwrap())
+                        .unwrap(),
+                );
+
                 let album = self.database.get_album(song.album_id());
 
-                let index = album.songs()
+                let index = album
+                    .songs()
                     .iter()
                     .position(|song_id| song_id == song.id());
                 match index {
@@ -1971,148 +2002,204 @@ impl App {
     }
 
     pub fn cycle_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_tab_mode {
-                AppHomeTabMode::OneColumn => match self.home_pane {
-                    HomePane::Top => {
-                        self.home_pane = HomePane::Bottom;
-                    }
-                    HomePane::Bottom => {
-                        self.home_pane = HomePane::Top;
-                    }
-                    _ => {
-                        panic!("Should not reach")
-                    }
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_tab_mode {
+                    AppHomeTabMode::OneColumn => match self.home_pane {
+                        HomePane::Top => {
+                            self.home_pane = HomePane::Bottom;
+                        }
+                        HomePane::Bottom => {
+                            self.home_pane = HomePane::Top;
+                        }
+                        _ => {
+                            panic!("Should not reach")
+                        }
+                    },
+                    AppHomeTabMode::TwoColumns => match self.home_pane {
+                        HomePane::TopLeft => {
+                            self.home_pane = HomePane::TopRight;
+                        }
+                        HomePane::TopRight => {
+                            self.home_pane = HomePane::BottomLeft;
+                        }
+                        HomePane::BottomLeft => {
+                            self.home_pane = HomePane::BottomRight;
+                        }
+                        HomePane::BottomRight => {
+                            self.home_pane = HomePane::TopLeft;
+                        }
+                        _ => {
+                            panic!("Should not reach")
+                        }
+                    },
                 },
-                AppHomeTabMode::TwoColumns => match self.home_pane {
-                    HomePane::TopLeft => {
-                        self.home_pane = HomePane::TopRight;
+                CurrentScreen::Albums => {
+                    if self.album_pane == TwoPaneVertical::Left {
+                        self.album_pane = TwoPaneVertical::Right
+                    } else {
+                        self.album_pane = TwoPaneVertical::Left
                     }
-                    HomePane::TopRight => {
-                        self.home_pane = HomePane::BottomLeft;
+                }
+                CurrentScreen::Playlists => {
+                    if self.playlist_pane == TwoPaneVertical::Left {
+                        self.playlist_pane = TwoPaneVertical::Right
+                    } else {
+                        self.playlist_pane = TwoPaneVertical::Left
                     }
-                    HomePane::BottomLeft => {
-                        self.home_pane = HomePane::BottomRight;
+                }
+                CurrentScreen::Artists => {
+                    if self.artist_pane == TwoPaneVertical::Left {
+                        self.artist_pane = TwoPaneVertical::Right
+                    } else {
+                        self.artist_pane = TwoPaneVertical::Left
                     }
-                    HomePane::BottomRight => {
-                        self.home_pane = HomePane::TopLeft;
-                    }
-                    _ => {
-                        panic!("Should not reach")
-                    }
+                }
+                _ => {}
+            }
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::TopLeft => self.global_search_pane = FourPaneGrid::TopRight,
+                    FourPaneGrid::TopRight => self.global_search_pane = FourPaneGrid::BottomLeft,
+                    FourPaneGrid::BottomLeft => self.global_search_pane = FourPaneGrid::BottomRight,
+                    FourPaneGrid::BottomRight => self.global_search_pane = FourPaneGrid::TopLeft,
                 },
-            },
-            CurrentScreen::Albums => {
-                if self.album_pane == TwoPaneVertical::Left {
-                    self.album_pane = TwoPaneVertical::Right
-                } else {
-                    self.album_pane = TwoPaneVertical::Left
-                }
+                _ => {}
             }
-            CurrentScreen::Playlists => {
-                if self.playlist_pane == TwoPaneVertical::Left {
-                    self.playlist_pane = TwoPaneVertical::Right
-                } else {
-                    self.playlist_pane = TwoPaneVertical::Left
-                }
-            }
-            CurrentScreen::Artists => {
-                if self.artist_pane == TwoPaneVertical::Left {
-                    self.artist_pane = TwoPaneVertical::Right
-                } else {
-                    self.artist_pane = TwoPaneVertical::Left
-                }
-            }
-            _ => {}
         }
 
         Ok(())
     }
 
     pub fn try_go_up_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::Bottom => {
-                    self.home_pane = HomePane::Top;
-                }
-                HomePane::BottomLeft => {
-                    self.home_pane = HomePane::TopLeft;
-                }
-                HomePane::BottomRight => {
-                    self.home_pane = HomePane::TopRight;
-                }
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::Bottom => {
+                        self.home_pane = HomePane::Top;
+                    }
+                    HomePane::BottomLeft => {
+                        self.home_pane = HomePane::TopLeft;
+                    }
+                    HomePane::BottomRight => {
+                        self.home_pane = HomePane::TopRight;
+                    }
+                    _ => {}
+                },
                 _ => {}
-            },
-            _ => {}
+            }
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::BottomLeft => self.global_search_pane = FourPaneGrid::TopLeft,
+                    FourPaneGrid::BottomRight => self.global_search_pane = FourPaneGrid::TopRight,
+                    _ => {}
+                },
+                _ => {}
+            }
         }
         Ok(())
     }
 
     pub fn try_go_down_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::Top => {
-                    self.home_pane = HomePane::Bottom;
-                }
-                HomePane::TopLeft => {
-                    self.home_pane = HomePane::BottomLeft;
-                }
-                HomePane::TopRight => {
-                    self.home_pane = HomePane::BottomRight;
-                }
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::Top => {
+                        self.home_pane = HomePane::Bottom;
+                    }
+                    HomePane::TopLeft => {
+                        self.home_pane = HomePane::BottomLeft;
+                    }
+                    HomePane::TopRight => {
+                        self.home_pane = HomePane::BottomRight;
+                    }
+                    _ => {}
+                },
                 _ => {}
-            },
-            _ => {}
+            }
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::TopLeft => self.global_search_pane = FourPaneGrid::BottomLeft,
+                    FourPaneGrid::TopRight => self.global_search_pane = FourPaneGrid::BottomRight,
+                    _ => {}
+                },
+                _ => {}
+            }
         }
         Ok(())
     }
 
     pub fn try_go_left_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::TopRight => {
-                    self.home_pane = HomePane::TopLeft;
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::TopRight => {
+                        self.home_pane = HomePane::TopLeft;
+                    }
+                    HomePane::BottomRight => {
+                        self.home_pane = HomePane::BottomLeft;
+                    }
+                    _ => {}
+                },
+                CurrentScreen::Albums => {
+                    self.album_pane = TwoPaneVertical::Left;
                 }
-                HomePane::BottomRight => {
-                    self.home_pane = HomePane::BottomLeft;
+                CurrentScreen::Playlists => {
+                    self.playlist_pane = TwoPaneVertical::Left;
+                }
+                CurrentScreen::Artists => {
+                    self.artist_pane = TwoPaneVertical::Left;
                 }
                 _ => {}
-            },
-            CurrentScreen::Albums => {
-                self.album_pane = TwoPaneVertical::Left;
             }
-            CurrentScreen::Playlists => {
-                self.playlist_pane = TwoPaneVertical::Left;
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::TopRight => self.global_search_pane = FourPaneGrid::TopLeft,
+                    FourPaneGrid::BottomRight => self.global_search_pane = FourPaneGrid::BottomLeft,
+                    _ => {}
+                },
+                _ => {}
             }
-            CurrentScreen::Artists => {
-                self.artist_pane = TwoPaneVertical::Left;
-            }
-            _ => {}
         }
 
         Ok(())
     }
     pub fn try_go_right_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::TopLeft => {
-                    self.home_pane = HomePane::TopRight;
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::TopLeft => {
+                        self.home_pane = HomePane::TopRight;
+                    }
+                    HomePane::BottomLeft => {
+                        self.home_pane = HomePane::BottomRight;
+                    }
+                    _ => {}
+                },
+                CurrentScreen::Albums => {
+                    self.album_pane = TwoPaneVertical::Right;
                 }
-                HomePane::BottomLeft => {
-                    self.home_pane = HomePane::BottomRight;
+                CurrentScreen::Playlists => {
+                    self.playlist_pane = TwoPaneVertical::Right;
+                }
+                CurrentScreen::Artists => {
+                    self.artist_pane = TwoPaneVertical::Right;
                 }
                 _ => {}
-            },
-            CurrentScreen::Albums => {
-                self.album_pane = TwoPaneVertical::Right;
             }
-            CurrentScreen::Playlists => {
-                self.playlist_pane = TwoPaneVertical::Right;
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::BottomLeft => self.global_search_pane = FourPaneGrid::BottomRight,
+                    FourPaneGrid::TopLeft => self.global_search_pane = FourPaneGrid::TopRight,
+                    _ => {}
+                },
+                _ => {}
             }
-            CurrentScreen::Artists => {
-                self.artist_pane = TwoPaneVertical::Right;
-            }
-            _ => {}
         }
         Ok(())
     }
@@ -2412,8 +2499,8 @@ impl App {
                 Popup::GlobalSearch => match self.global_search_pane {
                     FourPaneGrid::TopLeft => &mut self.list_states.global_search_songs,
                     FourPaneGrid::TopRight => &mut self.list_states.global_search_albums,
-                    FourPaneGrid::BottomLeft => &mut self.list_states.global_search_artists,
-                    FourPaneGrid::BottomRight => &mut self.list_states.global_search_playlists,
+                    FourPaneGrid::BottomLeft => &mut self.list_states.global_search_playlists,
+                    FourPaneGrid::BottomRight => &mut self.list_states.global_search_artists,
                 },
                 _ => &mut self.list_states.popup_list_state,
             }
@@ -2894,11 +2981,13 @@ impl App {
     }
 
     pub fn set_album_in_list_to_current_playing(&mut self) -> AppResult<()> {
-        let selected_queue_song_id = self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].to_string();
+        let selected_queue_song_id = self.player_data.queue
+            [self.list_states.queue_list_state.selected().unwrap()]
+        .to_string();
         self.set_album_index_for_song_id(selected_queue_song_id.as_str());
         Ok(())
     }
-    
+
     fn set_album_index_for_song_id(&mut self, song_id: &str) {
         let song = self.database.get_song(song_id);
         let index = self
@@ -3350,7 +3439,34 @@ impl App {
             .map(|(id, _song)| id.clone())
             .collect();
 
+        let album_results: Vec<String> = self
+            .database
+            .albums()
+            .iter()
+            .filter(|(_, album)| album.name().to_lowercase().contains(&search_str))
+            .map(|(id, _)| id.clone())
+            .collect();
+
+        let artist_results: Vec<String> = self
+            .database
+            .artists()
+            .iter()
+            .filter(|(_, artist)| artist.name().to_lowercase().contains(&search_str))
+            .map(|(id, _)| id.clone())
+            .collect();
+
+        let playlist_results: Vec<String> = self
+            .database
+            .playlists()
+            .iter()
+            .filter(|(_, playlist)| playlist.name().to_lowercase().contains(&search_str))
+            .map(|(id, _)| id.clone())
+            .collect();
+
         self.search_data.global_search_song_results = song_results;
+        self.search_data.global_search_albums_results = album_results;
+        self.search_data.global_search_artists_results = artist_results;
+        self.search_data.global_search_playlists_results = playlist_results;
     }
 }
 fn sort_songs_by_play_count(songs: &HashMap<String, Song>) -> Vec<String> {

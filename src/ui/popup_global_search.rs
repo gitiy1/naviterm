@@ -13,7 +13,7 @@ use ratatui::widgets::{
 use ratatui::Frame;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
-    let area = utils::centered_rect(80, 50, frame.size());
+    let area = utils::centered_rect(80, 60, frame.size());
     frame.render_widget(Clear, area);
 
     let block = Block::bordered()
@@ -76,10 +76,10 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         FourPaneGrid::TopRight => {
             block_albums = block_albums.border_style(active_pane_style);
         }
-        FourPaneGrid::BottomLeft => {
+        FourPaneGrid::BottomRight => {
             block_artists = block_artists.border_style(active_pane_style);
         }
-        FourPaneGrid::BottomRight => {
+        FourPaneGrid::BottomLeft => {
             block_playlists = block_playlists.border_style(active_pane_style);
         }
     }
@@ -199,7 +199,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                 &app.app_colors,
                 app.list_states.global_search_songs.selected().unwrap(),
                 &app.search_data,
-                &app.global_search_pane,
+                &FourPaneGrid::TopLeft,
                 (results_rects_top[0].width as usize) - 2,
             ));
         }
@@ -216,7 +216,8 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
             &mut app.list_states.global_search_songs,
         );
     };
-    
+
+    let mut album_results: Vec<ListItem> = vec![];
     if app.search_data.global_search_albums_results.is_empty() {
         frame.render_widget(
             Paragraph::new(
@@ -230,8 +231,40 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                 .block(block_albums),
             results_rects_top[1],
         );
-    }
+    } else {
+        for (index, id) in app
+            .search_data
+            .global_search_albums_results
+            .iter()
+            .take(app.app_config.list_size)
+            .enumerate()
+        {
+            album_results.push(get_text_for_global_search_item(
+                index,
+                id,
+                &app.database,
+                &app.app_colors,
+                app.list_states.global_search_albums.selected().unwrap(),
+                &app.search_data,
+                &FourPaneGrid::TopRight,
+                (results_rects_top[1].width as usize) - 2,
+            ));
+        }
 
+        let album_results_list = List::new(album_results)
+            .block(block_albums)
+            .style(Style::default().fg(Color::default()))
+            .highlight_symbol("-> ")
+            .highlight_spacing(HighlightSpacing::Always);
+
+        frame.render_stateful_widget(
+            album_results_list,
+            results_rects_top[1],
+            &mut app.list_states.global_search_albums,
+        );
+    };
+
+    let mut playlist_results: Vec<ListItem> = vec![];
     if app.search_data.global_search_playlists_results.is_empty() {
         frame.render_widget(
             Paragraph::new(
@@ -245,8 +278,40 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                 .block(block_playlists),
             results_rects_bottom[0],
         );
-    }
+    } else {
+        for (index, id) in app
+            .search_data
+            .global_search_playlists_results
+            .iter()
+            .take(app.app_config.list_size)
+            .enumerate()
+        {
+            playlist_results.push(get_text_for_global_search_item(
+                index,
+                id,
+                &app.database,
+                &app.app_colors,
+                app.list_states.global_search_playlists.selected().unwrap(),
+                &app.search_data,
+                &FourPaneGrid::BottomLeft,
+                (results_rects_bottom[0].width as usize) - 2,
+            ));
+        }
 
+        let playlist_results_list = List::new(playlist_results)
+            .block(block_playlists)
+            .style(Style::default().fg(Color::default()))
+            .highlight_symbol("-> ")
+            .highlight_spacing(HighlightSpacing::Always);
+
+        frame.render_stateful_widget(
+            playlist_results_list,
+            results_rects_bottom[0],
+            &mut app.list_states.global_search_playlists,
+        );
+    };
+
+    let mut artist_results: Vec<ListItem> = vec![];
     if app.search_data.global_search_artists_results.is_empty() {
         frame.render_widget(
             Paragraph::new(
@@ -260,7 +325,38 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
                 .block(block_artists),
             results_rects_bottom[1],
         );
-    }
+    } else {
+        for (index, id) in app
+            .search_data
+            .global_search_artists_results
+            .iter()
+            .take(app.app_config.list_size)
+            .enumerate()
+        {
+            artist_results.push(get_text_for_global_search_item(
+                index,
+                id,
+                &app.database,
+                &app.app_colors,
+                app.list_states.global_search_artists.selected().unwrap(),
+                &app.search_data,
+                &FourPaneGrid::BottomRight,
+                (results_rects_bottom[1].width as usize) - 2,
+            ));
+        }
+
+        let artist_results_list = List::new(artist_results)
+            .block(block_artists)
+            .style(Style::default().fg(Color::default()))
+            .highlight_symbol("-> ")
+            .highlight_spacing(HighlightSpacing::Always);
+
+        frame.render_stateful_widget(
+            artist_results_list,
+            results_rects_bottom[1],
+            &mut app.list_states.global_search_artists
+        );
+    };
 
     Ok(())
 }

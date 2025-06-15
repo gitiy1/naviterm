@@ -7,7 +7,7 @@ use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
 use crate::player::mpv::PlayerStatus;
 use crossterm::event::{KeyCode, KeyEvent};
-use log::debug;
+use log::{debug, warn};
 use std::collections::HashMap;
 use zbus::InterfaceRef;
 use crate::mappings::ShortcutAction;
@@ -473,12 +473,22 @@ pub async fn handle_key_events(
             app.search_data.global_search_song_results.clear();
         }
         ShortcutAction::PopupGlobalSearchPlayItem => {
-            app.global_search_set_item_to_be_added()?;
-            app.add_queue_immediately()?;
+            match app.global_search_set_item_to_be_added() {
+                Ok(_) => app.add_queue_immediately()?,
+                Err(e) => {
+                    warn!("Error setting item to be added: {}", e);
+                }
+            }
+            
         }
         ShortcutAction::PopupGlobalSearchAddItemTo => {
-            app.global_search_set_item_to_be_added()?;
-            app.current_popup = Popup::AddTo;
+            match app.global_search_set_item_to_be_added() {
+                Ok(_) => app.current_popup = Popup::AddTo,
+                Err(e) => {
+                    warn!("Error setting item to be added: {}", e);
+                }
+            }
+            
         }
         ShortcutAction::PopupGlobalSearchGoToAccordingPane => {
             app.go_to_according_pane_for_search_item()?;

@@ -671,90 +671,103 @@ pub fn get_text_for_global_search_item<'a>(
     app_colors: &AppColors,
     selected_index: usize,
     search_data: &SearchData,
-    current_pane: &FourPaneGrid,
+    item_pane: &FourPaneGrid,
     pane_width: usize,
 ) -> ListItem<'a> {
     let mut line_vector: Vec<Span> = vec![];
+    let line_style = if index == selected_index {
+        Style::default()
+            .fg(app_colors.primary_accent)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+    };
 
-    match current_pane {
+    let string_to_search = match item_pane{
         FourPaneGrid::TopLeft => {
             let song = database.get_song(item_id);
-            let song_title = song.title().to_string().to_lowercase();
-            let line_style = if index == selected_index {
-                Style::default()
-                    .fg(app_colors.primary_accent)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default()
-            };
-            let match_indices: Vec<_> = song_title
-                .match_indices(&search_data.global_search_string.to_lowercase())
-                .collect();
-            let (first_index, first_match) = match_indices[0];
-            let first_slice = &song.title()[0..first_index];
-            let matched_slice = &song.title()[first_index..first_index + first_match.len()];
-            let last_slice = &song.title()[first_index + first_match.len()..];
-            if index == selected_index {
-                debug!("pane_width: {}, first_slice: {}, matched_slice: {}, last_slice: {}", pane_width, first_slice.len(), matched_slice.len(), last_slice.len());
-            }
-            if first_slice.len() + 3 >= pane_width {
-                line_vector
-                    .push(Span::from(ellipse_line(first_slice, pane_width.saturating_sub(3 + 3))).style(line_style));
-                if index == selected_index {
-                debug!("first");
-                }
-            } else if first_slice.len() + matched_slice.len() + 3 >= pane_width{
-                line_vector.push(Span::from(first_slice.to_string()).style(line_style));
-                line_vector.push(
-                    Span::from(ellipse_line(matched_slice, pane_width.saturating_sub(first_slice.len() + 3))).style(
-                        Style::default()
-                            .fg(Black)
-                            .bg(app_colors.primary_accent)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                );
-                if index == selected_index {
-                debug!("second");
-                }
-            } else if first_slice.len() + matched_slice.len() + last_slice.len() + 3 >= pane_width {
-                line_vector.push(Span::from(first_slice.to_string()).style(line_style));
-                line_vector.push(
-                    Span::from(matched_slice.to_string()).style(
-                        Style::default()
-                            .fg(Black)
-                            .bg(app_colors.primary_accent)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                );
-                line_vector.push(
-                    Span::from(ellipse_line(
-                        last_slice,
-                        pane_width.saturating_sub(first_slice.len() + matched_slice.len() + 3),
-                    ))
-                    .style(line_style),
-                );
-                if index == selected_index {
-                    debug!("third");
-                }
-            } else {
-                line_vector.push(Span::from(first_slice.to_string()).style(line_style));
-                line_vector.push(
-                    Span::from(matched_slice.to_string()).style(
-                        Style::default()
-                            .fg(Black)
-                            .bg(app_colors.primary_accent)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                );
-                line_vector.push(Span::from(last_slice.to_string()).style(line_style));
-                if index == selected_index {
-                    debug!("last");
-                }
-            }
+            song.title().to_string()
         }
-        FourPaneGrid::TopRight => {}
-        FourPaneGrid::BottomLeft => {}
-        FourPaneGrid::BottomRight => {}
+        FourPaneGrid::TopRight => {
+            let album = database.get_album(item_id);
+            album.name().to_string()
+        }
+        FourPaneGrid::BottomLeft => {
+            let playlist = database.get_playlist(item_id);
+            playlist.name().to_string()
+        }
+        FourPaneGrid::BottomRight => {
+            let artist = database.get_artist(item_id);
+            artist.name().to_string()
+        }
+    };
+    let string_to_search_lowercase = string_to_search.to_lowercase();
+    
+    let match_indices: Vec<_> = string_to_search_lowercase
+        .match_indices(&search_data.global_search_string.to_lowercase())
+        .collect();
+    let (first_index, first_match) = match_indices[0];
+    let first_slice = &string_to_search[0..first_index];
+    let matched_slice = &string_to_search[first_index..first_index + first_match.len()];
+    let last_slice = &string_to_search[first_index + first_match.len()..];
+    
+    if index == selected_index {
+        debug!("pane_width: {}, first_slice: {}, matched_slice: {}, last_slice: {}", pane_width, first_slice.len(), matched_slice.len(), last_slice.len());
+    }
+    
+    if first_slice.len() + 3 >= pane_width {
+        line_vector
+            .push(Span::from(ellipse_line(first_slice, pane_width.saturating_sub(3 + 3))).style(line_style));
+        if index == selected_index {
+            debug!("first");
+        }
+    } else if first_slice.len() + matched_slice.len() + 3 >= pane_width{
+        line_vector.push(Span::from(first_slice.to_string()).style(line_style));
+        line_vector.push(
+            Span::from(ellipse_line(matched_slice, pane_width.saturating_sub(first_slice.len() + 3))).style(
+                Style::default()
+                    .fg(Black)
+                    .bg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+        if index == selected_index {
+            debug!("second");
+        }
+    } else if first_slice.len() + matched_slice.len() + last_slice.len() + 3 >= pane_width {
+        line_vector.push(Span::from(first_slice.to_string()).style(line_style));
+        line_vector.push(
+            Span::from(matched_slice.to_string()).style(
+                Style::default()
+                    .fg(Black)
+                    .bg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+        line_vector.push(
+            Span::from(ellipse_line(
+                last_slice,
+                pane_width.saturating_sub(first_slice.len() + matched_slice.len() + 3),
+            ))
+                .style(line_style),
+        );
+        if index == selected_index {
+            debug!("third");
+        }
+    } else {
+        line_vector.push(Span::from(first_slice.to_string()).style(line_style));
+        line_vector.push(
+            Span::from(matched_slice.to_string()).style(
+                Style::default()
+                    .fg(Black)
+                    .bg(app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+        line_vector.push(Span::from(last_slice.to_string()).style(line_style));
+        if index == selected_index {
+            debug!("last");
+        }
     }
 
     ListItem::from(Text::from(Line::from(line_vector.clone())))
