@@ -371,7 +371,7 @@ pub async fn handle_key_events(
             app.app_flags.range_year_filter = false;
             app.current_popup = Popup::None;
         }
-        ShortcutAction::QueueCenterCursor => app.center_queue_cursor()?,
+        ShortcutAction::QueueCenterCursor => if !app.player_data.queue.is_empty() { app.center_queue_cursor()? }
         ShortcutAction::QueueClear => {
             handle_stop_playback(app, iface_ref).await?;
             app.clear_queue()?;
