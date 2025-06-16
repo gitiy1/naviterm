@@ -1207,6 +1207,9 @@ impl App {
     pub fn go_to_according_pane_for_search_item(&mut self) -> AppResult<()> {
         match self.global_search_pane {
             FourPaneGrid::TopLeft => {
+                if self.search_data.global_search_song_results.is_empty() {
+                    return Err("Search results for songs is empty".into());
+                }
                 let song = self.database.get_song(
                     self.search_data
                         .global_search_song_results
@@ -1225,16 +1228,83 @@ impl App {
                         self.list_states.album_selected_state.select(Some(index));
                     }
                     None => {
-                        warn!("Could not find the album of the playing song in the filtered album list!")
+                        warn!("Could not find the index for the song in the global search!")
                     }
                 }
-                self.set_album_index_for_song_id(song.id().to_string().as_str());
+                self.set_album_index_for_album_id(album.id().to_string().as_str());
                 self.album_pane = TwoPaneVertical::Right;
                 self.current_screen = CurrentScreen::Albums;
             }
-            FourPaneGrid::TopRight => {}
-            FourPaneGrid::BottomLeft => {}
-            FourPaneGrid::BottomRight => {}
+            FourPaneGrid::TopRight => {
+                if self.search_data.global_search_albums_results.is_empty() {
+                    return Err("Album results for songs is empty".into());
+                }
+                let album_id = self
+                    .database
+                    .get_album(
+                        self.search_data
+                            .global_search_albums_results
+                            .get(self.list_states.global_search_albums.selected().unwrap())
+                            .unwrap(),
+                    )
+                    .id()
+                    .to_string();
+                self.set_album_index_for_album_id(album_id.as_str());
+                self.album_pane = TwoPaneVertical::Left;
+                self.current_screen = CurrentScreen::Albums;
+            }
+            FourPaneGrid::BottomLeft => {
+                if self.search_data.global_search_playlists_results.is_empty() {
+                    return Err("Playlist results for songs is empty".into());
+                }
+                let playlist = self.database.get_playlist(
+                    self.search_data
+                        .global_search_playlists_results
+                        .get(self.list_states.global_search_playlists.selected().unwrap())
+                        .unwrap(),
+                );
+                let index = self
+                    .database
+                    .alphabetical_playlists()
+                    .iter()
+                    .position(|playlist_id| playlist_id == playlist.id());
+                match index {
+                    Some(index) => {
+                        self.list_states.playlist_state.select(Some(index));
+                    }
+                    None => {
+                        warn!("Could not find the index for the playlist in the global search!")
+                    }
+                }
+                self.playlist_pane = TwoPaneVertical::Left;
+                self.current_screen = CurrentScreen::Playlists;
+            }
+            FourPaneGrid::BottomRight => {
+                if self.search_data.global_search_artists_results.is_empty() {
+                    return Err("Artists results for songs is empty".into());
+                }
+                let artist = self.database.get_artist(
+                    self.search_data
+                        .global_search_artists_results
+                        .get(self.list_states.global_search_artists.selected().unwrap())
+                        .unwrap(),
+                );
+                let index = self
+                    .database
+                    .alphabetical_artists()
+                    .iter()
+                    .position(|artist_id| artist_id == artist.id());
+                match index {
+                    Some(index) => {
+                        self.list_states.artist_state.select(Some(index));
+                    }
+                    None => {
+                        warn!("Could not find the index for the artist in the global search!")
+                    }
+                }
+                self.playlist_pane = TwoPaneVertical::Left;
+                self.current_screen = CurrentScreen::Artists;
+            }
         }
         Ok(())
     }
@@ -2981,26 +3051,29 @@ impl App {
     }
 
     pub fn set_album_in_list_to_current_playing(&mut self) -> AppResult<()> {
-        let selected_queue_song_id = self.player_data.queue
-            [self.list_states.queue_list_state.selected().unwrap()]
-        .to_string();
-        self.set_album_index_for_song_id(selected_queue_song_id.as_str());
+        let selected_queue_song_id =
+            self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str();
+        let album_id = self
+            .database
+            .get_song(selected_queue_song_id)
+            .album_id()
+            .to_string();
+        self.set_album_index_for_album_id(album_id.as_str());
         Ok(())
     }
 
-    fn set_album_index_for_song_id(&mut self, song_id: &str) {
-        let song = self.database.get_song(song_id);
+    fn set_album_index_for_album_id(&mut self, album_id: &str) {
         let index = self
             .database
             .filtered_albums()
             .iter()
-            .position(|album| album == song.album_id());
+            .position(|album| album == album_id);
         match index {
             Some(index) => {
                 self.list_states.album_state.select(Some(index));
             }
             None => {
-                warn!("Could not find the album of the playing song in the filtered album list!")
+                warn!("Could not find the index for the album id: {}", album_id);
             }
         }
     }

@@ -495,8 +495,12 @@ pub async fn handle_key_events(
             
         }
         ShortcutAction::PopupGlobalSearchGoToAccordingPane => {
-            app.go_to_according_pane_for_search_item()?;
-            app.current_popup = Popup::None;
+            match app.go_to_according_pane_for_search_item() {
+                Ok(_) => app.current_popup = Popup::None,
+                Err(e) => {
+                    warn!("Error setting pane for item: {}", e);
+                }
+            }
         }
     }
     
