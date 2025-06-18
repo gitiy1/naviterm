@@ -138,7 +138,7 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         )
     } else {
         Line::from(format!(
-            "{} play item ,{} add selected item to, {} go to item in according pane",
+            "{} play item, {} add selected item to, {} go to item in according pane",
             app.shortcuts
                 .get_key_combo_for_operation(ShortcutAction::PopupGlobalSearchPlayItem, None),
             app.shortcuts

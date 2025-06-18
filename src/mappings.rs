@@ -434,6 +434,7 @@ impl Mappings {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddPlaylistTo, Some("left") );
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddArtistTo, None );
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddArtistItemTo, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupGlobalSearchAddItemTo, None );
             }
         }
 
@@ -531,6 +532,7 @@ impl Mappings {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyPlaylist, None );
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyArtist, None );
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyArtistItem, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupGlobalSearchPlayItem, None );
             }
         }
 
@@ -681,6 +683,18 @@ impl Mappings {
         if let Ok(value) = config.get::<String>("quit_application") {
             if self.validate_shortcut(value.as_str()) {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::QuitApp, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_global_search") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupGlobalSearch, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("global_search_go_to_pane") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupGlobalSearchGoToAccordingPane, None );
             }
         }
 
