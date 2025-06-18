@@ -813,14 +813,7 @@ impl App {
                 self.player_data.queue_order.clear();
                 for song_id in self
                     .database
-                    .playlists()
-                    .get(
-                        self.database
-                            .alphabetical_playlists()
-                            .get(self.list_states.playlist_state.selected().unwrap())
-                            .unwrap(),
-                    )
-                    .unwrap()
+                    .get_playlist(self.item_to_be_added.id.as_str())
                     .song_list()
                 {
                     self.player_data.queue.push(song_id.clone());
@@ -840,16 +833,11 @@ impl App {
             MediaType::Artist => {
                 self.player_data.queue.clear();
                 self.player_data.queue_order.clear();
-                let albums = self
+                for album_id in self
                     .database
-                    .get_artist(
-                        self.database
-                            .alphabetical_artists()
-                            .get(self.list_states.artist_state.selected().unwrap())
-                            .unwrap(),
-                    )
-                    .albums();
-                for album_id in albums {
+                    .get_artist(self.item_to_be_added.id.as_str())
+                    .albums()
+                {
                     let album = self.database.get_album(album_id.as_str());
                     for song in album.songs() {
                         self.player_data.queue.push(song.clone());
