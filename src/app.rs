@@ -1,17 +1,21 @@
 use crate::constants;
-use crate::event::DbusEvent::{Clear, Playing, Metadata, Paused, Stop};
+use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
+use crate::event::DbusEvent::{Clear, Metadata, Paused, Playing, Stop};
 use crate::event::Event;
 use crate::event::Event::{Dbus, Draw};
+use crate::mappings::Mappings;
 use crate::model::artist::Artist;
 use crate::model::playlist::Playlist;
 use crate::model::song::Song;
 use crate::music_database::MusicDatabase;
 use crate::player::ipc::IpcEvent;
 use crate::player::mpv::{Mpv, PlayerStatus};
+use crate::player_data::{AppLoopStatus, PlayerData};
 use crate::server::async_operation::Operation;
 use crate::server::parser::Parser;
 use crate::server::server::Server;
-use config::{Config};
+use chrono::NaiveDateTime;
+use config::Config;
 use log::{debug, error, info, warn};
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
@@ -23,11 +27,7 @@ use std::error;
 use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
-use chrono::NaiveDateTime;
 use tokio::sync::mpsc::UnboundedSender;
-use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
-use crate::mappings::{Mappings};
-use crate::player_data::{AppLoopStatus, PlayerData};
 
 /// Enum with applications screens
 #[derive(Debug, PartialEq)]
@@ -162,6 +162,33 @@ impl TwoPaneVertical {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum FourPaneGrid {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+// Implement a method to cast the enum to a u8
+impl FourPaneGrid {
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            FourPaneGrid::TopLeft => 0,
+            FourPaneGrid::TopRight => 1,
+            FourPaneGrid::BottomLeft => 2,
+            FourPaneGrid::BottomRight => 3,
+        }
+    }
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FourPaneGrid::TopLeft => "top_left",
+            FourPaneGrid::TopRight => "top_right",
+            FourPaneGrid::BottomLeft => "bottom_left",
+            FourPaneGrid::BottomRight => "bottom_right",
+        }
+    }
+}
+
 #[derive(Debug, Default, PartialEq)]
 pub enum MediaType {
     #[default]
@@ -185,6 +212,7 @@ pub enum Popup {
     ConfirmPlaylistDeletion,
     None,
     ConnectionError,
+    GlobalSearch,
 }
 
 impl Popup {
@@ -201,6 +229,7 @@ impl Popup {
             Popup::ConfirmPlaylistDeletion => "confirm_playlist_deletion",
             Popup::ConnectionError => "connection_error",
             Popup::None => "none",
+            Popup::GlobalSearch => "global_search",
         }
     }
 }
@@ -243,6 +272,7 @@ pub struct App {
     pub app_config: AppConfig,
     pub app_focused: bool,
     pub shortcuts: Mappings,
+    pub global_search_pane: FourPaneGrid,
 }
 
 #[derive(Default, Debug)]
@@ -307,17 +337,27 @@ impl AppColors {
 }
 
 pub struct SearchData {
+    pub global_search_string: String,
     pub search_string: String,
     pub index_in_search: usize,
     pub search_results_indexes: Vec<usize>,
+    pub global_search_song_results: Vec<String>,
+    pub global_search_albums_results: Vec<String>,
+    pub global_search_playlists_results: Vec<String>,
+    pub global_search_artists_results: Vec<String>,
 }
 
 impl Default for SearchData {
     fn default() -> Self {
         SearchData {
+            global_search_string: String::from(""),
             search_string: String::from(""),
             index_in_search: usize::MAX,
             search_results_indexes: Vec::new(),
+            global_search_song_results: Vec::new(),
+            global_search_albums_results: Vec::new(),
+            global_search_playlists_results: Vec::new(),
+            global_search_artists_results: Vec::new(),
         }
     }
 }
@@ -335,6 +375,7 @@ pub struct AppFlags {
     pub is_current_song_scrobbled: bool,
     pub is_introducing_new_playlist_name: bool,
     pub is_introducing_to_year: bool,
+    pub is_introducing_global_search: bool,
     pub range_year_filter: bool,
     pub seeking: bool,
     pub was_paused: bool,
@@ -358,6 +399,10 @@ pub struct AppListStates {
     pub playlist_selected_state: ListState,
     pub artist_state: ListState,
     pub artist_selected_state: ListState,
+    pub global_search_songs: ListState,
+    pub global_search_albums: ListState,
+    pub global_search_artists: ListState,
+    pub global_search_playlists: ListState,
 }
 
 impl AppListStates {
@@ -379,6 +424,10 @@ impl AppListStates {
             playlist_selected_state: AppListStates::initialize(),
             artist_state: AppListStates::initialize(),
             artist_selected_state: AppListStates::initialize(),
+            global_search_songs: AppListStates::initialize(),
+            global_search_albums: AppListStates::initialize(),
+            global_search_artists: AppListStates::initialize(),
+            global_search_playlists: AppListStates::initialize(),
         }
     }
 
@@ -423,7 +472,8 @@ impl Default for App {
             app_colors: AppColors::default(),
             app_config: AppConfig::default(),
             app_focused: true,
-            shortcuts: Mappings::default()
+            shortcuts: Mappings::default(),
+            global_search_pane: FourPaneGrid::TopLeft,
         }
     }
 }
@@ -448,11 +498,21 @@ impl App {
             self.ticks_during_playing_state += 1;
             // If we have only 10 seconds left for the current track
             if self.get_playback_time() + 10
-                > self.player_data.now_playing.duration.as_str().parse::<usize>().unwrap()
+                > self
+                    .player_data
+                    .now_playing
+                    .duration
+                    .as_str()
+                    .parse::<usize>()
+                    .unwrap()
             {
                 // If there is a next element in queue, add it to mpv queue if it has not been yet added
                 if !self.player_data.next_is_in_player_queue && self.queue_has_next() {
-                    let next_index = self.player_data.queue_order.get(self.player_data.index_in_queue + 1).unwrap();
+                    let next_index = self
+                        .player_data
+                        .queue_order
+                        .get(self.player_data.index_in_queue + 1)
+                        .unwrap();
                     self.player.add_next_song_to_queue(
                         self.server
                             .get_song_url(self.player_data.queue.get(*next_index).unwrap().clone())
@@ -484,7 +544,8 @@ impl App {
                     }
                     recent_albums.insert(0, now_playing_album_id.clone());
                     // Increase playing count in server and locally
-                    self.server.scrobble_song_async(self.player_data.now_playing.id.clone());
+                    self.server
+                        .scrobble_song_async(self.player_data.now_playing.id.clone());
                     self.increase_play_count_for_current_song_in_database(
                         self.player_data.now_playing.id.clone(),
                     );
@@ -492,7 +553,7 @@ impl App {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -502,7 +563,7 @@ impl App {
         self.player_data.player_volume = self.player.get_volume();
         self.app_flags.running = false;
     }
-    
+
     pub fn restore_volume(&mut self) {
         self.player.set_volume(self.player_data.player_volume);
     }
@@ -537,7 +598,7 @@ impl App {
                 if auth_mode == "token" || auth_mode == "plain" {
                     self.server.server_auth = auth_mode
                 }
-            },
+            }
             Err(e) => {
                 warn!("Could not parse auth mode {}", e);
                 info!("Using default server auth mode: token.");
@@ -547,7 +608,7 @@ impl App {
         match config.get::<u64>("wait_for_ipc_ms") {
             Ok(wait_time) => {
                 self.app_config.wait_for_ipc_ms = wait_time;
-            },
+            }
             Err(e) => {
                 warn!("Could not parse wait time for ipc, using default. {}", e);
                 self.app_config.wait_for_ipc_ms = 200;
@@ -566,7 +627,7 @@ impl App {
             }
         }
 
-        match config.get::<usize>("home_list_size"){
+        match config.get::<usize>("home_list_size") {
             Ok(value) => self.app_config.list_size = value,
             Err(e) => {
                 self.app_config.list_size = 20;
@@ -585,7 +646,10 @@ impl App {
         match config.get::<bool>("draw_while_unfocused") {
             Ok(value) => self.app_config.draw_while_unfocused = value,
             Err(e) => {
-                warn!("Could not load draw while unfocused, while draw always. {}", e);
+                warn!(
+                    "Could not load draw while unfocused, while draw always. {}",
+                    e
+                );
                 self.app_config.draw_while_unfocused = true;
             }
         }
@@ -593,7 +657,10 @@ impl App {
         match config.get::<bool>("save_player_status") {
             Ok(value) => self.app_config.save_player_status = value,
             Err(e) => {
-                info!("Could not option to save player status, will not save by default. {}", e);
+                info!(
+                    "Could not option to save player status, will not save by default. {}",
+                    e
+                );
                 self.app_config.save_player_status = false;
             }
         }
@@ -612,11 +679,17 @@ impl App {
         self.server.test_connection().await?;
         Ok(())
     }
-    
-    pub fn check_server_connection_status (&self) -> bool {
+
+    pub fn check_server_connection_status(&self) -> bool {
         if self.server.connection_status == "failed" {
-            println!("Server connection failed. Error code: {}, error message: {}", self.server.connection_code, self.server.connection_message);
-            error!("Server connection failed. Error code: {}, error message: {}", self.server.connection_code, self.server.connection_message);
+            println!(
+                "Server connection failed. Error code: {}, error message: {}",
+                self.server.connection_code, self.server.connection_message
+            );
+            error!(
+                "Server connection failed. Error code: {}, error message: {}",
+                self.server.connection_code, self.server.connection_message
+            );
             false
         } else {
             true
@@ -708,8 +781,12 @@ impl App {
             MediaType::Song => {
                 self.player_data.queue.clear();
                 self.player_data.queue_order.clear();
-                self.player_data.queue.push(self.item_to_be_added.id.clone());
-                self.player_data.queue_order.push(self.player_data.queue.len() - 1);
+                self.player_data
+                    .queue
+                    .push(self.item_to_be_added.id.clone());
+                self.player_data
+                    .queue_order
+                    .push(self.player_data.queue.len() - 1);
                 self.change_current_playing_to(self.item_to_be_added.id.clone().as_str());
             }
             MediaType::Album => {
@@ -725,21 +802,18 @@ impl App {
                     let random_index = rng.gen_range(0..self.player_data.queue.len());
                     self.shuffle_queue_order_starting_at_index(random_index);
                 }
-                self.change_current_playing_to(self.player_data.queue[self.player_data.queue_order[0]].clone().as_str());
+                self.change_current_playing_to(
+                    self.player_data.queue[self.player_data.queue_order[0]]
+                        .clone()
+                        .as_str(),
+                );
             }
             MediaType::Playlist => {
                 self.player_data.queue.clear();
                 self.player_data.queue_order.clear();
                 for song_id in self
                     .database
-                    .playlists()
-                    .get(
-                        self.database
-                            .alphabetical_playlists()
-                            .get(self.list_states.playlist_state.selected().unwrap())
-                            .unwrap(),
-                    )
-                    .unwrap()
+                    .get_playlist(self.item_to_be_added.id.as_str())
                     .song_list()
                 {
                     self.player_data.queue.push(song_id.clone());
@@ -750,21 +824,20 @@ impl App {
                     let random_index = rng.gen_range(0..self.player_data.queue.len());
                     self.shuffle_queue_order_starting_at_index(random_index);
                 }
-                self.change_current_playing_to(self.player_data.queue[self.player_data.queue_order[0]].clone().as_str());
+                self.change_current_playing_to(
+                    self.player_data.queue[self.player_data.queue_order[0]]
+                        .clone()
+                        .as_str(),
+                );
             }
             MediaType::Artist => {
                 self.player_data.queue.clear();
                 self.player_data.queue_order.clear();
-                let albums = self
+                for album_id in self
                     .database
-                    .get_artist(
-                        self.database
-                            .alphabetical_artists()
-                            .get(self.list_states.artist_state.selected().unwrap())
-                            .unwrap(),
-                    )
-                    .albums();
-                for album_id in albums {
+                    .get_artist(self.item_to_be_added.id.as_str())
+                    .albums()
+                {
                     let album = self.database.get_album(album_id.as_str());
                     for song in album.songs() {
                         self.player_data.queue.push(song.clone());
@@ -776,7 +849,11 @@ impl App {
                     let random_index = rng.gen_range(0..self.player_data.queue.len());
                     self.shuffle_queue_order_starting_at_index(random_index);
                 }
-                self.change_current_playing_to(self.player_data.queue[self.player_data.queue_order[0]].clone().as_str());
+                self.change_current_playing_to(
+                    self.player_data.queue[self.player_data.queue_order[0]]
+                        .clone()
+                        .as_str(),
+                );
             }
         }
         self.update_queue_data();
@@ -791,7 +868,8 @@ impl App {
             was_empty = true;
             0
         } else {
-            self.player_data.queue
+            self.player_data
+                .queue
                 .iter()
                 .position(|x| x == &self.player_data.now_playing.id)
                 .unwrap()
@@ -799,33 +877,37 @@ impl App {
         };
         match self.item_to_be_added.media_type {
             MediaType::Song => {
-                self.player_data.queue
+                self.player_data
+                    .queue
                     .insert(index_to_insert_to, self.item_to_be_added.id.clone());
-                self.player_data.queue_order.push(self.player_data.queue.len() - 1);
+                self.player_data
+                    .queue_order
+                    .push(self.player_data.queue.len() - 1);
             }
             MediaType::Album => {
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
-                    self.player_data.queue.insert(index_to_insert_to, song.clone());
-                    self.player_data.queue_order.push(self.player_data.queue.len() - 1);
+                    self.player_data
+                        .queue
+                        .insert(index_to_insert_to, song.clone());
+                    self.player_data
+                        .queue_order
+                        .push(self.player_data.queue.len() - 1);
                     index_to_insert_to += 1;
                 }
             }
             MediaType::Playlist => {
                 for song_id in self
                     .database
-                    .playlists()
-                    .get(
-                        self.database
-                            .alphabetical_playlists()
-                            .get(self.list_states.playlist_state.selected().unwrap())
-                            .unwrap(),
-                    )
-                    .unwrap()
+                    .get_playlist(self.item_to_be_added.id.as_str())
                     .song_list()
                 {
-                    self.player_data.queue.insert(index_to_insert_to, song_id.clone());
-                    self.player_data.queue_order.push(self.player_data.queue.len() - 1);
+                    self.player_data
+                        .queue
+                        .insert(index_to_insert_to, song_id.clone());
+                    self.player_data
+                        .queue_order
+                        .push(self.player_data.queue.len() - 1);
                     index_to_insert_to += 1;
                 }
             }
@@ -837,15 +919,21 @@ impl App {
                 {
                     let album = self.database.get_album(album_id.as_str());
                     for song in album.songs() {
-                        self.player_data.queue.insert(index_to_insert_to, song.clone());
-                        self.player_data.queue_order.push(self.player_data.queue.len() - 1);
+                        self.player_data
+                            .queue
+                            .insert(index_to_insert_to, song.clone());
+                        self.player_data
+                            .queue_order
+                            .push(self.player_data.queue.len() - 1);
                         index_to_insert_to += 1;
                     }
                 }
             }
         }
         if was_empty {
-            self.change_current_playing_to(self.player_data.queue.first().unwrap().clone().as_str());
+            self.change_current_playing_to(
+                self.player_data.queue.first().unwrap().clone().as_str(),
+            );
         }
         self.update_queue_data();
         Ok(())
@@ -855,31 +943,32 @@ impl App {
         let was_empty = self.player_data.queue.is_empty();
         match self.item_to_be_added.media_type {
             MediaType::Song => {
-                self.player_data.queue.push(self.item_to_be_added.id.clone());
-                self.player_data.queue_order.push(self.player_data.queue.len() - 1);
+                self.player_data
+                    .queue
+                    .push(self.item_to_be_added.id.clone());
+                self.player_data
+                    .queue_order
+                    .push(self.player_data.queue.len() - 1);
             }
             MediaType::Album => {
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
                 for song in album.songs() {
                     self.player_data.queue.push(song.clone());
-                    self.player_data.queue_order.push(self.player_data.queue.len() - 1);
+                    self.player_data
+                        .queue_order
+                        .push(self.player_data.queue.len() - 1);
                 }
             }
             MediaType::Playlist => {
                 for song_id in self
                     .database
-                    .playlists()
-                    .get(
-                        self.database
-                            .alphabetical_playlists()
-                            .get(self.list_states.playlist_state.selected().unwrap())
-                            .unwrap(),
-                    )
-                    .unwrap()
+                    .get_playlist(self.item_to_be_added.id.as_str())
                     .song_list()
                 {
                     self.player_data.queue.push(song_id.clone());
-                    self.player_data.queue_order.push(self.player_data.queue.len() - 1);
+                    self.player_data
+                        .queue_order
+                        .push(self.player_data.queue.len() - 1);
                 }
             }
             MediaType::Artist => {
@@ -891,13 +980,17 @@ impl App {
                     let album = self.database.get_album(album_id.as_str());
                     for song in album.songs() {
                         self.player_data.queue.push(song.clone());
-                        self.player_data.queue_order.push(self.player_data.queue.len() - 1);
+                        self.player_data
+                            .queue_order
+                            .push(self.player_data.queue.len() - 1);
                     }
                 }
             }
         }
         if was_empty {
-            self.change_current_playing_to(self.player_data.queue.first().unwrap().clone().as_str());
+            self.change_current_playing_to(
+                self.player_data.queue.first().unwrap().clone().as_str(),
+            );
         }
         self.update_queue_data();
         Ok(())
@@ -1035,6 +1128,175 @@ impl App {
         self.player_data.duration_left = duration_left.to_string();
     }
 
+    pub fn global_search_set_item_to_be_added(&mut self) -> AppResult<()> {
+        match self.global_search_pane {
+            FourPaneGrid::TopLeft => {
+                if self.search_data.global_search_song_results.is_empty() {
+                    return Err("Search results for songs is empty".into());
+                }
+                let song = self.database.get_song(
+                    self.search_data
+                        .global_search_song_results
+                        .get(self.list_states.global_search_songs.selected().unwrap())
+                        .unwrap(),
+                );
+                self.item_to_be_added.id = song.id().to_string();
+                self.item_to_be_added.media_type = MediaType::Song;
+                self.item_to_be_added.name = song.title().to_string();
+                self.item_to_be_added.parent_id = song.album_id().to_string();
+            }
+            FourPaneGrid::TopRight => {
+                if self.search_data.global_search_albums_results.is_empty() {
+                    return Err("Album results for songs is empty".into());
+                }
+                let album = self.database.get_album(
+                    self.search_data
+                        .global_search_albums_results
+                        .get(self.list_states.global_search_albums.selected().unwrap())
+                        .unwrap(),
+                );
+                self.item_to_be_added.id = album.id().to_string();
+                self.item_to_be_added.media_type = MediaType::Album;
+                self.item_to_be_added.name = album.name().to_string();
+            }
+            FourPaneGrid::BottomLeft => {
+                if self.search_data.global_search_playlists_results.is_empty() {
+                    return Err("Playlist results for songs is empty".into());
+                }
+                let playlist = self.database.get_playlist(
+                    self.search_data
+                        .global_search_playlists_results
+                        .get(self.list_states.global_search_playlists.selected().unwrap())
+                        .unwrap(),
+                );
+                self.item_to_be_added.name = playlist.name().to_string();
+                self.item_to_be_added.id = playlist.id().to_string();
+                self.item_to_be_added.media_type = MediaType::Playlist;
+            }
+            FourPaneGrid::BottomRight => {
+                if self.search_data.global_search_artists_results.is_empty() {
+                    return Err("Artists results for songs is empty".into());
+                }
+                let artist = self.database.get_artist(
+                    self.search_data
+                        .global_search_artists_results
+                        .get(self.list_states.global_search_artists.selected().unwrap())
+                        .unwrap(),
+                );
+                self.item_to_be_added.name = artist.name().to_string();
+                self.item_to_be_added.id = artist.id().to_string();
+                self.item_to_be_added.media_type = MediaType::Artist;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn go_to_according_pane_for_search_item(&mut self) -> AppResult<()> {
+        match self.global_search_pane {
+            FourPaneGrid::TopLeft => {
+                if self.search_data.global_search_song_results.is_empty() {
+                    return Err("Search results for songs is empty".into());
+                }
+                let song = self.database.get_song(
+                    self.search_data
+                        .global_search_song_results
+                        .get(self.list_states.global_search_songs.selected().unwrap())
+                        .unwrap(),
+                );
+
+                let album = self.database.get_album(song.album_id());
+
+                let index = album
+                    .songs()
+                    .iter()
+                    .position(|song_id| song_id == song.id());
+                match index {
+                    Some(index) => {
+                        self.list_states.album_selected_state.select(Some(index));
+                    }
+                    None => {
+                        warn!("Could not find the index for the song in the global search!")
+                    }
+                }
+                self.set_album_index_for_album_id(album.id().to_string().as_str());
+                self.album_pane = TwoPaneVertical::Right;
+                self.current_screen = CurrentScreen::Albums;
+            }
+            FourPaneGrid::TopRight => {
+                if self.search_data.global_search_albums_results.is_empty() {
+                    return Err("Album results for songs is empty".into());
+                }
+                let album_id = self
+                    .database
+                    .get_album(
+                        self.search_data
+                            .global_search_albums_results
+                            .get(self.list_states.global_search_albums.selected().unwrap())
+                            .unwrap(),
+                    )
+                    .id()
+                    .to_string();
+                self.set_album_index_for_album_id(album_id.as_str());
+                self.album_pane = TwoPaneVertical::Left;
+                self.current_screen = CurrentScreen::Albums;
+            }
+            FourPaneGrid::BottomLeft => {
+                if self.search_data.global_search_playlists_results.is_empty() {
+                    return Err("Playlist results for songs is empty".into());
+                }
+                let playlist = self.database.get_playlist(
+                    self.search_data
+                        .global_search_playlists_results
+                        .get(self.list_states.global_search_playlists.selected().unwrap())
+                        .unwrap(),
+                );
+                let index = self
+                    .database
+                    .alphabetical_playlists()
+                    .iter()
+                    .position(|playlist_id| playlist_id == playlist.id());
+                match index {
+                    Some(index) => {
+                        self.list_states.playlist_state.select(Some(index));
+                    }
+                    None => {
+                        warn!("Could not find the index for the playlist in the global search!")
+                    }
+                }
+                self.playlist_pane = TwoPaneVertical::Left;
+                self.current_screen = CurrentScreen::Playlists;
+            }
+            FourPaneGrid::BottomRight => {
+                if self.search_data.global_search_artists_results.is_empty() {
+                    return Err("Artists results for songs is empty".into());
+                }
+                let artist = self.database.get_artist(
+                    self.search_data
+                        .global_search_artists_results
+                        .get(self.list_states.global_search_artists.selected().unwrap())
+                        .unwrap(),
+                );
+                let index = self
+                    .database
+                    .alphabetical_artists()
+                    .iter()
+                    .position(|artist_id| artist_id == artist.id());
+                match index {
+                    Some(index) => {
+                        self.list_states.artist_state.select(Some(index));
+                    }
+                    None => {
+                        warn!("Could not find the index for the artist in the global search!")
+                    }
+                }
+                self.playlist_pane = TwoPaneVertical::Left;
+                self.current_screen = CurrentScreen::Artists;
+            }
+        }
+        Ok(())
+    }
+
     pub fn set_item_to_be_added(&mut self, media: MediaType) -> AppResult<()> {
         let mut selected_album_index;
         let mut offset = 0;
@@ -1168,7 +1430,7 @@ impl App {
                 };
                 if song.id() == DEFAULT_SONG {
                     warn!("Cannot add default song!");
-                    return Ok(())
+                    return Ok(());
                 }
                 self.item_to_be_added.name = song.title().to_string();
                 self.item_to_be_added.id = song.id().to_string();
@@ -1176,10 +1438,12 @@ impl App {
                 self.item_to_be_added.media_type = MediaType::Song;
             }
             MediaType::Album => {
-                let album = self.database.get_album(album_list.get(selected_album_index).unwrap());
+                let album = self
+                    .database
+                    .get_album(album_list.get(selected_album_index).unwrap());
                 if album.id() == DEFAULT_ALBUM {
                     warn!("Cannot add default album!");
-                    return Ok(())
+                    return Ok(());
                 }
                 self.item_to_be_added.id = album.id().to_string();
                 self.item_to_be_added.name = album.name().to_string();
@@ -1240,7 +1504,11 @@ impl App {
     pub fn toggle_playing_status(&mut self) -> AppResult<()> {
         self.player.toggle_play_pause();
         if !self.app_focused {
-            self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
+            self.event_sender
+                .as_ref()
+                .unwrap()
+                .send(Draw(true))
+                .unwrap();
         }
         Ok(())
     }
@@ -1293,7 +1561,11 @@ impl App {
     pub fn toggle_random_playback(&mut self) -> AppResult<()> {
         if self.player_data.queue.len() > 1 {
             if self.player_data.random_playback {
-                self.player_data.index_in_queue = *self.player_data.queue_order.get(self.player_data.index_in_queue).unwrap();
+                self.player_data.index_in_queue = *self
+                    .player_data
+                    .queue_order
+                    .get(self.player_data.index_in_queue)
+                    .unwrap();
                 self.player_data.queue_order.clear();
                 self.player_data.queue_order = (0..self.player_data.queue.len()).collect();
             } else {
@@ -1319,7 +1591,13 @@ impl App {
             return Ok(());
         }
         if self.get_playback_time() + 10
-            > self.player_data.now_playing.duration.as_str().parse::<usize>().unwrap()
+            > self
+                .player_data
+                .now_playing
+                .duration
+                .as_str()
+                .parse::<usize>()
+                .unwrap()
         {
             self.play_next()?;
         } else {
@@ -1376,7 +1654,9 @@ impl App {
                         if data == "yes" && self.player.player_status == PlayerStatus::Playing {
                             debug!("Detected pause status change while playing, setting status to buffering...");
                             self.set_player_to_buffering();
-                        } else if data == "no" && self.player.player_status == PlayerStatus::Buffering {
+                        } else if data == "no"
+                            && self.player.player_status == PlayerStatus::Buffering
+                        {
                             debug!("Detected pause status change while buffering, setting status to playing...");
                             self.set_player_to_playing();
                         } else {
@@ -1390,7 +1670,7 @@ impl App {
                     if self.app_flags.seeking {
                         debug!("Skipping playback restart due to previous seeking");
                         self.app_flags.seeking = false;
-                        return
+                        return;
                     }
                     if self.player.player_status == PlayerStatus::Buffering {
                         debug!("Player was buffering, setting to playing status");
@@ -1432,9 +1712,14 @@ impl App {
                     debug!("Got {} as playback time", playback_time);
                     if playback_time != -1.0 {
                         self.ticks_during_playing_state = (playback_time * 4.0).floor() as usize;
-                        if playback_time <= 1.0 && self.player_data.loop_status == AppLoopStatus::Track {
+                        if playback_time <= 1.0
+                            && self.player_data.loop_status == AppLoopStatus::Track
+                        {
                             // This means mpv forced the seek to 0 due to loop
-                            debug!("Restarting song due to loop {}", self.player_data.loop_status.as_str());
+                            debug!(
+                                "Restarting song due to loop {}",
+                                self.player_data.loop_status.as_str()
+                            );
                             self.player_data.next_is_in_player_queue = true;
                             self.play_current(true);
                         }
@@ -1460,7 +1745,7 @@ impl App {
             }
         }
     }
-    
+
     fn set_player_to_playing(&mut self) {
         if self.app_flags.was_paused {
             debug!("Player was paused, resuming playback");
@@ -1474,7 +1759,11 @@ impl App {
             .send(Dbus(Playing))
             .unwrap();
         if !self.app_focused {
-            self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
+            self.event_sender
+                .as_ref()
+                .unwrap()
+                .send(Draw(true))
+                .unwrap();
         }
         if self.player_data.now_playing.duration == "0" {
             warn!("Duration was 0, trying to get duration from mpv!");
@@ -1482,7 +1771,9 @@ impl App {
             let new_duration_string = new_duration.trunc().to_string();
             debug!("New duration: {}", new_duration_string);
             if new_duration_string != "0" {
-                self.database.get_song_mut(self.player_data.now_playing.id.as_str()).set_duration(new_duration_string.clone());
+                self.database
+                    .get_song_mut(self.player_data.now_playing.id.as_str())
+                    .set_duration(new_duration_string.clone());
                 self.player_data.now_playing.duration = new_duration_string;
                 debug!("Modified song duration!");
             }
@@ -1497,7 +1788,11 @@ impl App {
             .send(Dbus(Paused))
             .unwrap();
         if !self.app_focused {
-            self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
+            self.event_sender
+                .as_ref()
+                .unwrap()
+                .send(Draw(true))
+                .unwrap();
         }
     }
 
@@ -1522,10 +1817,16 @@ impl App {
     }
 
     pub fn set_playback_time(&mut self, new_position_micros: i64) {
-        let duration_micros = self.player_data.now_playing.duration.parse::<i64>().unwrap() * 1000000;
+        let duration_micros = self
+            .player_data
+            .now_playing
+            .duration
+            .parse::<i64>()
+            .unwrap()
+            * 1000000;
         let new_position: f64 = if new_position_micros < 0 {
             0.0
-        } else if new_position_micros > duration_micros  {
+        } else if new_position_micros > duration_micros {
             duration_micros as f64
         } else {
             new_position_micros as f64
@@ -1533,7 +1834,8 @@ impl App {
         let playback_percentage = ((new_position / duration_micros as f64) * 100.0).round();
         let percentage_string = format!("{}", playback_percentage as i64);
         debug!("Setting playing percentage: {}", percentage_string);
-        self.player.set_playback_percentage(percentage_string.as_str());
+        self.player
+            .set_playback_percentage(percentage_string.as_str());
         self.ticks_during_playing_state = (new_position / 1000000.0) as usize * 4;
     }
 
@@ -1553,8 +1855,19 @@ impl App {
     }
 
     fn resolve_next_queue(&mut self) {
-        let next_index = self.player_data.queue_order.get(self.player_data.index_in_queue).unwrap();
-        self.change_current_playing_to(self.player_data.queue.get(*next_index).unwrap().clone().as_str());
+        let next_index = self
+            .player_data
+            .queue_order
+            .get(self.player_data.index_in_queue)
+            .unwrap();
+        self.change_current_playing_to(
+            self.player_data
+                .queue
+                .get(*next_index)
+                .unwrap()
+                .clone()
+                .as_str(),
+        );
         self.update_queue_data();
     }
 
@@ -1585,7 +1898,8 @@ impl App {
 
     pub fn play_queue_song(&mut self) -> AppResult<()> {
         self.change_current_playing_to(
-            self.player_data.queue
+            self.player_data
+                .queue
                 .get(self.list_states.queue_list_state.selected().unwrap())
                 .unwrap()
                 .clone()
@@ -1599,7 +1913,10 @@ impl App {
         self.player_data.index_in_queue = self.list_states.queue_list_state.selected().unwrap();
         if self.player_data.random_playback {
             self.shuffle_queue_order_starting_at_index(self.player_data.index_in_queue);
-            debug!("queue_order after shuffling: {:?}", self.player_data.queue_order);
+            debug!(
+                "queue_order after shuffling: {:?}",
+                self.player_data.queue_order
+            );
             self.player_data.index_in_queue = 0;
         }
         self.play_current(false);
@@ -1622,7 +1939,9 @@ impl App {
 
     pub fn try_play_current(&mut self) -> bool {
         if !self.player_data.now_playing.id.is_empty() {
-            return if self.player.player_status == PlayerStatus::Paused || self.player.player_status == PlayerStatus::Buffering {
+            return if self.player.player_status == PlayerStatus::Paused
+                || self.player.player_status == PlayerStatus::Buffering
+            {
                 self.toggle_playing_status().unwrap();
                 true
             } else if self.player.player_status == PlayerStatus::Stopped {
@@ -1636,7 +1955,9 @@ impl App {
     }
 
     pub fn try_pause_current(&mut self) -> bool {
-        if !self.player_data.now_playing.id.is_empty() && self.player.player_status == PlayerStatus::Playing {
+        if !self.player_data.now_playing.id.is_empty()
+            && self.player.player_status == PlayerStatus::Playing
+        {
             self.toggle_playing_status().unwrap();
             return true;
         }
@@ -1652,26 +1973,45 @@ impl App {
 
     fn play_current(&mut self, check_next_song: bool) {
         if !check_next_song || !self.player_data.next_is_in_player_queue {
-            debug!("Adding song {} to player queue", self.player_data.now_playing.id);
+            debug!(
+                "Adding song {} to player queue",
+                self.player_data.now_playing.id
+            );
             self.player.play_song(
                 self.server
                     .get_song_url(self.player_data.now_playing.id.clone())
                     .as_str(),
             );
-            if self.player.player_status == PlayerStatus::Paused { self.app_flags.was_paused = true; }
+            if self.player.player_status == PlayerStatus::Paused {
+                self.app_flags.was_paused = true;
+            }
             self.player.player_status = PlayerStatus::LoadingFile;
-            self.event_sender.as_ref().unwrap().send(Dbus(Paused)).unwrap();
+            self.event_sender
+                .as_ref()
+                .unwrap()
+                .send(Dbus(Paused))
+                .unwrap();
         }
         self.player_data.next_is_in_player_queue = false;
         self.app_flags.is_current_song_scrobbled = false;
         self.ticks_during_playing_state = 0;
         if self.app_config.follow_cursor {
-            self.list_states.queue_list_state.select(Some(self.player_data.queue_order[self.player_data.index_in_queue]));
+            self.list_states.queue_list_state.select(Some(
+                self.player_data.queue_order[self.player_data.index_in_queue],
+            ));
         }
-        self.event_sender.as_ref().unwrap().send(Dbus(Metadata)).unwrap();
-                
+        self.event_sender
+            .as_ref()
+            .unwrap()
+            .send(Dbus(Metadata))
+            .unwrap();
+
         if !self.app_focused {
-            self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
+            self.event_sender
+                .as_ref()
+                .unwrap()
+                .send(Draw(true))
+                .unwrap();
         }
     }
 
@@ -1689,7 +2029,8 @@ impl App {
 
     fn change_current_playing_to(&mut self, new_id: &str) {
         self.player_data.now_playing.id = String::from(new_id);
-        self.player_data.now_playing.duration = String::from(self.database.get_song(new_id).duration());
+        self.player_data.now_playing.duration =
+            String::from(self.database.get_song(new_id).duration());
     }
 
     pub async fn set_event_handler(&mut self, sender: UnboundedSender<Event>) -> AppResult<()> {
@@ -1699,163 +2040,224 @@ impl App {
 
     pub fn get_metadata_for_current_song(&mut self) -> HashMap<String, String> {
         let mut metadata = HashMap::new();
-        let song = self.database.get_song(self.player_data.now_playing.id.as_str());
+        let song = self
+            .database
+            .get_song(self.player_data.now_playing.id.as_str());
         metadata.insert("title".to_string(), song.title().to_string());
         metadata.insert("album".to_string(), song.album().to_string());
         metadata.insert("artist".to_string(), song.artist().to_string());
-        metadata.insert("id".to_string(), song.id().chars().filter(|c| c.is_alphanumeric()).collect());
+        metadata.insert(
+            "id".to_string(),
+            song.id().chars().filter(|c| c.is_alphanumeric()).collect(),
+        );
         metadata.insert("length".to_string(), song.duration().to_string());
         metadata.insert(
             "cover".to_string(),
             self.server.get_song_art_url(song.id().to_string()),
         );
-        
+
         metadata
     }
 
     pub fn cycle_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_tab_mode {
-                AppHomeTabMode::OneColumn => match self.home_pane {
-                    HomePane::Top => {
-                        self.home_pane = HomePane::Bottom;
-                    }
-                    HomePane::Bottom => {
-                        self.home_pane = HomePane::Top;
-                    }
-                    _ => {
-                        panic!("Should not reach")
-                    }
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_tab_mode {
+                    AppHomeTabMode::OneColumn => match self.home_pane {
+                        HomePane::Top => {
+                            self.home_pane = HomePane::Bottom;
+                        }
+                        HomePane::Bottom => {
+                            self.home_pane = HomePane::Top;
+                        }
+                        _ => {
+                            panic!("Should not reach")
+                        }
+                    },
+                    AppHomeTabMode::TwoColumns => match self.home_pane {
+                        HomePane::TopLeft => {
+                            self.home_pane = HomePane::TopRight;
+                        }
+                        HomePane::TopRight => {
+                            self.home_pane = HomePane::BottomLeft;
+                        }
+                        HomePane::BottomLeft => {
+                            self.home_pane = HomePane::BottomRight;
+                        }
+                        HomePane::BottomRight => {
+                            self.home_pane = HomePane::TopLeft;
+                        }
+                        _ => {
+                            panic!("Should not reach")
+                        }
+                    },
                 },
-                AppHomeTabMode::TwoColumns => match self.home_pane {
-                    HomePane::TopLeft => {
-                        self.home_pane = HomePane::TopRight;
+                CurrentScreen::Albums => {
+                    if self.album_pane == TwoPaneVertical::Left {
+                        self.album_pane = TwoPaneVertical::Right
+                    } else {
+                        self.album_pane = TwoPaneVertical::Left
                     }
-                    HomePane::TopRight => {
-                        self.home_pane = HomePane::BottomLeft;
+                }
+                CurrentScreen::Playlists => {
+                    if self.playlist_pane == TwoPaneVertical::Left {
+                        self.playlist_pane = TwoPaneVertical::Right
+                    } else {
+                        self.playlist_pane = TwoPaneVertical::Left
                     }
-                    HomePane::BottomLeft => {
-                        self.home_pane = HomePane::BottomRight;
+                }
+                CurrentScreen::Artists => {
+                    if self.artist_pane == TwoPaneVertical::Left {
+                        self.artist_pane = TwoPaneVertical::Right
+                    } else {
+                        self.artist_pane = TwoPaneVertical::Left
                     }
-                    HomePane::BottomRight => {
-                        self.home_pane = HomePane::TopLeft;
-                    }
-                    _ => {
-                        panic!("Should not reach")
-                    }
+                }
+                _ => {}
+            }
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::TopLeft => self.global_search_pane = FourPaneGrid::TopRight,
+                    FourPaneGrid::TopRight => self.global_search_pane = FourPaneGrid::BottomLeft,
+                    FourPaneGrid::BottomLeft => self.global_search_pane = FourPaneGrid::BottomRight,
+                    FourPaneGrid::BottomRight => self.global_search_pane = FourPaneGrid::TopLeft,
                 },
-            },
-            CurrentScreen::Albums => {
-                if self.album_pane == TwoPaneVertical::Left {
-                    self.album_pane = TwoPaneVertical::Right
-                } else {
-                    self.album_pane = TwoPaneVertical::Left
-                }
+                _ => {}
             }
-            CurrentScreen::Playlists => {
-                if self.playlist_pane == TwoPaneVertical::Left {
-                    self.playlist_pane = TwoPaneVertical::Right
-                } else {
-                    self.playlist_pane = TwoPaneVertical::Left
-                }
-            }
-            CurrentScreen::Artists => {
-                if self.artist_pane == TwoPaneVertical::Left {
-                    self.artist_pane = TwoPaneVertical::Right
-                } else {
-                    self.artist_pane = TwoPaneVertical::Left
-                }
-            }
-            _ => {}
         }
 
         Ok(())
     }
 
     pub fn try_go_up_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::Bottom => {
-                    self.home_pane = HomePane::Top;
-                }
-                HomePane::BottomLeft => {
-                    self.home_pane = HomePane::TopLeft;
-                }
-                HomePane::BottomRight => {
-                    self.home_pane = HomePane::TopRight;
-                }
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::Bottom => {
+                        self.home_pane = HomePane::Top;
+                    }
+                    HomePane::BottomLeft => {
+                        self.home_pane = HomePane::TopLeft;
+                    }
+                    HomePane::BottomRight => {
+                        self.home_pane = HomePane::TopRight;
+                    }
+                    _ => {}
+                },
                 _ => {}
-            },
-            _ => {}
+            }
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::BottomLeft => self.global_search_pane = FourPaneGrid::TopLeft,
+                    FourPaneGrid::BottomRight => self.global_search_pane = FourPaneGrid::TopRight,
+                    _ => {}
+                },
+                _ => {}
+            }
         }
         Ok(())
     }
 
     pub fn try_go_down_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::Top => {
-                    self.home_pane = HomePane::Bottom;
-                }
-                HomePane::TopLeft => {
-                    self.home_pane = HomePane::BottomLeft;
-                }
-                HomePane::TopRight => {
-                    self.home_pane = HomePane::BottomRight;
-                }
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::Top => {
+                        self.home_pane = HomePane::Bottom;
+                    }
+                    HomePane::TopLeft => {
+                        self.home_pane = HomePane::BottomLeft;
+                    }
+                    HomePane::TopRight => {
+                        self.home_pane = HomePane::BottomRight;
+                    }
+                    _ => {}
+                },
                 _ => {}
-            },
-            _ => {}
+            }
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::TopLeft => self.global_search_pane = FourPaneGrid::BottomLeft,
+                    FourPaneGrid::TopRight => self.global_search_pane = FourPaneGrid::BottomRight,
+                    _ => {}
+                },
+                _ => {}
+            }
         }
         Ok(())
     }
 
     pub fn try_go_left_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::TopRight => {
-                    self.home_pane = HomePane::TopLeft;
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::TopRight => {
+                        self.home_pane = HomePane::TopLeft;
+                    }
+                    HomePane::BottomRight => {
+                        self.home_pane = HomePane::BottomLeft;
+                    }
+                    _ => {}
+                },
+                CurrentScreen::Albums => {
+                    self.album_pane = TwoPaneVertical::Left;
                 }
-                HomePane::BottomRight => {
-                    self.home_pane = HomePane::BottomLeft;
+                CurrentScreen::Playlists => {
+                    self.playlist_pane = TwoPaneVertical::Left;
+                }
+                CurrentScreen::Artists => {
+                    self.artist_pane = TwoPaneVertical::Left;
                 }
                 _ => {}
-            },
-            CurrentScreen::Albums => {
-                self.album_pane = TwoPaneVertical::Left;
             }
-            CurrentScreen::Playlists => {
-                self.playlist_pane = TwoPaneVertical::Left;
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::TopRight => self.global_search_pane = FourPaneGrid::TopLeft,
+                    FourPaneGrid::BottomRight => self.global_search_pane = FourPaneGrid::BottomLeft,
+                    _ => {}
+                },
+                _ => {}
             }
-            CurrentScreen::Artists => {
-                self.artist_pane = TwoPaneVertical::Left;
-            }
-            _ => {}
         }
 
         Ok(())
     }
     pub fn try_go_right_pane(&mut self) -> AppResult<()> {
-        match self.current_screen {
-            CurrentScreen::Home => match self.home_pane {
-                HomePane::TopLeft => {
-                    self.home_pane = HomePane::TopRight;
+        if self.current_popup == Popup::None {
+            match self.current_screen {
+                CurrentScreen::Home => match self.home_pane {
+                    HomePane::TopLeft => {
+                        self.home_pane = HomePane::TopRight;
+                    }
+                    HomePane::BottomLeft => {
+                        self.home_pane = HomePane::BottomRight;
+                    }
+                    _ => {}
+                },
+                CurrentScreen::Albums => {
+                    self.album_pane = TwoPaneVertical::Right;
                 }
-                HomePane::BottomLeft => {
-                    self.home_pane = HomePane::BottomRight;
+                CurrentScreen::Playlists => {
+                    self.playlist_pane = TwoPaneVertical::Right;
+                }
+                CurrentScreen::Artists => {
+                    self.artist_pane = TwoPaneVertical::Right;
                 }
                 _ => {}
-            },
-            CurrentScreen::Albums => {
-                self.album_pane = TwoPaneVertical::Right;
             }
-            CurrentScreen::Playlists => {
-                self.playlist_pane = TwoPaneVertical::Right;
+        } else {
+            match self.current_popup {
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::BottomLeft => self.global_search_pane = FourPaneGrid::BottomRight,
+                    FourPaneGrid::TopLeft => self.global_search_pane = FourPaneGrid::TopRight,
+                    _ => {}
+                },
+                _ => {}
             }
-            CurrentScreen::Artists => {
-                self.artist_pane = TwoPaneVertical::Right;
-            }
-            _ => {}
         }
         Ok(())
     }
@@ -1977,9 +2379,9 @@ impl App {
     }
 
     pub fn center_queue_cursor(&mut self) -> AppResult<()> {
-        self.list_states
-            .queue_list_state
-            .select(Some(self.player_data.queue_order[self.player_data.index_in_queue]));
+        self.list_states.queue_list_state.select(Some(
+            self.player_data.queue_order[self.player_data.index_in_queue],
+        ));
         Ok(())
     }
 
@@ -2152,6 +2554,12 @@ impl App {
                 Popup::AlbumInformation => &mut self.list_states.popup_list_state,
                 Popup::GenreFilter => &mut self.list_states.popup_genre_list_state,
                 Popup::SelectPlaylist => &mut self.list_states.popup_select_playlist_list_state,
+                Popup::GlobalSearch => match self.global_search_pane {
+                    FourPaneGrid::TopLeft => &mut self.list_states.global_search_songs,
+                    FourPaneGrid::TopRight => &mut self.list_states.global_search_albums,
+                    FourPaneGrid::BottomLeft => &mut self.list_states.global_search_playlists,
+                    FourPaneGrid::BottomRight => &mut self.list_states.global_search_artists,
+                },
                 _ => &mut self.list_states.popup_list_state,
             }
         };
@@ -2299,7 +2707,8 @@ impl App {
                     result
                 }
             },
-            CurrentScreen::Queue => self.player_data
+            CurrentScreen::Queue => self
+                .player_data
                 .queue
                 .iter()
                 .map(|song_id| self.database.get_song(song_id).title().to_string())
@@ -2473,11 +2882,12 @@ impl App {
             if album_id != DEFAULT_ALBUM {
                 info!("Album {} not found in server, deleting", album_id);
                 // First we get all artists related to this album (through the songs)
-                let artist_ids: HashSet<_> = self.database
+                let artist_ids: HashSet<_> = self
+                    .database
                     .songs()
                     .iter()
-                    .filter(|(_,song)| song.album_id() == album_id)
-                    .map(|(_,song)| song.artist_id().to_string())
+                    .filter(|(_, song)| song.album_id() == album_id)
+                    .map(|(_, song)| song.artist_id().to_string())
                     .collect();
                 // Then we remove the album
                 self.database.remove_album(album_id.as_str());
@@ -2536,24 +2946,29 @@ impl App {
                 HomePane::TopLeft => self
                     .database
                     .recent_albums()
-                    .get(self.list_states.home_tab_top_left.selected().unwrap()).cloned(),
+                    .get(self.list_states.home_tab_top_left.selected().unwrap())
+                    .cloned(),
                 HomePane::TopRight => self
                     .database
                     .recently_added_albums()
-                    .get(self.list_states.home_tab_top_right.selected().unwrap()).cloned(),
+                    .get(self.list_states.home_tab_top_right.selected().unwrap())
+                    .cloned(),
                 HomePane::BottomLeft => self
                     .database
                     .most_listened_albums()
-                    .get(self.list_states.home_tab_bottom_left.selected().unwrap()).cloned(),
-                HomePane::BottomRight => Some(self
-                    .database
-                    .get_song(
-                        self.database
-                            .most_listened_tracks()
-                            .get(self.list_states.home_tab_bottom_right.selected().unwrap())
-                            .unwrap(),
-                    )
-                    .album_id().to_string()),
+                    .get(self.list_states.home_tab_bottom_left.selected().unwrap())
+                    .cloned(),
+                HomePane::BottomRight => Some(
+                    self.database
+                        .get_song(
+                            self.database
+                                .most_listened_tracks()
+                                .get(self.list_states.home_tab_bottom_right.selected().unwrap())
+                                .unwrap(),
+                        )
+                        .album_id()
+                        .to_string(),
+                ),
                 _ => {
                     panic!("Should not happen")
                 }
@@ -2561,22 +2976,30 @@ impl App {
             CurrentScreen::Albums => self
                 .database
                 .filtered_albums()
-                .get(self.list_states.album_state.selected().unwrap()).cloned(),
-            CurrentScreen::Playlists => Some(self
-                .database
-                .get_song(
-                    self.database
-                        .get_playlist(
-                            self.database
-                                .alphabetical_playlists()
-                                .get(self.list_states.playlist_state.selected().unwrap())
-                                .unwrap(),
-                        )
-                        .song_list()
-                        .get(self.list_states.playlist_selected_state.selected().unwrap_or(0))
-                        .unwrap(),
-                )
-                .album_id().to_string()),
+                .get(self.list_states.album_state.selected().unwrap())
+                .cloned(),
+            CurrentScreen::Playlists => Some(
+                self.database
+                    .get_song(
+                        self.database
+                            .get_playlist(
+                                self.database
+                                    .alphabetical_playlists()
+                                    .get(self.list_states.playlist_state.selected().unwrap())
+                                    .unwrap(),
+                            )
+                            .song_list()
+                            .get(
+                                self.list_states
+                                    .playlist_selected_state
+                                    .selected()
+                                    .unwrap_or(0),
+                            )
+                            .unwrap(),
+                    )
+                    .album_id()
+                    .to_string(),
+            ),
             CurrentScreen::Artists => {
                 let albums = self
                     .database
@@ -2591,15 +3014,14 @@ impl App {
                     self.get_selected_album_index_in_artist_view(albums);
                 albums.get(selected_album_index).cloned()
             }
-            CurrentScreen::Queue => {
-                self.list_states
-                    .queue_list_state
-                    .selected()
-                    .and_then(|i| self.player_data.queue.get(i))
-                    .map(|song_id| self.database.get_song(song_id).album_id().to_string())
-            }
+            CurrentScreen::Queue => self
+                .list_states
+                .queue_list_state
+                .selected()
+                .and_then(|i| self.player_data.queue.get(i))
+                .map(|song_id| self.database.get_song(song_id).album_id().to_string()),
         };
-        
+
         match selected_album_id {
             None => {
                 warn!("No album selected");
@@ -2613,28 +3035,46 @@ impl App {
             }
         }
 
-
         Ok(())
     }
-    
+
     pub fn set_album_in_list_to_current_playing(&mut self) -> AppResult<()> {
-        let selected_queue_song = self.database.get_song(self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str());
-        let index = self.database.filtered_albums().iter().position(|album| {album == selected_queue_song.album_id()});
+        let selected_queue_song_id =
+            self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str();
+        let album_id = self
+            .database
+            .get_song(selected_queue_song_id)
+            .album_id()
+            .to_string();
+        self.set_album_index_for_album_id(album_id.as_str());
+        Ok(())
+    }
+
+    fn set_album_index_for_album_id(&mut self, album_id: &str) {
+        let index = self
+            .database
+            .filtered_albums()
+            .iter()
+            .position(|album| album == album_id);
         match index {
             Some(index) => {
                 self.list_states.album_state.select(Some(index));
             }
             None => {
-                warn!("Could not find the album of the playing song in the filtered album list!")
+                warn!("Could not find the index for the album id: {}", album_id);
             }
         }
-        
-        Ok(())
     }
 
     pub fn set_artist_in_list_to_current_playing(&mut self) -> AppResult<()> {
-        let selected_queue_song = self.database.get_song(self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str());
-        let index = self.database.alphabetical_artists().iter().position(|artist| {artist == selected_queue_song.artist_id()});
+        let selected_queue_song = self.database.get_song(
+            self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str(),
+        );
+        let index = self
+            .database
+            .alphabetical_artists()
+            .iter()
+            .position(|artist| artist == selected_queue_song.artist_id());
         match index {
             Some(index) => {
                 self.list_states.artist_state.select(Some(index));
@@ -2661,7 +3101,11 @@ impl App {
             {
                 self.finish_database_update();
                 self.app_flags.updating_database = false;
-                self.event_sender.as_ref().unwrap().send(Draw(true)).unwrap();
+                self.event_sender
+                    .as_ref()
+                    .unwrap()
+                    .send(Draw(true))
+                    .unwrap();
             }
         }
 
@@ -2696,19 +3140,36 @@ impl App {
                         for playlist in playlist_list {
                             if self.database.contains_playlist(playlist.id()) && !force_update {
                                 debug!("Playlist {} already in database", playlist.name());
-                                match is_date_before(self.database.get_playlist(playlist.id()).modified_on(), playlist.modified_on()) {
-                                    Ok(result) => if result {
-                                        debug!("Playlist {} has a newer modified date in server", playlist.name());
-                                        if self.database.get_playlist(playlist.id()).modified() {
-                                            debug!("Playlist {} has been modified locally, will not pull from server!", playlist.name());
-                                        } else{
-                                            debug!("Fetching server version of playlist {}", playlist.name());
-                                            self.server.get_playlist_async(playlist.id());
-                                            self.database.remove_playlist(playlist.id());
-                                            self.database.insert_playlist(playlist.id().to_string(), playlist);
+                                match is_date_before(
+                                    self.database.get_playlist(playlist.id()).modified_on(),
+                                    playlist.modified_on(),
+                                ) {
+                                    Ok(result) => {
+                                        if result {
+                                            debug!(
+                                                "Playlist {} has a newer modified date in server",
+                                                playlist.name()
+                                            );
+                                            if self.database.get_playlist(playlist.id()).modified()
+                                            {
+                                                debug!("Playlist {} has been modified locally, will not pull from server!", playlist.name());
+                                            } else {
+                                                debug!(
+                                                    "Fetching server version of playlist {}",
+                                                    playlist.name()
+                                                );
+                                                self.server.get_playlist_async(playlist.id());
+                                                self.database.remove_playlist(playlist.id());
+                                                self.database.insert_playlist(
+                                                    playlist.id().to_string(),
+                                                    playlist,
+                                                );
+                                            }
                                         }
                                     }
-                                    Err(e) => error!{"Error while comparing dates for playlist {}: {}", playlist.name(), e},
+                                    Err(e) => {
+                                        error! {"Error while comparing dates for playlist {}: {}", playlist.name(), e}
+                                    }
                                 }
                             } else if !self.database.contains_playlist(playlist.id()) {
                                 debug!(
@@ -2722,7 +3183,8 @@ impl App {
                                 debug!("Forcing update for playlist {}", playlist.name());
                                 self.server.get_playlist_async(playlist.id());
                                 self.database.remove_playlist(playlist.id());
-                                self.database.insert_playlist(playlist.id().to_string(), playlist);
+                                self.database
+                                    .insert_playlist(playlist.id().to_string(), playlist);
                             }
                         }
                     }
@@ -2828,7 +3290,7 @@ impl App {
                                 continue;
                             }
                         }
-        
+
                         for song in songs {
                             if !self.database.contains_song(song.id()) {
                                 self.database.insert_song(song.id().to_string(), song);
@@ -3004,7 +3466,8 @@ impl App {
 
     fn finish_database_update(&mut self) {
         // We subtract 1 to number of albums to account for default album
-        if self.database.get_number_of_albums() - 1 > self.database.alphabetical_list_albums().len() {
+        if self.database.get_number_of_albums() - 1 > self.database.alphabetical_list_albums().len()
+        {
             debug!("Number of albums in database ({}) is greater than alphabetical list ({}), albums have been deleted!",
                                     self.database.get_number_of_albums() - 1, self.database.alphabetical_list_albums().len());
             self.remove_albums_missing_in_server()
@@ -3021,8 +3484,50 @@ impl App {
     pub fn update_selected_album(&mut self) -> AppResult<()> {
         self.app_flags.updating_albums = true;
         self.albums_being_updated += 1;
-        self.server.get_album_async(self.selected_album_id_to_update.clone());
+        self.server
+            .get_album_async(self.selected_album_id_to_update.clone());
         Ok(())
+    }
+
+    pub fn get_global_search_results(&mut self) {
+        let search_str = self.search_data.global_search_string.to_lowercase();
+
+        let song_results: Vec<String> = self
+            .database
+            .songs()
+            .iter()
+            .filter(|(_id, song)| song.title().to_lowercase().contains(&search_str))
+            .map(|(id, _song)| id.clone())
+            .collect();
+
+        let album_results: Vec<String> = self
+            .database
+            .albums()
+            .iter()
+            .filter(|(_, album)| album.name().to_lowercase().contains(&search_str))
+            .map(|(id, _)| id.clone())
+            .collect();
+
+        let artist_results: Vec<String> = self
+            .database
+            .artists()
+            .iter()
+            .filter(|(_, artist)| artist.name().to_lowercase().contains(&search_str))
+            .map(|(id, _)| id.clone())
+            .collect();
+
+        let playlist_results: Vec<String> = self
+            .database
+            .playlists()
+            .iter()
+            .filter(|(_, playlist)| playlist.name().to_lowercase().contains(&search_str))
+            .map(|(id, _)| id.clone())
+            .collect();
+
+        self.search_data.global_search_song_results = song_results;
+        self.search_data.global_search_albums_results = album_results;
+        self.search_data.global_search_artists_results = artist_results;
+        self.search_data.global_search_playlists_results = playlist_results;
     }
 }
 fn sort_songs_by_play_count(songs: &HashMap<String, Song>) -> Vec<String> {

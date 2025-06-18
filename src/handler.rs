@@ -7,7 +7,7 @@ use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
 use crate::player::mpv::PlayerStatus;
 use crossterm::event::{KeyCode, KeyEvent};
-use log::debug;
+use log::{debug, warn};
 use std::collections::HashMap;
 use zbus::InterfaceRef;
 use crate::mappings::ShortcutAction;
@@ -28,6 +28,7 @@ pub async fn handle_key_events(
     };
     let flag = if app.app_flags.getting_search_string {"searching"}
         else if app.app_flags.is_introducing_new_playlist_name {"introducing_playlist"}
+        else if app.app_flags.is_introducing_global_search {"introducing_global"}
         else if app.app_flags.range_year_filter {"range_year"}
         else {"none"};
     let action_parsed = app.shortcuts.get_action_from_shortcut(key_event,app.current_screen.as_str(),subpane, app.current_popup.as_str(), flag);
@@ -119,16 +120,20 @@ pub async fn handle_key_events(
             app.current_screen = CurrentScreen::Queue;
         }
         ShortcutAction::GoToTrackAlbum => {
-            app.clear_search()?;
-            app.set_album_in_list_to_current_playing()?;
-            app.album_pane = TwoPaneVertical::Right;
-            app.current_screen = CurrentScreen::Albums;
+            if !app.player_data.queue.is_empty() {
+                app.clear_search()?;
+                app.set_album_in_list_to_current_playing()?;
+                app.album_pane = TwoPaneVertical::Right;
+                app.current_screen = CurrentScreen::Albums;
+            }
         }
         ShortcutAction::GoToTrackArtist => {
-            app.clear_search()?;
-            app.set_artist_in_list_to_current_playing()?;
-            app.artist_pane = TwoPaneVertical::Right;
-            app.current_screen = CurrentScreen::Artists;
+            if !app.player_data.queue.is_empty() {
+                app.clear_search()?;
+                app.set_artist_in_list_to_current_playing()?;
+                app.artist_pane = TwoPaneVertical::Right;
+                app.current_screen = CurrentScreen::Artists;
+            }
         }
         ShortcutAction::MoveDownInList => app.move_in_list(AppMovementInList::Next)?,
         ShortcutAction::MovePageDown => app.move_in_list(AppMovementInList::PageDown)?,
@@ -176,6 +181,7 @@ pub async fn handle_key_events(
         ShortcutAction::PopupClose => {
             app.current_popup = Popup::None;
             app.app_flags.range_year_filter = false;
+            app.app_flags.is_introducing_global_search = false;
             app.selected_album_id_to_update.clear();
         }
         ShortcutAction::PopupConfirmDeletionPlaylistNo => app.current_popup = Popup::None,
@@ -365,7 +371,7 @@ pub async fn handle_key_events(
             app.app_flags.range_year_filter = false;
             app.current_popup = Popup::None;
         }
-        ShortcutAction::QueueCenterCursor => app.center_queue_cursor()?,
+        ShortcutAction::QueueCenterCursor => if !app.player_data.queue.is_empty() { app.center_queue_cursor()? }
         ShortcutAction::QueueClear => {
             handle_stop_playback(app, iface_ref).await?;
             app.clear_queue()?;
@@ -436,6 +442,65 @@ pub async fn handle_key_events(
         ShortcutAction::VolumeUp => {
             let volume = app.get_volume_as_f64()?;
             handle_volume_change(app, iface_ref, volume + VOLUME_STEP).await?;
+        }
+        ShortcutAction::GoPopupGlobalSearch => {
+            if app.search_data.global_search_string.is_empty() || app.current_popup == Popup::GlobalSearch {
+                app.app_flags.is_introducing_global_search = true;
+            }
+            app.current_popup = Popup::GlobalSearch;
+        }
+        ShortcutAction::PopupGlobalSearchAddCharToSearchString => {
+            if let KeyCode::Char(c) = key_event.code {
+                app.search_data.global_search_string.push(c);
+                if app.search_data.global_search_string.len() > 2 {
+                    app.get_global_search_results();
+                }
+            }
+        }
+        ShortcutAction::PopupGlobalSearchRemoveCharFromSearchString => {
+            if !app.search_data.global_search_string.is_empty() {
+                let mut chars = app.search_data.global_search_string.chars().collect::<Vec<char>>();
+                chars.pop();
+                app.search_data.global_search_string = chars.iter().collect::<String>();
+            }
+            if app.search_data.global_search_string.len() > 2 {
+                app.get_global_search_results();
+            }
+        }
+        ShortcutAction::PopupGlobalSearchAcceptSearchString => {
+            app.app_flags.is_introducing_global_search = false;
+        }
+        ShortcutAction::PopupGlobalSearchClearAndClose => {
+            app.current_popup = Popup::None;
+            app.app_flags.is_introducing_global_search = false;
+            app.search_data.global_search_string.clear();
+            app.search_data.global_search_song_results.clear();
+        }
+        ShortcutAction::PopupGlobalSearchPlayItem => {
+            match app.global_search_set_item_to_be_added() {
+                Ok(_) => app.add_queue_immediately()?,
+                Err(e) => {
+                    warn!("Error setting item to be added: {}", e);
+                }
+            }
+            
+        }
+        ShortcutAction::PopupGlobalSearchAddItemTo => {
+            match app.global_search_set_item_to_be_added() {
+                Ok(_) => app.current_popup = Popup::AddTo,
+                Err(e) => {
+                    warn!("Error setting item to be added: {}", e);
+                }
+            }
+            
+        }
+        ShortcutAction::PopupGlobalSearchGoToAccordingPane => {
+            match app.go_to_according_pane_for_search_item() {
+                Ok(_) => app.current_popup = Popup::None,
+                Err(e) => {
+                    warn!("Error setting pane for item: {}", e);
+                }
+            }
         }
     }
     

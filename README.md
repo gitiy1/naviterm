@@ -10,6 +10,7 @@ I was a happy user of the classic Linux music combo: ncmpcpp and mpd. But then I
 ## Features
 * Home page with recently added/played albums, most played album/songs.
 * Explore your music database with the album, playlist and artist panes.
+* Global search for your songs, albums, playlists and artists.
 * Add, edit, or delete playlists. Sync them with your server.
 * Full MPRIS support using the amazing [zbus](https://github.com/dbus2/zbus).
 * ReplayGain support
@@ -78,23 +79,23 @@ This would generate a more lightweight executable, and it can be placed anywhere
 
 A configuration file is needed for the program to start. It must be at `~/.config/naviterm/config.ini`, and should have the following items:
 
-| Parameter            | Definition                                                                                                                                                | Default | Mandatory |
-|:---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|:-------:|:---------:|
+| Parameter            | Definition                                                                                                                                               | Default | Mandatory |
+|:---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|:-------:|:---------:|
 | server_address       | The address your server is running in, including the path. It should have the following format (note no trailing slash): `http(s)://name-or-ip/navidrome` |    -    |    Yes    |
-| user                 | Your user in navidrome                                                                                                                                    |    -    |    Yes    |
-| password             | The password for the user                                                                                                                                 |    -    |    Yes    |
-| server_auth          | The authentication method to use, to choose from plain or token                                                                                           |  token  |    No     |
-| mpv_path             | The path to the mpv executable. If left empty, navidrome will try to use `mpv` from `$PATH`                                                               |   mpv   |    No     |
-| replay_gain          | The replay gain mode. The possible values are: track, album, auto                                                                                         |  track  |    No     |
-| primary_accent       | The primary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                                | yellow  |    No     |
-| secondary_accent     | The secondary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                              |  gray   |    No     |
-| home_list_size       | The size of the lists for the home pane (recently listened, recently added, most listened albums and tracks).                                             |   30    |    No     |
-| follow_cursor_queue  | Whether the cursor will follow the currently playing track in queue                                                                                       |  true   |    No     |
-| draw_while_unfocused | This flag controls whether the program will update its ui if the window loses focus. Setting to true could increase CPU usage.                            |  false  |    No     |
-| save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status, and volume level.                                                     |  false  |    No     |
-| use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                                |  true   |    No     |
-| wait_for_ipc_ms      | Amount of time to wait before retrying to connect to the mpv process in ms.                                                                               |   200   |    No     |
-| mpv_custom_args      | Custom arguments for mpv, in a comma separated list (--arg1=value,--arg2=value,etc).                                                                               |   []   |    No     |
+| user                 | Your user in navidrome                                                                                                                                   |    -    |    Yes    |
+| password             | The password for the user                                                                                                                                |    -    |    Yes    |
+| server_auth          | The authentication method to use, to choose from plain or token                                                                                          |  token  |    No     |
+| mpv_path             | The path to the mpv executable. If left empty, navidrome will try to use `mpv` from `$PATH`                                                              |   mpv   |    No     |
+| replay_gain          | The replay gain mode. The possible values are: track, album, auto                                                                                        |  track  |    No     |
+| primary_accent       | The primary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                               | yellow  |    No     |
+| secondary_accent     | The secondary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                             |  gray   |    No     |
+| home_list_size       | The size of the lists for the home pane (recently listened, recently added, most listened albums and tracks).                                            |   30    |    No     |
+| follow_cursor_queue  | Whether the cursor will follow the currently playing track in queue                                                                                      |  true   |    No     |
+| draw_while_unfocused | This flag controls whether the program will update its ui if the window loses focus. Setting to true could increase CPU usage.                           |  false  |    No     |
+| save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status, and volume level.                                  |  false  |    No     |
+| use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                               |  true   |    No     |
+| wait_for_ipc_ms      | Amount of time to wait before retrying to connect to the mpv process in ms.                                                                              |   200   |    No     |
+| mpv_custom_args      | Custom arguments for mpv, in a comma separated list (--arg1=value,--arg2=value,etc).                                                                     |   []   |    No     |
 
 The config file has to be a `ini` config file:
 ```ini
@@ -162,6 +163,7 @@ Valid modifiers are `ctrl|alt|super`, valid keys should include all ASCII charac
 | `<Up>`              | `volume_up`                                                                               | Increase the volume                                        |
 | `<Down>`            | `volume_down`                                                                             | Decreases the volume                                       |
 | `u`                 | `go_popup_update`                                                                         | Open Update Database popup                                 |
+| `<Ctrl-f>`          | `go_popup_global_search`                                                                  | Open Global Search popup                                   |
 
 ### Home pane shortcuts
 | Shortcut            | Key in config                    | Description                                                |
@@ -209,21 +211,24 @@ Valid modifiers are `ctrl|alt|super`, valid keys should include all ASCII charac
 | `c`      | `queue_clear`          | Clear queue and stop playback                          |
 
 ### Popup shortcuts
-| Shortcut | Key in config            | Popup                 | Description                                                         |
-|:---------|--------------------------|-----------------------|:--------------------------------------------------------------------|
-| `a`      | `go_popup_add_item_to`   | Album information     | Open the Add To popup for the selected item                         |
-| `A`      | `go_popup_add_parent_to` | Album information     | Open the Add To popup for whole album                               |
-| `n`      | `add_item_next`          | Add item to           | Add item to the queue after track currently being played            |
-| `e`      | `add_item_end`           | Add item to           | Add item to the queue at the end of the queue                       |
-| `p`      | `add_item_playlist`      | Add item to           | Open the playlist popup to select a playlist for adding the item to |
-| `r`      | `playlist_pull_remote`   | Synchronize playlist  | Pull the remote version of the selected playlist                    |
-| `l`      | `playlist_push_local`    | Synchronize playlist  | Push the local version of the selected playlist                     |
-| `y`      | -                        | Delete playlist       | Confirm playlist deletion                                           |
-| `n`      | -                        | Delete playlist       | Cancel playlist deletion                                            |
-| `r`      | -                        | Test Navidrome server | Generate new salt and token                                         |
-| `t`      | -                        | Test Navidrome server | Test connection to server                                           |
-| `o`      | -                        | Connection Error      | Switch to offline mode after error communicating with server        |
-| `r`      | -                        | Connection Error      | Retry after error communicating with server                         |
+| Shortcut  | Key in config              | Popup                 | Description                                                         |
+|:----------|----------------------------|-----------------------|:--------------------------------------------------------------------|
+| `a`       | `go_popup_add_item_to`     | Album information     | Open the Add To popup for the selected item                         |
+| `A`       | `go_popup_add_parent_to`   | Album information     | Open the Add To popup for whole album                               |
+| `n`       | `add_item_next`            | Add item to           | Add item to the queue after track currently being played            |
+| `e`       | `add_item_end`             | Add item to           | Add item to the queue at the end of the queue                       |
+| `p`       | `add_item_playlist`        | Add item to           | Open the playlist popup to select a playlist for adding the item to |
+| `r`       | `playlist_pull_remote`     | Synchronize playlist  | Pull the remote version of the selected playlist                    |
+| `l`       | `playlist_push_local`      | Synchronize playlist  | Push the local version of the selected playlist                     |
+| `y`       | -                          | Delete playlist       | Confirm playlist deletion                                           |
+| `n`       | -                          | Delete playlist       | Cancel playlist deletion                                            |
+| `r`       | -                          | Test Navidrome server | Generate new salt and token                                         |
+| `t`       | -                          | Test Navidrome server | Test connection to server                                           |
+| `o`       | -                          | Connection Error      | Switch to offline mode after error communicating with server        |
+| `r`       | -                          | Connection Error      | Retry after error communicating with server                         |
+| `<Enter>` | -                          | Global Search         | Accept current query while typing                                   |
+| `<r>`     | `global_search_go_to_pane` | Global Search         | Go to corresponding pane for the selected search result item        |
+| `q`       | `close_popup`              | -                     | Close the current popup                                             |
 
 ## Known limitations
 ### High CPU usage
@@ -249,7 +254,7 @@ The `mpv` process controlled by naviterm logs at `/tmp/naviterm_mpv.log`, which 
 If you have a feature request, also open an issue. No guarantees that I will implement it, but I will always take a look to see the feasibility/impact. Contributions are very welcome.
 
 ## Compability
-Please note that I developed the application with [navidrome](https://www.navidrome.org/) in mind. Although the Subsonic API is used by other server applications, it might be the case that navidrome does not work well with them. I might not be able to test/reproduce all issues of that kind, so bear that in mind when opening issues. If you are willing to help building bugfix branches and testing, that would help me a lot.
+Please note that I developed the application with [navidrome](https://www.navidrome.org/) in mind. Although the Subsonic API is used by other server applications, it might be the case that naviterm does not work well with them. I might not be able to test/reproduce all issues of that kind, so bear that in mind when opening issues. If you are willing to help building bugfix branches and testing, that would help me a lot.
 
 Server applications tested:
 - [navidrome](https://www.navidrome.org/)

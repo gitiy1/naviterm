@@ -31,6 +31,7 @@ pub enum ShortcutAction {
     GoPopupSyncPlaylist,
     GoPopupTestConnection,
     GoPopupUpdateDatabase,
+    GoPopupGlobalSearch,
     GoPopupYearFilter,
     GoQueuePane,
     GoToTrackAlbum,
@@ -104,6 +105,13 @@ pub enum ShortcutAction {
     TrackPrevious,
     VolumeDown,
     VolumeUp,
+    PopupGlobalSearchAddCharToSearchString,
+    PopupGlobalSearchRemoveCharFromSearchString,
+    PopupGlobalSearchAcceptSearchString,
+    PopupGlobalSearchClearAndClose,
+    PopupGlobalSearchPlayItem,
+    PopupGlobalSearchAddItemTo,
+    PopupGlobalSearchGoToAccordingPane,
 }
 
 pub struct Mappings {
@@ -239,6 +247,22 @@ impl Mappings {
                 (String::from("searching_none_"),ShortcutAction::SearchAddCharToSearchString),
                 (String::from("none_none_none_ "),ShortcutAction::TogglePlayPause),
                 (String::from("none_none_none_u"),ShortcutAction::GoPopupUpdateDatabase),
+                (String::from("none_none_ctrl_f"),ShortcutAction::GoPopupGlobalSearch),
+                (String::from("global_search_none_ctrl_f"),ShortcutAction::GoPopupGlobalSearch),
+                (String::from("global_search_introducing_global_none_"),ShortcutAction::PopupGlobalSearchAddCharToSearchString),
+                (String::from("global_search_introducing_global_none_bkspc"),ShortcutAction::PopupGlobalSearchRemoveCharFromSearchString),
+                (String::from("global_search_introducing_global_none_enter"),ShortcutAction::PopupGlobalSearchAcceptSearchString),
+                (String::from("global_search_introducing_global_none_esc"),ShortcutAction::PopupGlobalSearchClearAndClose),
+                (String::from("global_search_none_none_tab"),ShortcutAction::CyclePane),
+                (String::from("global_search_none_ctrl_h"),ShortcutAction::MovePaneLeft),
+                (String::from("global_search_none_ctrl_l"),ShortcutAction::MovePaneRight),
+                (String::from("global_search_none_ctrl_j"),ShortcutAction::MovePaneDown),
+                (String::from("global_search_none_ctrl_k"),ShortcutAction::MovePaneUp),
+                (String::from("global_search_none_none_enter"),ShortcutAction::PopupGlobalSearchPlayItem),
+                (String::from("global_search_none_none_a"),ShortcutAction::PopupGlobalSearchAddItemTo),
+                (String::from("global_search_none_none_r"),ShortcutAction::PopupGlobalSearchGoToAccordingPane),
+                (String::from("global_search_none_none_q"),ShortcutAction::PopupClose),
+                (String::from("global_search_none_none_esc"),ShortcutAction::PopupGlobalSearchClearAndClose),
                 (String::from("none_none_none_z"),ShortcutAction::ToggleRandomPlayback),
                 (String::from("none_none_none_l"),ShortcutAction::CycleLoopMode),
                 (String::from("none_none_none_right"),ShortcutAction::SeekForward),
@@ -410,6 +434,7 @@ impl Mappings {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddPlaylistTo, Some("left") );
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddArtistTo, None );
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupAddArtistItemTo, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupGlobalSearchAddItemTo, None );
             }
         }
 
@@ -507,6 +532,7 @@ impl Mappings {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyPlaylist, None );
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyArtist, None );
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::PlayImmediatelyArtistItem, None );
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupGlobalSearchPlayItem, None );
             }
         }
 
@@ -657,6 +683,18 @@ impl Mappings {
         if let Ok(value) = config.get::<String>("quit_application") {
             if self.validate_shortcut(value.as_str()) {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::QuitApp, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("go_popup_global_search") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupGlobalSearch, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("global_search_go_to_pane") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::PopupGlobalSearchGoToAccordingPane, None );
             }
         }
 
