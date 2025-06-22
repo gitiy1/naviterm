@@ -1,5 +1,5 @@
-use log::{debug, error, warn};
 use crate::player::ipc::IpcEvent;
+use log::{debug, error, warn};
 
 pub fn parse_json_event(event: String) -> Vec<IpcEvent> {
     let mut events = vec![];
@@ -15,7 +15,7 @@ pub fn parse_json_event(event: String) -> Vec<IpcEvent> {
                     "property-change" => {
                         let name = json_event["name"].to_string();
                         let data = json_event["data"].to_string();
-                        events.push(IpcEvent::PropertyChange(name,data));
+                        events.push(IpcEvent::PropertyChange(name, data));
                     }
                     "end-file" => {
                         let reason = json_event["reason"].to_string();
@@ -60,8 +60,8 @@ pub fn parse_json_success(response: &str) -> bool {
                 &_ => {
                     warn!("Got unexpected JSON error: {}", value);
                     false
-                },
-            }
+                }
+            },
         }
     } else {
         false

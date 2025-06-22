@@ -1,11 +1,11 @@
+use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
 use crate::model::album::Album;
 use crate::model::artist::Artist;
 use crate::model::playlist::Playlist;
 use crate::model::song::Song;
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use log::{info};
-use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct MusicDatabase {
@@ -31,7 +31,7 @@ impl MusicDatabase {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn populate_defaults(&mut self) {
         let mut song = Song::default();
         song.set_id(String::from(DEFAULT_SONG));
@@ -42,7 +42,7 @@ impl MusicDatabase {
         song.set_play_count(String::from("0"));
         song.set_album_id(String::from(DEFAULT_ALBUM));
         self.songs.insert(DEFAULT_SONG.to_string(), song);
-        
+
         let mut album = Album::default();
         album.set_name(String::from("Not found"));
         album.set_id(String::from(DEFAULT_ALBUM));
@@ -54,7 +54,6 @@ impl MusicDatabase {
         album.set_genres(vec![String::from("?")]);
         album.set_year("?".to_string());
         self.albums.insert(DEFAULT_ALBUM.to_string(), album);
-
     }
 
     pub fn recent_albums(&self) -> &Vec<String> {
@@ -124,9 +123,7 @@ impl MusicDatabase {
     pub fn get_album(&self, id: &str) -> &Album {
         match self.albums.get(id) {
             Some(album) => album,
-            None => {
-                self.albums.get(DEFAULT_ALBUM).unwrap()
-            },
+            None => self.albums.get(DEFAULT_ALBUM).unwrap(),
         }
     }
 
@@ -148,10 +145,8 @@ impl MusicDatabase {
 
     pub fn get_song(&self, id: &str) -> &Song {
         match self.songs.get(id) {
-            None => {
-                self.songs.get(DEFAULT_SONG).unwrap()
-            }
-            Some(song) => song
+            None => self.songs.get(DEFAULT_SONG).unwrap(),
+            Some(song) => song,
         }
     }
 
@@ -293,16 +288,22 @@ impl MusicDatabase {
 
     pub fn update_artist(&mut self, artist_id: &str) {
         let artist = self.artists.get_mut(artist_id).unwrap();
-        
-        artist.albums_mut().retain(|album_id| self.albums.contains_key(album_id));
-        
+
+        artist
+            .albums_mut()
+            .retain(|album_id| self.albums.contains_key(album_id));
+
         // If the artist has no more albums, delete it
         if artist.albums().is_empty() {
-            info!("Artist {} ({}) has no albums, deleting", artist.name(), artist_id);
+            info!(
+                "Artist {} ({}) has no albums, deleting",
+                artist.name(),
+                artist_id
+            );
             self.artists.remove(artist_id);
-            return
+            return;
         }
-        
+
         // Set the updated genres
         let updated_genres: Vec<String> = artist
             .albums()
@@ -313,7 +314,7 @@ impl MusicDatabase {
             .into_iter()
             .collect();
         artist.set_genres(updated_genres);
-        
+
         // Set the updated number of albums
         artist.set_number_of_albums(artist.albums().len());
     }

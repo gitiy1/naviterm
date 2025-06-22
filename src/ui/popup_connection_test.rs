@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult};
+use crate::constants::NAVITERM_VERSION;
 use crate::mappings::ShortcutAction;
 use crate::ui::utils;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
@@ -7,7 +8,6 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
-use crate::constants::NAVITERM_VERSION;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(60, 40, frame.size());

@@ -1,9 +1,9 @@
 use crate::app::{App, AppResult};
 use crate::mappings::ShortcutAction;
 use crate::ui::utils;
-use ratatui::layout::{ Constraint, Direction, Layout};
+use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::prelude::{Alignment, Line, Modifier};
-use ratatui::style::{Style};
+use ratatui::style::Style;
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
@@ -32,8 +32,9 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
         Style::default()
             .fg(app.app_colors.secondary_accent)
             .add_modifier(Modifier::ITALIC),
-    ).alignment(Alignment::Center);
-    
+    )
+    .alignment(Alignment::Center);
+
     let popup_content = Paragraph::new(app.error_message.to_string()).wrap(Wrap { trim: true });
 
     frame.render_widget(Clear, area);

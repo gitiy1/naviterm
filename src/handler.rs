@@ -1,17 +1,17 @@
 use crate::app::{
-    App, AppConnectionMode, AppMovementInList, AppResult, AppStatus, CurrentScreen,
-    MediaType, Popup, SortMode, TwoPaneVertical,
+    App, AppConnectionMode, AppMovementInList, AppResult, AppStatus, CurrentScreen, MediaType,
+    Popup, SortMode, TwoPaneVertical,
 };
 use crate::constants::VOLUME_STEP;
 use crate::dbus::MediaPlayer2Player;
 use crate::event::DbusEvent;
+use crate::mappings::ShortcutAction;
 use crate::player::mpv::PlayerStatus;
+use crate::player_data::AppLoopStatus;
 use crossterm::event::{KeyCode, KeyEvent};
 use log::{debug, warn};
 use std::collections::HashMap;
 use zbus::InterfaceRef;
-use crate::mappings::ShortcutAction;
-use crate::player_data::AppLoopStatus;
 
 /// Handles the key events and updates the state of [`App`].
 pub async fn handle_key_events(
@@ -24,16 +24,28 @@ pub async fn handle_key_events(
         CurrentScreen::Playlists => app.playlist_pane.as_str(),
         CurrentScreen::Artists => app.artist_pane.as_str(),
         CurrentScreen::Home => app.home_pane.as_str(),
-        CurrentScreen::Queue => "any"
+        CurrentScreen::Queue => "any",
     };
-    let flag = if app.app_flags.getting_search_string {"searching"}
-        else if app.app_flags.is_introducing_new_playlist_name {"introducing_playlist"}
-        else if app.app_flags.is_introducing_global_search {"introducing_global"}
-        else if app.app_flags.range_year_filter {"range_year"}
-        else {"none"};
-    let action_parsed = app.shortcuts.get_action_from_shortcut(key_event,app.current_screen.as_str(),subpane, app.current_popup.as_str(), flag);
+    let flag = if app.app_flags.getting_search_string {
+        "searching"
+    } else if app.app_flags.is_introducing_new_playlist_name {
+        "introducing_playlist"
+    } else if app.app_flags.is_introducing_global_search {
+        "introducing_global"
+    } else if app.app_flags.range_year_filter {
+        "range_year"
+    } else {
+        "none"
+    };
+    let action_parsed = app.shortcuts.get_action_from_shortcut(
+        key_event,
+        app.current_screen.as_str(),
+        subpane,
+        app.current_popup.as_str(),
+        flag,
+    );
     debug!("action_parsed {:?}", action_parsed);
-    
+
     match action_parsed {
         ShortcutAction::AddItemEnd => {
             app.add_queue_later()?;
@@ -44,19 +56,17 @@ pub async fn handle_key_events(
             app.current_popup = Popup::None;
         }
         ShortcutAction::AddItemPlaylist => app.current_popup = Popup::SelectPlaylist,
-        ShortcutAction::CycleLoopMode => {
-            match app.player_data.loop_status {
-                AppLoopStatus::None => {
-                    handle_loop_status_change(app, iface_ref, String::from("Track")).await?;
-                }
-                AppLoopStatus::Track => {
-                    handle_loop_status_change(app, iface_ref, String::from("Playlist")).await?;
-                }
-                AppLoopStatus::Playlist => {
-                    handle_loop_status_change(app, iface_ref, String::from("None")).await?;
-                }
+        ShortcutAction::CycleLoopMode => match app.player_data.loop_status {
+            AppLoopStatus::None => {
+                handle_loop_status_change(app, iface_ref, String::from("Track")).await?;
             }
-        }
+            AppLoopStatus::Track => {
+                handle_loop_status_change(app, iface_ref, String::from("Playlist")).await?;
+            }
+            AppLoopStatus::Playlist => {
+                handle_loop_status_change(app, iface_ref, String::from("None")).await?;
+            }
+        },
         ShortcutAction::CyclePane => {
             app.clear_search()?;
             app.cycle_pane()?;
@@ -80,51 +90,50 @@ pub async fn handle_key_events(
             app.clear_search()?;
             app.current_screen = CurrentScreen::Playlists;
         }
-        ShortcutAction::GoPopupAddAlbumTo => {
-            match app.set_item_to_be_added(MediaType::Album) {
-                Ok(_) => app.current_popup = Popup::AddTo,
-                Err(_) => {
-                    app.error_message = "Error while selecting item to add to: ".to_string() + app.error_message.as_str();
-                    app.current_popup = Popup::ErrorMessage
-                },
+        ShortcutAction::GoPopupAddAlbumTo => match app.set_item_to_be_added(MediaType::Album) {
+            Ok(_) => app.current_popup = Popup::AddTo,
+            Err(_) => {
+                app.error_message = "Error while selecting item to add to: ".to_string()
+                    + app.error_message.as_str();
+                app.current_popup = Popup::ErrorMessage
             }
-        }
+        },
         ShortcutAction::GoPopupAddArtistItemTo => {
             match app.set_item_to_be_added(app.artist_view_song_or_album()) {
                 Ok(_) => app.current_popup = Popup::AddTo,
                 Err(_) => {
-                    app.error_message = "Error while selecting item to add to: ".to_string() + app.error_message.as_str();
+                    app.error_message = "Error while selecting item to add to: ".to_string()
+                        + app.error_message.as_str();
                     app.current_popup = Popup::ErrorMessage
-                },
+                }
             }
         }
-        ShortcutAction::GoPopupAddArtistTo => {
-            match app.set_item_to_be_added(MediaType::Artist) {
-                Ok(_) => app.current_popup = Popup::AddTo,
-                Err(_) => {
-                    app.error_message = "Error while selecting item to add to: ".to_string() + app.error_message.as_str();
-                    app.current_popup = Popup::ErrorMessage
-                },
+        ShortcutAction::GoPopupAddArtistTo => match app.set_item_to_be_added(MediaType::Artist) {
+            Ok(_) => app.current_popup = Popup::AddTo,
+            Err(_) => {
+                app.error_message = "Error while selecting item to add to: ".to_string()
+                    + app.error_message.as_str();
+                app.current_popup = Popup::ErrorMessage
             }
-        }
+        },
         ShortcutAction::GoPopupAddPlaylistTo => {
             match app.set_item_to_be_added(MediaType::Playlist) {
                 Ok(_) => app.current_popup = Popup::AddTo,
                 Err(_) => {
-                    app.error_message = "Error while selecting item to add to: ".to_string() + app.error_message.as_str();
+                    app.error_message = "Error while selecting item to add to: ".to_string()
+                        + app.error_message.as_str();
                     app.current_popup = Popup::ErrorMessage
-                },
+                }
             }
         }
-        ShortcutAction::GoPopupAddSongTo => {
-            match app.set_item_to_be_added(MediaType::Song) {
-                Ok(_) => app.current_popup = Popup::AddTo,
-                Err(_) => {
-                    app.error_message = "Error while selecting item to add to: ".to_string() + app.error_message.as_str();
-                    app.current_popup = Popup::ErrorMessage
-                },
+        ShortcutAction::GoPopupAddSongTo => match app.set_item_to_be_added(MediaType::Song) {
+            Ok(_) => app.current_popup = Popup::AddTo,
+            Err(_) => {
+                app.error_message = "Error while selecting item to add to: ".to_string()
+                    + app.error_message.as_str();
+                app.current_popup = Popup::ErrorMessage
             }
-        }
+        },
         ShortcutAction::GoPopupAlbumInfo => app.current_popup = Popup::AlbumInformation,
         ShortcutAction::GoPopupDeletePlaylist => app.current_popup = Popup::ConfirmPlaylistDeletion,
         ShortcutAction::GoPopupGenreFilter => app.current_popup = Popup::GenreFilter,
@@ -139,7 +148,7 @@ pub async fn handle_key_events(
                 app.app_flags.range_year_filter = true;
             }
             app.current_popup = Popup::YearFilter
-        },
+        }
         ShortcutAction::GoQueuePane => {
             app.clear_search()?;
             app.current_screen = CurrentScreen::Queue;
@@ -174,7 +183,7 @@ pub async fn handle_key_events(
         ShortcutAction::MovePaneRight => {
             app.clear_search()?;
             app.try_go_right_pane()?
-        },
+        }
         ShortcutAction::MovePaneUp => {
             app.clear_search()?;
             app.try_go_up_pane()?
@@ -187,45 +196,45 @@ pub async fn handle_key_events(
             match app.set_item_to_be_added(MediaType::Artist) {
                 Ok(_) => app.add_queue_immediately()?,
                 Err(_) => {
-                    app.error_message = "Error while adding item to queue: ".to_string() + app.error_message.as_str();
+                    app.error_message = "Error while adding item to queue: ".to_string()
+                        + app.error_message.as_str();
                     app.current_popup = Popup::ErrorMessage
-                },
-            }
-            
-        }
-        ShortcutAction::PlayImmediatelyAlbum => {
-            match app.set_item_to_be_added(MediaType::Album) {
-                Ok(_) => app.add_queue_immediately()?,
-                Err(_) => {
-                    app.error_message = "Error while adding item to queue: ".to_string() + app.error_message.as_str();
-                    app.current_popup = Popup::ErrorMessage
-                },
+                }
             }
         }
+        ShortcutAction::PlayImmediatelyAlbum => match app.set_item_to_be_added(MediaType::Album) {
+            Ok(_) => app.add_queue_immediately()?,
+            Err(_) => {
+                app.error_message =
+                    "Error while adding item to queue: ".to_string() + app.error_message.as_str();
+                app.current_popup = Popup::ErrorMessage
+            }
+        },
         ShortcutAction::PlayImmediatelyPlaylist => {
             match app.set_item_to_be_added(MediaType::Playlist) {
                 Ok(_) => app.add_queue_immediately()?,
                 Err(_) => {
-                    app.error_message = "Error while adding item to queue: ".to_string() + app.error_message.as_str();
+                    app.error_message = "Error while adding item to queue: ".to_string()
+                        + app.error_message.as_str();
                     app.current_popup = Popup::ErrorMessage
-                },
+                }
             }
         }
-        ShortcutAction::PlayImmediatelySong => {
-            match app.set_item_to_be_added(MediaType::Song) {
-                Ok(_) => app.add_queue_immediately()?,
-                Err(_) => {
-                    app.error_message = "Error while adding item to queue: ".to_string() + app.error_message.as_str();
-                    app.current_popup = Popup::ErrorMessage
-                },
+        ShortcutAction::PlayImmediatelySong => match app.set_item_to_be_added(MediaType::Song) {
+            Ok(_) => app.add_queue_immediately()?,
+            Err(_) => {
+                app.error_message =
+                    "Error while adding item to queue: ".to_string() + app.error_message.as_str();
+                app.current_popup = Popup::ErrorMessage
             }
-        }
+        },
         ShortcutAction::PlayImmediatelyArtistItem => {
             match app.set_item_to_be_added(app.artist_view_song_or_album()) {
                 Ok(_) => {
-                    app.error_message = "Error while adding item to queue: ".to_string() + app.error_message.as_str();
+                    app.error_message = "Error while adding item to queue: ".to_string()
+                        + app.error_message.as_str();
                     app.add_queue_immediately()?
-                },
+                }
                 Err(_) => app.current_popup = Popup::ErrorMessage,
             }
         }
@@ -279,7 +288,12 @@ pub async fn handle_key_events(
             app.current_popup = Popup::None;
         }
         ShortcutAction::PopupPlaylistAcceptSelected => {
-            if app.list_states.popup_select_playlist_list_state.selected().unwrap() == 0
+            if app
+                .list_states
+                .popup_select_playlist_list_state
+                .selected()
+                .unwrap()
+                == 0
             {
                 app.app_flags.is_introducing_new_playlist_name = true;
             } else {
@@ -319,7 +333,7 @@ pub async fn handle_key_events(
             if app.is_selected_playlist_local()? {
                 app.push_local_playlist()?;
                 app.current_popup = Popup::None;
-            } 
+            }
         }
         ShortcutAction::PopupSynchronizeLocalPlaylistPushNo => {
             if app.is_selected_playlist_local()? {
@@ -360,10 +374,8 @@ pub async fn handle_key_events(
                 app.validate_year_filters()?;
             }
             if app.album_filters.filter_message.is_empty() {
-                app.album_filters.year_from_filter =
-                    app.album_filters.year_from_filter_new.clone();
-                app.album_filters.year_to_filter =
-                    app.album_filters.year_to_filter_new.clone();
+                app.album_filters.year_from_filter = app.album_filters.year_from_filter_new.clone();
+                app.album_filters.year_to_filter = app.album_filters.year_to_filter_new.clone();
                 app.process_filtered_album_list()?;
                 app.app_flags.range_year_filter = false;
                 app.current_popup = Popup::None;
@@ -392,16 +404,13 @@ pub async fn handle_key_events(
                 if app.app_flags.is_introducing_to_year {
                     app.album_filters.year_to_filter_new = chars.iter().collect::<String>()
                 } else {
-                    app.album_filters.year_from_filter_new =
-                        chars.iter().collect::<String>()
+                    app.album_filters.year_from_filter_new = chars.iter().collect::<String>()
                 }
             }
-
         }
         ShortcutAction::PopupYearToggleFromTo => {
             if app.app_flags.range_year_filter {
-                app.app_flags.is_introducing_to_year =
-                    !app.app_flags.is_introducing_to_year;
+                app.app_flags.is_introducing_to_year = !app.app_flags.is_introducing_to_year;
             }
         }
         ShortcutAction::PopupYearToggleRangeInput => {
@@ -423,7 +432,11 @@ pub async fn handle_key_events(
             app.app_flags.range_year_filter = false;
             app.current_popup = Popup::None;
         }
-        ShortcutAction::QueueCenterCursor => if !app.player_data.queue.is_empty() { app.center_queue_cursor()? }
+        ShortcutAction::QueueCenterCursor => {
+            if !app.player_data.queue.is_empty() {
+                app.center_queue_cursor()?
+            }
+        }
         ShortcutAction::QueueClear => {
             handle_stop_playback(app, iface_ref).await?;
             app.clear_queue()?;
@@ -437,7 +450,7 @@ pub async fn handle_key_events(
             app.app_flags.getting_search_string = false;
         }
         ShortcutAction::SearchAddCharToSearchString => {
-             if let KeyCode::Char(c) = key_event.code {
+            if let KeyCode::Char(c) = key_event.code {
                 app.search_data.search_string.push(c);
                 if app.search_data.search_string.len() > 2 {
                     app.clear_search_results()?;
@@ -496,7 +509,9 @@ pub async fn handle_key_events(
             handle_volume_change(app, iface_ref, volume + VOLUME_STEP).await?;
         }
         ShortcutAction::GoPopupGlobalSearch => {
-            if app.search_data.global_search_string.is_empty() || app.current_popup == Popup::GlobalSearch {
+            if app.search_data.global_search_string.is_empty()
+                || app.current_popup == Popup::GlobalSearch
+            {
                 app.app_flags.is_introducing_global_search = true;
             }
             app.current_popup = Popup::GlobalSearch;
@@ -511,7 +526,11 @@ pub async fn handle_key_events(
         }
         ShortcutAction::PopupGlobalSearchRemoveCharFromSearchString => {
             if !app.search_data.global_search_string.is_empty() {
-                let mut chars = app.search_data.global_search_string.chars().collect::<Vec<char>>();
+                let mut chars = app
+                    .search_data
+                    .global_search_string
+                    .chars()
+                    .collect::<Vec<char>>();
                 chars.pop();
                 app.search_data.global_search_string = chars.iter().collect::<String>();
             }
@@ -535,7 +554,6 @@ pub async fn handle_key_events(
                     warn!("Error setting item to be added: {}", e);
                 }
             }
-            
         }
         ShortcutAction::PopupGlobalSearchAddItemTo => {
             match app.global_search_set_item_to_be_added() {
@@ -544,7 +562,6 @@ pub async fn handle_key_events(
                     warn!("Error setting item to be added: {}", e);
                 }
             }
-            
         }
         ShortcutAction::PopupGlobalSearchGoToAccordingPane => {
             match app.go_to_according_pane_for_search_item() {
@@ -555,7 +572,7 @@ pub async fn handle_key_events(
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -567,7 +584,9 @@ pub async fn handle_dbus_events(
     match dbus_event {
         DbusEvent::PlayPause => {
             if *app.player.player_status() == PlayerStatus::Stopped && app.try_play_current() {
-                if iface_ref.is_none() { return Ok(()) }
+                if iface_ref.is_none() {
+                    return Ok(());
+                }
                 let iface_ref = iface_ref.unwrap();
                 let mut iface = iface_ref.get_mut().await;
                 iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -582,7 +601,9 @@ pub async fn handle_dbus_events(
         DbusEvent::Next => app.play_next()?,
         DbusEvent::Previous => app.play_previous()?,
         DbusEvent::Playing => {
-            if iface_ref.is_none() { return Ok(()) }
+            if iface_ref.is_none() {
+                return Ok(());
+            }
             let iface_ref = iface_ref.unwrap();
             let mut iface = iface_ref.get_mut().await;
             iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -592,7 +613,9 @@ pub async fn handle_dbus_events(
                 .await?;
         }
         DbusEvent::Paused => {
-            if iface_ref.is_none() { return Ok(()) }
+            if iface_ref.is_none() {
+                return Ok(());
+            }
             let iface_ref = iface_ref.unwrap();
             let mut iface = iface_ref.get_mut().await;
             iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -603,7 +626,9 @@ pub async fn handle_dbus_events(
         }
         DbusEvent::Play => {
             if app.try_play_current() {
-                if iface_ref.is_none() { return Ok(()) }
+                if iface_ref.is_none() {
+                    return Ok(());
+                }
                 let iface_ref = iface_ref.unwrap();
                 let mut iface = iface_ref.get_mut().await;
                 iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -615,7 +640,9 @@ pub async fn handle_dbus_events(
         }
         DbusEvent::Pause => {
             if app.try_pause_current() {
-                if iface_ref.is_none() { return Ok(()) }
+                if iface_ref.is_none() {
+                    return Ok(());
+                }
                 let iface_ref = iface_ref.unwrap();
                 let mut iface = iface_ref.get_mut().await;
                 iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -646,7 +673,9 @@ pub async fn handle_dbus_events(
             handle_position_change(app, iface_ref, new_position).await?;
         }
         DbusEvent::Metadata => {
-            if iface_ref.is_none() { return Ok(()) }
+            if iface_ref.is_none() {
+                return Ok(());
+            }
             let iface_ref = iface_ref.unwrap();
             let mut iface = iface_ref.get_mut().await;
             iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -663,7 +692,9 @@ async fn handle_shuffle_update(
 ) -> AppResult<()> {
     app.toggle_random_playback()?;
 
-    if iface_ref.is_none() { return Ok(()) }
+    if iface_ref.is_none() {
+        return Ok(());
+    }
     let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -677,7 +708,9 @@ async fn handle_seek_forward(
 ) -> AppResult<()> {
     app.player_seek_forward()?;
 
-    if iface_ref.is_none() { return Ok(()) }
+    if iface_ref.is_none() {
+        return Ok(());
+    }
     let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     let new_position = (app.get_playback_time() * 1000000) as i64;
@@ -692,7 +725,9 @@ async fn handle_seek_backwards(
 ) -> AppResult<()> {
     app.player_seek_backwards()?;
 
-    if iface_ref.is_none() { return Ok(()) }
+    if iface_ref.is_none() {
+        return Ok(());
+    }
     let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     let new_position = (app.get_playback_time() * 1000000) as i64;
@@ -707,7 +742,9 @@ async fn handle_toggle_play_pause(
 ) -> AppResult<()> {
     app.toggle_playing_status()?;
 
-    if iface_ref.is_none() { return Ok(()) }
+    if iface_ref.is_none() {
+        return Ok(());
+    }
     let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -730,7 +767,9 @@ async fn handle_stop_playback(
     if *app.player.player_status() != PlayerStatus::Stopped {
         app.stop_playback();
 
-        if iface_ref.is_none() { return Ok(()) }
+        if iface_ref.is_none() {
+            return Ok(());
+        }
         let iface_ref = iface_ref.unwrap();
         let mut iface = iface_ref.get_mut().await;
         iface.update_position(0i64);
@@ -743,7 +782,9 @@ async fn handle_stop_playback(
     Ok(())
 }
 async fn handle_clear_queue(iface_ref: Option<&InterfaceRef<MediaPlayer2Player>>) -> AppResult<()> {
-    if iface_ref.is_none() { return Ok(()) }
+    if iface_ref.is_none() {
+        return Ok(());
+    }
     let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.set_metadata(HashMap::new());
@@ -758,7 +799,9 @@ async fn handle_volume_change(
     let new_volume = volume.clamp(0.0, 1.0);
     app.set_volume(new_volume)?;
 
-    if iface_ref.is_none() { return Ok(()) }
+    if iface_ref.is_none() {
+        return Ok(());
+    }
     let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -774,7 +817,9 @@ async fn handle_loop_status_change(
 ) -> AppResult<()> {
     app.set_loop_mode(new_loop_status.as_str())?;
 
-    if iface_ref.is_none() { return Ok(()) }
+    if iface_ref.is_none() {
+        return Ok(());
+    }
     let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
@@ -792,7 +837,9 @@ async fn handle_position_change(
 ) -> AppResult<()> {
     app.set_playback_time(new_position);
 
-    if iface_ref.is_none() { return Ok(()) }
+    if iface_ref.is_none() {
+        return Ok(());
+    }
     let iface_ref = iface_ref.unwrap();
     let mut iface = iface_ref.get_mut().await;
     iface.update_position((app.get_playback_time() * 1000000) as i64);
