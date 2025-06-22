@@ -4,7 +4,7 @@ use crate::model::playlist::Playlist;
 use crate::model::song::Song;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use log::{error, info, warn};
+use log::{info};
 use crate::constants::{DEFAULT_ALBUM, DEFAULT_SONG};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -40,6 +40,7 @@ impl MusicDatabase {
         song.set_album("Not found".to_string());
         song.set_title(String::from("Not found"));
         song.set_play_count(String::from("0"));
+        song.set_album_id(String::from(DEFAULT_ALBUM));
         self.songs.insert(DEFAULT_SONG.to_string(), song);
         
         let mut album = Album::default();
@@ -49,6 +50,9 @@ impl MusicDatabase {
         album.set_song_count(String::from("1"));
         album.set_songs(vec![DEFAULT_SONG.to_string()]);
         album.set_duration(String::from("0"));
+        album.set_play_count(String::from("0"));
+        album.set_genres(vec![String::from("?")]);
+        album.set_year("?".to_string());
         self.albums.insert(DEFAULT_ALBUM.to_string(), album);
 
     }
@@ -121,7 +125,6 @@ impl MusicDatabase {
         match self.albums.get(id) {
             Some(album) => album,
             None => {
-                error!("Album {} not found in database, try updating database", id);
                 self.albums.get(DEFAULT_ALBUM).unwrap()
             },
         }
@@ -146,7 +149,6 @@ impl MusicDatabase {
     pub fn get_song(&self, id: &str) -> &Song {
         match self.songs.get(id) {
             None => {
-                warn!("Song {} not found in database, try updating database", id);
                 self.songs.get(DEFAULT_SONG).unwrap()
             }
             Some(song) => song

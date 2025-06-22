@@ -1,6 +1,6 @@
 use crate::app::{App, AppColors, AppConnectionMode, AppStatus, CurrentScreen, Popup};
 use crate::ui::footer_now_playing::draw_footer;
-use crate::ui::{popup_add_to, popup_album_info, popup_connection_error, popup_connection_test, popup_deletion_playlist, popup_genre_filter, popup_global_search, popup_select_playlist, popup_synchronize_playlist, popup_update, popup_year_filter, tab_albums, tab_artists, tab_home, tab_playlists, tab_queue};
+use crate::ui::{popup_add_to, popup_album_info, popup_connection_error, popup_connection_test, popup_deletion_playlist, popup_error_message, popup_genre_filter, popup_global_search, popup_select_playlist, popup_synchronize_playlist, popup_update, popup_year_filter, tab_albums, tab_artists, tab_home, tab_playlists, tab_queue};
 use ratatui::layout::Constraint::{Length, Min, Percentage};
 use ratatui::layout::{Layout, Rect};
 use ratatui::prelude::Line;
@@ -51,6 +51,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         Popup::ConfirmPlaylistDeletion => popup_deletion_playlist::draw_popup(app, frame).unwrap(),
         Popup::ConnectionError => popup_connection_error::draw_popup(app, frame).unwrap(),
         Popup::GlobalSearch => popup_global_search::draw_popup(app, frame).unwrap(),
+        Popup::ErrorMessage => popup_error_message::draw_popup(app, frame).unwrap(),
         Popup::None => {}
     }
 

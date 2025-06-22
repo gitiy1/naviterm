@@ -213,6 +213,7 @@ pub enum Popup {
     None,
     ConnectionError,
     GlobalSearch,
+    ErrorMessage,
 }
 
 impl Popup {
@@ -230,6 +231,7 @@ impl Popup {
             Popup::ConnectionError => "connection_error",
             Popup::None => "none",
             Popup::GlobalSearch => "global_search",
+            Popup::ErrorMessage => "error_message"
         }
     }
 }
@@ -273,6 +275,7 @@ pub struct App {
     pub app_focused: bool,
     pub shortcuts: Mappings,
     pub global_search_pane: FourPaneGrid,
+    pub error_message: String,
 }
 
 #[derive(Default, Debug)]
@@ -474,6 +477,7 @@ impl Default for App {
             app_focused: true,
             shortcuts: Mappings::default(),
             global_search_pane: FourPaneGrid::TopLeft,
+            error_message: "".to_string(),
         }
     }
 }
@@ -1341,6 +1345,11 @@ impl App {
                                     .unwrap(),
                             )
                             .album_id();
+                        if album_id_selected == DEFAULT_ALBUM {
+                            warn!("Cannot add default album!");
+                            self.error_message = "Cannot add default album.".into();
+                            return Err("Cannot add default album".into());
+                        }
                         selected_album_index = 0;
                         for (i, album_id) in self.database.most_listened_albums().iter().enumerate()
                         {
@@ -1430,7 +1439,8 @@ impl App {
                 };
                 if song.id() == DEFAULT_SONG {
                     warn!("Cannot add default song!");
-                    return Ok(());
+                    self.error_message = "Cannot add default song.".into();
+                    return Err("Cannot add default song!".into());
                 }
                 self.item_to_be_added.name = song.title().to_string();
                 self.item_to_be_added.id = song.id().to_string();
@@ -1443,7 +1453,8 @@ impl App {
                     .get_album(album_list.get(selected_album_index).unwrap());
                 if album.id() == DEFAULT_ALBUM {
                     warn!("Cannot add default album!");
-                    return Ok(());
+                    self.error_message = "Cannot add default album.".into();
+                    return Err("Cannot add default album!".into());
                 }
                 self.item_to_be_added.id = album.id().to_string();
                 self.item_to_be_added.name = album.name().to_string();

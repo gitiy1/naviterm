@@ -17,3 +17,4 @@ mod popup_deletion_playlist;
 mod popup_connection_error;
 mod popup_year_filter;
 mod popup_global_search;
+mod popup_error_message;
