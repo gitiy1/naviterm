@@ -7,11 +7,24 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
+use crate::constants::NAVITERM_VERSION;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(60, 40, frame.size());
 
     let popup_paragraph = Paragraph::new(vec![
+        Line::from(vec![
+            Span {
+                content: "Naviterm version: ".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: NAVITERM_VERSION.into(),
+                style: Style::default(),
+            },
+        ]),
         Line::from(vec![
             Span {
                 content: "Salt: ".into(),
