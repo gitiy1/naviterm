@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult};
+use crate::constants::NAVITERM_VERSION;
 use crate::mappings::ShortcutAction;
 use crate::ui::utils;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
@@ -12,6 +13,18 @@ pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
     let area = utils::centered_rect(60, 40, frame.size());
 
     let popup_paragraph = Paragraph::new(vec![
+        Line::from(vec![
+            Span {
+                content: "Naviterm version: ".into(),
+                style: Style::default()
+                    .fg(app.app_colors.primary_accent)
+                    .add_modifier(Modifier::BOLD),
+            },
+            Span {
+                content: NAVITERM_VERSION.into(),
+                style: Style::default(),
+            },
+        ]),
         Line::from(vec![
             Span {
                 content: "Salt: ".into(),

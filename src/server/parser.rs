@@ -1,13 +1,13 @@
-use chrono::{DateTime};
 use crate::app::AppResult;
 use crate::model::album::Album;
+use crate::model::artist::Artist;
 use crate::model::connection_status::ConnectionStatus;
+use crate::model::playlist::Playlist;
 use crate::model::song::Song;
+use chrono::DateTime;
 use encoding::all::ISO_8859_1;
 use encoding::{EncoderTrap, Encoding};
-use log::{debug};
-use crate::model::artist::Artist;
-use crate::model::playlist::Playlist;
+use log::debug;
 
 pub struct Parser {}
 
@@ -43,18 +43,24 @@ impl Parser {
         let mut genres_list: Vec<String> = Vec::new();
         let root: minidom::Element = response.parse()?;
 
-        let list = root.get_child("genres", Self::NAMESPACE).unwrap();
+        let list = match root.get_child("genres", Self::NAMESPACE) {
+            None => return Err("get child by 'genres' returned none".into()),
+            Some(value) => value,
+        };
         for genre in list.children() {
             genres_list.push(parse_attribute(genre.text().as_str()));
         }
         Ok(genres_list)
     }
 
-    pub fn parse_album_list_simple(response: String) -> AppResult<Vec<String>> {
+    pub fn parse_album_list_simple(response: String, api_version: &str) -> AppResult<Vec<String>> {
         let root: minidom::Element = response.parse()?;
         let mut album_list = Vec::new();
 
-        let list = root.get_child("albumList", Self::NAMESPACE).unwrap();
+        let list = match root.get_child(api_version, Self::NAMESPACE) {
+            None => return Err(format!("get child by '{}' returned none", api_version).into()),
+            Some(value) => value,
+        };
         for album in list.children() {
             let mut album_id = String::new();
             for attribute in album.attrs() {
@@ -73,7 +79,10 @@ impl Parser {
         let mut song_list = Vec::new();
         let mut song_ids_list = Vec::new();
 
-        let album = root.get_child("album", Self::NAMESPACE).unwrap();
+        let album = match root.get_child("album", Self::NAMESPACE) {
+            None => return Err("get child by 'album' returned none".into()),
+            Some(value) => value,
+        };
         let mut new_album = Album::default();
         let mut new_artist = Artist::default();
         new_artist.set_number_of_albums(1);
@@ -105,7 +114,9 @@ impl Parser {
                 for attribute in child.attrs() {
                     if attribute.0 == "name" {
                         let new_genre = parse_attribute(attribute.1);
-                        if !album_genres.contains(&new_genre) {album_genres.push(new_genre);}
+                        if !album_genres.contains(&new_genre) {
+                            album_genres.push(new_genre);
+                        }
                     }
                 }
             } else if child.name() == "song" {
@@ -176,11 +187,14 @@ impl Parser {
     }
 
     pub fn parse_playlist_list(response: String) -> AppResult<Vec<Playlist>> {
-        let mut playlist_list: Vec<Playlist> = vec![]; 
+        let mut playlist_list: Vec<Playlist> = vec![];
         let root: minidom::Element = response.parse()?;
 
-        let playlists = root.get_child("playlists", Self::NAMESPACE).unwrap();
-        
+        let playlists = match root.get_child("playlists", Self::NAMESPACE) {
+            None => return Err("get child by 'playlists' returned none".into()),
+            Some(value) => value,
+        };
+
         for playlist in playlists.children() {
             let mut new_playlist: Playlist = Playlist::default();
             for attribute in playlist.attrs() {
@@ -189,14 +203,18 @@ impl Parser {
                     "name" => new_playlist.set_name(attribute.1.to_string()),
                     "songCount" => new_playlist.set_song_count(attribute.1.to_string()),
                     "duration" => new_playlist.set_duration(attribute.1.to_string()),
-                    "created" => new_playlist.set_created_on(parse_date(attribute.1.to_string().as_str())),
-                    "changed" => new_playlist.set_modified_on(parse_date(attribute.1.to_string().as_str())),
+                    "created" => {
+                        new_playlist.set_created_on(parse_date(attribute.1.to_string().as_str()))
+                    }
+                    "changed" => {
+                        new_playlist.set_modified_on(parse_date(attribute.1.to_string().as_str()))
+                    }
                     _ => {}
                 }
             }
             playlist_list.push(new_playlist);
         }
-        
+
         Ok(playlist_list)
     }
 
@@ -204,7 +222,10 @@ impl Parser {
         let mut playlists_songs: Vec<String> = vec![];
         let root: minidom::Element = response.parse()?;
 
-        let list = root.get_child("playlist", Self::NAMESPACE).unwrap();
+        let list = match root.get_child("playlist", Self::NAMESPACE) {
+            None => return Err("get child by 'playlist' returned none".into()),
+            Some(value) => value,
+        };
         for album in list.children() {
             let mut song_id = String::new();
             for attribute in album.attrs() {
@@ -221,7 +242,10 @@ impl Parser {
     pub fn parse_playlist_id(response: String) -> AppResult<String> {
         let root: minidom::Element = response.parse()?;
 
-        let playlist = root.get_child("playlist", Self::NAMESPACE).unwrap();
+        let playlist = match root.get_child("playlist", Self::NAMESPACE) {
+            None => return Err("get child by 'playlist' returned none".into()),
+            Some(value) => value,
+        };
         for attribute in playlist.attrs() {
             match attribute.0 {
                 "id" => return Ok(attribute.1.to_string()),

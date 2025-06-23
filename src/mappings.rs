@@ -263,6 +263,8 @@ impl Mappings {
                 (String::from("global_search_none_none_r"),ShortcutAction::PopupGlobalSearchGoToAccordingPane),
                 (String::from("global_search_none_none_q"),ShortcutAction::PopupClose),
                 (String::from("global_search_none_none_esc"),ShortcutAction::PopupGlobalSearchClearAndClose),
+                (String::from("error_message_none_none_q"),ShortcutAction::PopupClose),
+                (String::from("error_message_none_none_esc"),ShortcutAction::PopupClose),
                 (String::from("none_none_none_z"),ShortcutAction::ToggleRandomPlayback),
                 (String::from("none_none_none_l"),ShortcutAction::CycleLoopMode),
                 (String::from("none_none_none_right"),ShortcutAction::SeekForward),

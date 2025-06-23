@@ -66,6 +66,7 @@ pub struct Server {
     pub server_address: String,
     pub server_version: String,
     pub server_auth: String,
+    pub album_lists_api: String,
     /// server token
     pub token: String,
     /// salt
@@ -103,6 +104,7 @@ impl Default for Server {
             client: Client::new(),
             operations: vec![],
             current_number_of_requests: 0,
+            album_lists_api: "".to_string(),
         }
     }
 }
@@ -215,7 +217,12 @@ impl Server {
         self.operations.push(operation);
     }
 
-    pub fn create_playlist_async(&mut self, name: &str, songs: Vec<String>, temporary_playlist_id: &str) {
+    pub fn create_playlist_async(
+        &mut self,
+        name: &str,
+        songs: Vec<String>,
+        temporary_playlist_id: &str,
+    ) {
         let url = self.build_url(
             SubsonicOperation::CreatePlaylist,
             vec![
@@ -223,7 +230,7 @@ impl Server {
                 SubsonicParameter::PlaylistSongs(songs),
             ],
         );
-        
+
         let (tx, rx) = mpsc::unbounded_channel();
         let operation = AsyncOperation::new(
             Operation::CreatePlaylist(temporary_playlist_id.to_string()),
@@ -235,7 +242,7 @@ impl Server {
         self.operations.push(operation);
     }
 
-    pub fn update_playlist_async(&mut self,  songs: Vec<String>, playlist_id: &str) {
+    pub fn update_playlist_async(&mut self, songs: Vec<String>, playlist_id: &str) {
         let url = self.build_url(
             SubsonicOperation::UpdatePlaylist,
             vec![
@@ -261,8 +268,13 @@ impl Server {
             vec![SubsonicParameter::PlaylistId(playlist_id.to_string())],
         );
         let (tx, rx) = mpsc::unbounded_channel();
-        let operation = AsyncOperation::new(Operation::DeletePlaylist(playlist_id.to_string()), url, rx, tx);
-        
+        let operation = AsyncOperation::new(
+            Operation::DeletePlaylist(playlist_id.to_string()),
+            url,
+            rx,
+            tx,
+        );
+
         self.operations.push(operation);
     }
 
@@ -389,7 +401,7 @@ impl Server {
                         Ok(text) => {
                             error!("Response from server: {}", text);
                             response_text = text;
-                        },
+                        }
                         Err(e) => error!("Could not parse error response from server: {}", e),
                     }
                 }
@@ -410,89 +422,97 @@ impl Server {
             SubsonicOperation::Ping => format!(
                 "{}/rest/ping.view?\
                     {}&v={}&c=naviterm",
-                self.server_address, self.connection_string,NAVITERM_VERSION
+                self.server_address, self.connection_string, NAVITERM_VERSION
             ),
             SubsonicOperation::GetAlbumListRecent => {
                 format!(
                     "{}/rest/getAlbumList.view?type=recent&\
                     size={}&{}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string,NAVITERM_VERSION
+                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
                 )
             }
             SubsonicOperation::GetAlbumListMostListened => {
                 format!(
-                    "{}/rest/getAlbumList.view?type=frequent&\
+                    "{}/rest/{}.view?type=frequent&\
                     size={}&offset={}&{}&v={}&c=naviterm",
                     self.server_address,
+                    self.album_lists_api,
                     parameters[0],
                     parameters[1],
-                    self.connection_string,NAVITERM_VERSION,
+                    self.connection_string,
+                    NAVITERM_VERSION,
                 )
             }
             SubsonicOperation::GetAlbumListAlphabetical => {
                 format!(
-                    "{}/rest/getAlbumList.view?type=alphabeticalByName&\
+                    "{}/rest/{}.view?type=alphabeticalByName&\
                     size={}&offset={}&{}&v={}&c=naviterm",
                     self.server_address,
+                    self.album_lists_api,
                     parameters[0],
                     parameters[1],
-                    self.connection_string,NAVITERM_VERSION,
+                    self.connection_string,
+                    NAVITERM_VERSION,
                 )
             }
             SubsonicOperation::GetAlbum => {
                 format!(
                     "{}/rest/getAlbum.view?id={}&\
                     {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string,NAVITERM_VERSION
+                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
                 )
             }
             SubsonicOperation::DownloadSong => {
                 format!(
                     "{}/rest/download?id={}&\
                     {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string,NAVITERM_VERSION
+                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
                 )
             }
             SubsonicOperation::GetCoverArt => {
                 format!(
                     "{}/rest/getCoverArt.view?id={}&\
                     {}&v={}&c=naviterm&size=300",
-                    self.server_address, parameters[0], self.connection_string,NAVITERM_VERSION
+                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
                 )
             }
             SubsonicOperation::GetGenres => {
                 format!(
                     "{}/rest/getGenres.view?\
                 {}&v={}&c=naviterm",
-                    self.server_address, self.connection_string,NAVITERM_VERSION
+                    self.server_address, self.connection_string, NAVITERM_VERSION
                 )
             }
             SubsonicOperation::GetPlaylistList => {
                 format!(
                     "{}/rest/getPlaylists.view?\
                 {}&v={}&c=naviterm",
-                    self.server_address, self.connection_string,NAVITERM_VERSION
+                    self.server_address, self.connection_string, NAVITERM_VERSION
                 )
             }
             SubsonicOperation::GetPlaylist => {
                 format!(
                     "{}/rest/getPlaylist.view?id={}&\
                 {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string,NAVITERM_VERSION
+                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
                 )
             }
             SubsonicOperation::GetAlbumListRecentlyAdded => {
                 format!(
-                    "{}/rest/getAlbumList.view?type=newest&\
+                    "{}/rest/{}.view?type=newest&\
                     size={}&{}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string,NAVITERM_VERSION
+                    self.server_address,
+                    self.album_lists_api,
+                    parameters[0],
+                    self.connection_string,
+                    NAVITERM_VERSION
                 )
             }
             SubsonicOperation::Scrobble => {
                 format!(
                     "{}/rest/scrobble?id={}&\
                     {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string,NAVITERM_VERSION
+                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
                 )
             }
             SubsonicOperation::CreatePlaylist => {
@@ -502,14 +522,15 @@ impl Server {
                     self.server_address,
                     parameters[0],
                     parameters[1],
-                    self.connection_message,NAVITERM_VERSION,
+                    self.connection_message,
+                    NAVITERM_VERSION,
                 )
             }
             SubsonicOperation::DeletePlaylist => {
                 format!(
                     "{}/rest/deletePlaylist.view?id={}&\
                 {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string,NAVITERM_VERSION
+                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
                 )
             }
             SubsonicOperation::UpdatePlaylist => {
@@ -519,7 +540,8 @@ impl Server {
                     self.server_address,
                     parameters[0],
                     parameters[1],
-                    self.connection_string,NAVITERM_VERSION,
+                    self.connection_string,
+                    NAVITERM_VERSION,
                 )
             }
         };
@@ -545,7 +567,7 @@ fn process_atomic_operations(operation: &mut AsyncOperation) -> isize {
             perform_request_async(url, sender).await;
         });
         new_requests += 1;
-    } else if operation.started() && !operation.finished() &&!operation.error() {
+    } else if operation.started() && !operation.finished() && !operation.error() {
         match operation.thread_rx_handle().try_recv() {
             Ok(message) => {
                 debug!("Received message from thread_rx_handle");
@@ -576,9 +598,9 @@ async fn perform_request_async(url: String, sender: UnboundedSender<String>) {
         .header(USER_AGENT, format!("naviterm/{}", NAVITERM_VERSION))
         .send()
         .await;
-    
+
     let mut retries = 1;
-    
+
     while response.is_err() && retries <= 3 {
         sleep(Duration::from_millis(100)).await;
         warn!("Error while doing request: {:?}", response.err().unwrap());
@@ -614,13 +636,13 @@ async fn perform_request_async(url: String, sender: UnboundedSender<String>) {
                     Ok(text) => {
                         error!("Response from server: {}", text);
                         format!("error: {}", text)
-                    },
+                    }
                     Err(e) => {
                         error!("Could not parse error response from server: {}", e);
                         format!("error: {:?}", e)
-                    },
+                    }
                 }
-            },
+            }
         },
         Err(err) => {
             error!("Error while doing request: {:?}", err);
