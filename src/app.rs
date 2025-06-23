@@ -285,6 +285,7 @@ pub struct AppConfig {
     pub draw_while_unfocused: bool,
     pub save_player_status: bool,
     pub wait_for_ipc_ms: u64,
+    pub album_list_api_namespace: String,
 }
 
 pub struct AlbumFilters {
@@ -607,6 +608,25 @@ impl App {
                 warn!("Could not parse auth mode {}", e);
                 info!("Using default server auth mode: token.");
                 self.server.server_auth = "token".to_string();
+            }
+        }
+        match config.get::<String>("album_list_api") {
+            Ok(auth_mode) => {
+                if auth_mode == "v2" {
+                    info!("Using album list API version: v2.");
+                    self.server.album_lists_api = "getAlbumList2".to_string();
+                    self.app_config.album_list_api_namespace = "albumList2".to_string();
+                } else {
+                    info!("Using album list API version: v1.");
+                    self.app_config.album_list_api_namespace = "albumList".to_string();
+                    self.server.album_lists_api = "getAlbumList".to_string();
+                }
+            }
+            Err(e) => {
+                warn!("Could not parse album list version {}", e);
+                info!("Using default album list API version: v1.");
+                self.server.album_lists_api = "getAlbumList".to_string();
+                self.app_config.album_list_api_namespace = "albumList".to_string();
             }
         }
         match config.get::<u64>("wait_for_ipc_ms") {
@@ -1347,17 +1367,16 @@ impl App {
                             .album_id();
                         if album_id_selected == DEFAULT_ALBUM {
                             warn!("Cannot add default album!");
-                            self.error_message = "Cannot add default album.".into();
                             return Err("Cannot add default album".into());
                         }
                         selected_album_index = 0;
-                        for (i, album_id) in self.database.most_listened_albums().iter().enumerate()
+                        for (i, album_id) in self.database.alphabetical_list_albums().iter().enumerate()
                         {
                             if album_id_selected == album_id {
                                 selected_album_index = i;
                             }
                         }
-                        self.database.most_listened_albums()
+                        self.database.alphabetical_list_albums()
                     }
                     _ => {
                         panic!("Should not reach")
@@ -1390,7 +1409,7 @@ impl App {
 
         match media {
             MediaType::Song => {
-                let selected_album_id = album_list.get(selected_album_index).unwrap();
+                let selected_album_id = album_list.get(selected_album_index).ok_or("Could not find album for selected item")?;
                 let songs_ids = self.database.get_album(selected_album_id).songs();
                 let song = if self.home_pane == HomePane::BottomRight
                     && self.current_popup == Popup::None
@@ -1439,7 +1458,6 @@ impl App {
                 };
                 if song.id() == DEFAULT_SONG {
                     warn!("Cannot add default song!");
-                    self.error_message = "Cannot add default song.".into();
                     return Err("Cannot add default song!".into());
                 }
                 self.item_to_be_added.name = song.title().to_string();
@@ -1450,10 +1468,9 @@ impl App {
             MediaType::Album => {
                 let album = self
                     .database
-                    .get_album(album_list.get(selected_album_index).unwrap());
+                    .get_album(album_list.get(selected_album_index).ok_or("Could not find album for selected item")?);
                 if album.id() == DEFAULT_ALBUM {
                     warn!("Cannot add default album!");
-                    self.error_message = "Cannot add default album.".into();
                     return Err("Cannot add default album!".into());
                 }
                 self.item_to_be_added.id = album.id().to_string();
@@ -3270,10 +3287,10 @@ impl App {
                         let offset = *offset;
                         operation.set_processed(true);
                         let mut album_list =
-                            match Parser::parse_album_list_simple(operation.result().to_string()) {
+                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str()) {
                                 Ok(album_list) => album_list,
                                 Err(e) => {
-                                    warn!("Could not parse album list: {}", e);
+                                    warn!("Could not parse album list: {}", operation.result());
                                     warn!("{}", e);
                                     continue;
                                 }
@@ -3408,10 +3425,10 @@ impl App {
                         }
                         operation.set_processed(true);
                         let album_list =
-                            match Parser::parse_album_list_simple(operation.result().to_string()) {
+                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str()) {
                                 Ok(album_list) => album_list,
                                 Err(e) => {
-                                    warn!("Could not parse album list result: {}", e);
+                                    warn!("Could not parse album list result: {}", operation.result());
                                     warn!("{}", e);
                                     continue;
                                 }
@@ -3452,10 +3469,10 @@ impl App {
                         let offset = *offset;
                         operation.set_processed(true);
                         let mut album_list =
-                            match Parser::parse_album_list_simple(operation.result().to_string()) {
+                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str()) {
                                 Ok(album_list) => album_list,
                                 Err(e) => {
-                                    warn!("Could not parse album list result: {}", e);
+                                    warn!("Could not parse album list result: {}", operation.result());
                                     warn!("{}", e);
                                     continue;
                                 }
@@ -3482,7 +3499,7 @@ impl App {
                             match Parser::parse_genres_list(operation.result().to_string()) {
                                 Ok(genres) => genres,
                                 Err(e) => {
-                                    warn!("Could not parse genres result: {}", e);
+                                    warn!("Could not parse genres result: {}", operation.result());
                                     warn!("{}", e);
                                     continue;
                                 }
@@ -3496,10 +3513,10 @@ impl App {
                         }
                         operation.set_processed(true);
                         let album_list =
-                            match Parser::parse_album_list_simple(operation.result().to_string()) {
+                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str()) {
                                 Ok(album_list) => album_list,
                                 Err(e) => {
-                                    warn!("Could not parse album list result: {}", e);
+                                    warn!("Could not parse album list result: {}", operation.result());
                                     warn!("{}", e);
                                     continue;
                                 }
@@ -3602,6 +3619,7 @@ impl App {
 fn sort_songs_by_play_count(songs: &HashMap<String, Song>) -> Vec<String> {
     let mut song_vector: Vec<_> = songs
         .iter()
+        .filter(|(id,_)| *id != DEFAULT_SONG)
         .map(|(id, song)| (id.clone(), song.play_count()))
         .collect();
     song_vector.sort_by(|a, b| {

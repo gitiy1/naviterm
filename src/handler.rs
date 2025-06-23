@@ -92,45 +92,45 @@ pub async fn handle_key_events(
         }
         ShortcutAction::GoPopupAddAlbumTo => match app.set_item_to_be_added(MediaType::Album) {
             Ok(_) => app.current_popup = Popup::AddTo,
-            Err(_) => {
-                app.error_message = "Error while selecting item to add to: ".to_string()
-                    + app.error_message.as_str();
+            Err(e) => {
+                app.error_message =
+                    "Error while selecting item to add to: ".to_string() + e.to_string().as_str();
                 app.current_popup = Popup::ErrorMessage
             }
         },
         ShortcutAction::GoPopupAddArtistItemTo => {
             match app.set_item_to_be_added(app.artist_view_song_or_album()) {
                 Ok(_) => app.current_popup = Popup::AddTo,
-                Err(_) => {
+                Err(e) => {
                     app.error_message = "Error while selecting item to add to: ".to_string()
-                        + app.error_message.as_str();
+                        + e.to_string().as_str();
                     app.current_popup = Popup::ErrorMessage
                 }
             }
         }
         ShortcutAction::GoPopupAddArtistTo => match app.set_item_to_be_added(MediaType::Artist) {
             Ok(_) => app.current_popup = Popup::AddTo,
-            Err(_) => {
-                app.error_message = "Error while selecting item to add to: ".to_string()
-                    + app.error_message.as_str();
+            Err(e) => {
+                app.error_message =
+                    "Error while selecting item to add to: ".to_string() + e.to_string().as_str();
                 app.current_popup = Popup::ErrorMessage
             }
         },
         ShortcutAction::GoPopupAddPlaylistTo => {
             match app.set_item_to_be_added(MediaType::Playlist) {
                 Ok(_) => app.current_popup = Popup::AddTo,
-                Err(_) => {
+                Err(e) => {
                     app.error_message = "Error while selecting item to add to: ".to_string()
-                        + app.error_message.as_str();
+                        + e.to_string().as_str();
                     app.current_popup = Popup::ErrorMessage
                 }
             }
         }
         ShortcutAction::GoPopupAddSongTo => match app.set_item_to_be_added(MediaType::Song) {
             Ok(_) => app.current_popup = Popup::AddTo,
-            Err(_) => {
-                app.error_message = "Error while selecting item to add to: ".to_string()
-                    + app.error_message.as_str();
+            Err(e) => {
+                app.error_message =
+                    "Error while selecting item to add to: ".to_string() + e.to_string().as_str();
                 app.current_popup = Popup::ErrorMessage
             }
         },
@@ -195,47 +195,49 @@ pub async fn handle_key_events(
         ShortcutAction::PlayImmediatelyArtist => {
             match app.set_item_to_be_added(MediaType::Artist) {
                 Ok(_) => app.add_queue_immediately()?,
-                Err(_) => {
-                    app.error_message = "Error while adding item to queue: ".to_string()
-                        + app.error_message.as_str();
+                Err(e) => {
+                    app.error_message =
+                        "Error while adding item to queue: ".to_string() + e.to_string().as_str();
                     app.current_popup = Popup::ErrorMessage
                 }
             }
         }
         ShortcutAction::PlayImmediatelyAlbum => match app.set_item_to_be_added(MediaType::Album) {
             Ok(_) => app.add_queue_immediately()?,
-            Err(_) => {
+            Err(e) => {
                 app.error_message =
-                    "Error while adding item to queue: ".to_string() + app.error_message.as_str();
+                    "Error while adding item to queue: ".to_string() + e.to_string().as_str();
                 app.current_popup = Popup::ErrorMessage
             }
         },
         ShortcutAction::PlayImmediatelyPlaylist => {
             match app.set_item_to_be_added(MediaType::Playlist) {
                 Ok(_) => app.add_queue_immediately()?,
-                Err(_) => {
-                    app.error_message = "Error while adding item to queue: ".to_string()
-                        + app.error_message.as_str();
+                Err(e) => {
+                    app.error_message =
+                        "Error while adding item to queue: ".to_string() + e.to_string().as_str();
                     app.current_popup = Popup::ErrorMessage
                 }
             }
         }
         ShortcutAction::PlayImmediatelySong => match app.set_item_to_be_added(MediaType::Song) {
             Ok(_) => app.add_queue_immediately()?,
-            Err(_) => {
+            Err(e) => {
                 app.error_message =
-                    "Error while adding item to queue: ".to_string() + app.error_message.as_str();
+                    "Error while adding item to queue: ".to_string() + e.to_string().as_str();
                 app.current_popup = Popup::ErrorMessage
             }
         },
         ShortcutAction::PlayImmediatelyArtistItem => {
             match app.set_item_to_be_added(app.artist_view_song_or_album()) {
                 Ok(_) => {
-                    app.error_message = "Error while adding item to queue: ".to_string()
-                        + app.error_message.as_str();
                     app.add_queue_immediately()?
                 }
-                Err(_) => app.current_popup = Popup::ErrorMessage,
+                Err(e) => {
+                    app.error_message =
+                        "Error while adding item to queue: ".to_string() + e.to_string().as_str();
+                    app.current_popup = Popup::ErrorMessage
+                },
             }
         }
         ShortcutAction::PopupClose => {

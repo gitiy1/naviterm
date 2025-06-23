@@ -79,23 +79,24 @@ This would generate a more lightweight executable, and it can be placed anywhere
 
 A configuration file is needed for the program to start. It must be at `~/.config/naviterm/config.ini`, and should have the following items:
 
-| Parameter            | Definition                                                                                                                                               | Default | Mandatory |
-|:---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|:-------:|:---------:|
+| Parameter            | Definition                                                                                                                                                | Default | Mandatory |
+|:---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|:-------:|:---------:|
 | server_address       | The address your server is running in, including the path. It should have the following format (note no trailing slash): `http(s)://name-or-ip/navidrome` |    -    |    Yes    |
-| user                 | Your user in navidrome                                                                                                                                   |    -    |    Yes    |
-| password             | The password for the user                                                                                                                                |    -    |    Yes    |
-| server_auth          | The authentication method to use, to choose from plain or token                                                                                          |  token  |    No     |
-| mpv_path             | The path to the mpv executable. If left empty, navidrome will try to use `mpv` from `$PATH`                                                              |   mpv   |    No     |
-| replay_gain          | The replay gain mode. The possible values are: track, album, auto                                                                                        |  track  |    No     |
-| primary_accent       | The primary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                               | yellow  |    No     |
-| secondary_accent     | The secondary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                             |  gray   |    No     |
-| home_list_size       | The size of the lists for the home pane (recently listened, recently added, most listened albums and tracks).                                            |   30    |    No     |
-| follow_cursor_queue  | Whether the cursor will follow the currently playing track in queue                                                                                      |  true   |    No     |
-| draw_while_unfocused | This flag controls whether the program will update its ui if the window loses focus. Setting to true could increase CPU usage.                           |  false  |    No     |
-| save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status, and volume level.                                  |  false  |    No     |
-| use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                               |  true   |    No     |
-| wait_for_ipc_ms      | Amount of time to wait before retrying to connect to the mpv process in ms.                                                                              |   200   |    No     |
-| mpv_custom_args      | Custom arguments for mpv, in a comma separated list (--arg1=value,--arg2=value,etc).                                                                     |   []   |    No     |
+| user                 | Your user in Navidrome                                                                                                                                    |    -    |    Yes    |
+| password             | The password for the user                                                                                                                                 |    -    |    Yes    |
+| server_auth          | The authentication method to use, to choose from plain or token                                                                                           |  token  |    No     |
+| mpv_path             | The path to the mpv executable. If left empty, Navidrome will try to use `mpv` from `$PATH`                                                               |   mpv   |    No     |
+| replay_gain          | The replay gain mode. The possible values are: track, album, auto                                                                                         |  track  |    No     |
+| primary_accent       | The primary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                                | yellow  |    No     |
+| secondary_accent     | The secondary accent color to be used. Possible values: yellow, red, green, blue, magenta, cyan, white, gray                                              |  gray   |    No     |
+| home_list_size       | The size of the lists for the home pane (recently listened, recently added, most listened albums and tracks).                                             |   30    |    No     |
+| follow_cursor_queue  | Whether the cursor will follow the currently playing track in queue                                                                                       |  true   |    No     |
+| draw_while_unfocused | This flag controls whether the program will update its ui if the window loses focus. Setting to true could increase CPU usage.                            |  false  |    No     |
+| save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status, and volume level.                                   |  false  |    No     |
+| use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                                |  true   |    No     |
+| wait_for_ipc_ms      | Amount of time to wait before retrying to connect to the mpv process in ms.                                                                               |   200   |    No     |
+| mpv_custom_args      | Custom arguments for mpv, in a comma separated list (--arg1=value,--arg2=value,etc).                                                                      |   []    |    No     |
+| album_list_api       | Version of the getAlbumList REST API to use. Navidrome uses v1 but other server applications might need to use v2.                                        |   v1    |    No     |
 
 The config file has to be a `ini` config file:
 ```ini
@@ -114,6 +115,7 @@ save_player_status=false
 use_dbus=true
 wait_for_ipc_ms=200
 mpv_custom_args=
+album_list_api=v1
 ```
 
 Shortcuts can also be configured. Refer to the Shortcuts section for more information.
@@ -254,11 +256,12 @@ The `mpv` process controlled by naviterm logs at `/tmp/naviterm_mpv.log`, which 
 If you have a feature request, also open an issue. No guarantees that I will implement it, but I will always take a look to see the feasibility/impact. Contributions are very welcome.
 
 ## Compability
-Please note that I developed the application with [navidrome](https://www.navidrome.org/) in mind. Although the Subsonic API is used by other server applications, it might be the case that naviterm does not work well with them. I might not be able to test/reproduce all issues of that kind, so bear that in mind when opening issues. If you are willing to help building bugfix branches and testing, that would help me a lot.
+Please note that I developed the application with [Navidrome](https://www.navidrome.org/) in mind. Although the Subsonic API is used by other server applications, it might be the case that naviterm does not work well with them. I might not be able to test/reproduce all issues of that kind, so bear that in mind when opening issues. If you are willing to help building bugfix branches and testing, that would help me a lot.
 
 Server applications tested:
-- [navidrome](https://www.navidrome.org/)
+- [Navidrome](https://www.navidrome.org/)
 - [Nextcloud Music app](https://apps.nextcloud.com/apps/music)
+- [LMS - Lightweight Music Server](https://github.com/epoupon/lms). LMS uses the album list v2 API, check the [configuration section](#configuration)
 
 
 ## Roadmap

@@ -66,6 +66,7 @@ pub struct Server {
     pub server_address: String,
     pub server_version: String,
     pub server_auth: String,
+    pub album_lists_api: String,
     /// server token
     pub token: String,
     /// salt
@@ -103,6 +104,7 @@ impl Default for Server {
             client: Client::new(),
             operations: vec![],
             current_number_of_requests: 0,
+            album_lists_api: "".to_string(),
         }
     }
 }
@@ -431,9 +433,10 @@ impl Server {
             }
             SubsonicOperation::GetAlbumListMostListened => {
                 format!(
-                    "{}/rest/getAlbumList.view?type=frequent&\
+                    "{}/rest/{}.view?type=frequent&\
                     size={}&offset={}&{}&v={}&c=naviterm",
                     self.server_address,
+                    self.album_lists_api,
                     parameters[0],
                     parameters[1],
                     self.connection_string,
@@ -442,9 +445,10 @@ impl Server {
             }
             SubsonicOperation::GetAlbumListAlphabetical => {
                 format!(
-                    "{}/rest/getAlbumList.view?type=alphabeticalByName&\
+                    "{}/rest/{}.view?type=alphabeticalByName&\
                     size={}&offset={}&{}&v={}&c=naviterm",
                     self.server_address,
+                    self.album_lists_api,
                     parameters[0],
                     parameters[1],
                     self.connection_string,
@@ -495,9 +499,13 @@ impl Server {
             }
             SubsonicOperation::GetAlbumListRecentlyAdded => {
                 format!(
-                    "{}/rest/getAlbumList.view?type=newest&\
+                    "{}/rest/{}.view?type=newest&\
                     size={}&{}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
+                    self.server_address,
+                    self.album_lists_api,
+                    parameters[0],
+                    self.connection_string,
+                    NAVITERM_VERSION
                 )
             }
             SubsonicOperation::Scrobble => {

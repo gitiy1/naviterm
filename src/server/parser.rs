@@ -53,12 +53,12 @@ impl Parser {
         Ok(genres_list)
     }
 
-    pub fn parse_album_list_simple(response: String) -> AppResult<Vec<String>> {
+    pub fn parse_album_list_simple(response: String, api_version: &str) -> AppResult<Vec<String>> {
         let root: minidom::Element = response.parse()?;
         let mut album_list = Vec::new();
 
-        let list = match root.get_child("albumList", Self::NAMESPACE) {
-            None => return Err("get child by 'albumList' returned none".into()),
+        let list = match root.get_child(api_version, Self::NAMESPACE) {
+            None => return Err(format!("get child by '{}' returned none", api_version).into()),
             Some(value) => value,
         };
         for album in list.children() {
