@@ -62,7 +62,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         frame.render_widget(queue_info, chunks_queue[0]);
 
         let mut items: Vec<ListItem> = Vec::new();
-        let reordered_queue: Vec<String>;
+        let mut reordered_queue: Vec<String> = vec![];
         let iterator = if app.app_config.reorder_random_queue {
             reordered_queue = app.player_data.queue_order.iter().map(|i| {app.player_data.queue[*i].clone()}).collect::<Vec<String>>();
             reordered_queue.iter()
@@ -107,12 +107,16 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         let vertical = Layout::vertical([Max(100), Length(2)]);
         let [info_area, navigation_area] = vertical.areas(info_block_inner);
 
-        let current_song = app.database.get_song(
-            app.player_data
-                .queue
-                .get(app.list_states.queue_list_state.selected().unwrap())
-                .unwrap(),
-        );
+        let current_song_id = if app.app_config.reorder_random_queue {
+            reordered_queue.get(app.list_states.queue_list_state.selected().unwrap()).unwrap()
+        }
+        else {
+                app.player_data
+                    .queue
+                    .get(app.list_states.queue_list_state.selected().unwrap())
+                    .unwrap()
+        };
+        let current_song = app.database.get_song(current_song_id);
 
         let song_information = Paragraph::new(vec![
             Line::from(vec![

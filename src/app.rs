@@ -913,26 +913,26 @@ impl App {
         };
         match self.item_to_be_added.media_type {
             MediaType::Song => {
+                let index_in_queue_order = self.player_data.index_in_queue + 1;
                 self.player_data
                     .queue
                     .insert(index_to_insert_to, self.item_to_be_added.id.clone());
-                self.player_data
-                    .queue_order
-                    .push(self.player_data.queue.len() - 1);
+                update_queue_order_when_adding_next(&mut self.player_data, index_in_queue_order, index_to_insert_to);
             }
             MediaType::Album => {
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
+                let mut index_in_queue_order = self.player_data.index_in_queue + 1;
                 for song in album.songs() {
                     self.player_data
                         .queue
                         .insert(index_to_insert_to, song.clone());
-                    self.player_data
-                        .queue_order
-                        .push(self.player_data.queue.len() - 1);
+                    update_queue_order_when_adding_next(&mut self.player_data, index_in_queue_order, index_to_insert_to);
                     index_to_insert_to += 1;
+                    index_in_queue_order += 1;
                 }
             }
             MediaType::Playlist => {
+                let mut index_in_queue_order = self.player_data.index_in_queue + 1;
                 for song_id in self
                     .database
                     .get_playlist(self.item_to_be_added.id.as_str())
@@ -941,13 +941,13 @@ impl App {
                     self.player_data
                         .queue
                         .insert(index_to_insert_to, song_id.clone());
-                    self.player_data
-                        .queue_order
-                        .push(self.player_data.queue.len() - 1);
+                    update_queue_order_when_adding_next(&mut self.player_data, index_in_queue_order, index_to_insert_to);
                     index_to_insert_to += 1;
+                    index_in_queue_order += 1;
                 }
             }
             MediaType::Artist => {
+                let mut index_in_queue_order = self.player_data.index_in_queue + 1;
                 for album_id in self
                     .database
                     .get_artist(self.item_to_be_added.id.as_str())
@@ -958,9 +958,8 @@ impl App {
                         self.player_data
                             .queue
                             .insert(index_to_insert_to, song.clone());
-                        self.player_data
-                            .queue_order
-                            .push(self.player_data.queue.len() - 1);
+                        update_queue_order_when_adding_next(&mut self.player_data, index_in_queue_order, index_to_insert_to);
+                        index_in_queue_order += 1;
                         index_to_insert_to += 1;
                     }
                 }
@@ -1163,7 +1162,7 @@ impl App {
         self.player_data.duration_total = duration_total.to_string();
         self.player_data.duration_left = duration_left.to_string();
     }
-
+    
     pub fn global_search_set_item_to_be_added(&mut self) -> AppResult<()> {
         match self.global_search_pane {
             FourPaneGrid::TopLeft => {
@@ -3664,6 +3663,22 @@ fn sort_playlists_by_name(playlists: &HashMap<String, Playlist>) -> Vec<String> 
 
     playlists_vec.into_iter().map(|(_, id)| id).collect()
 }
+
+fn update_queue_order_when_adding_next(player_data: &mut PlayerData, index: usize, value: usize) {
+    if !player_data.random_playback {
+        player_data
+            .queue_order
+            .push(player_data.queue.len() - 1);
+    } else {
+        for i in 0..player_data.queue_order.len() {
+            if player_data.queue_order[i] >= index {
+                player_data.queue_order[i] += 1;
+            }
+        }
+        player_data.queue_order.insert(index, value);
+    }
+}
+
 
 fn parse_color(string_color: &str) -> AppResult<Color> {
     match string_color.to_lowercase().as_str() {
