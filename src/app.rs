@@ -286,6 +286,7 @@ pub struct AppConfig {
     pub save_player_status: bool,
     pub wait_for_ipc_ms: u64,
     pub album_list_api_namespace: String,
+    pub reorder_random_queue: bool
 }
 
 pub struct AlbumFilters {
@@ -682,10 +683,21 @@ impl App {
             Ok(value) => self.app_config.save_player_status = value,
             Err(e) => {
                 info!(
-                    "Could not option to save player status, will not save by default. {}",
+                    "Could not load option to save player status, will not save by default. {}",
                     e
                 );
                 self.app_config.save_player_status = false;
+            }
+        }
+
+        match config.get::<bool>("reorder_random_queue") {
+            Ok(value) => self.app_config.reorder_random_queue = value,
+            Err(e) => {
+                info!(
+                    "Could not load option to to reorder random queue, will not reorder queue. {}",
+                    e
+                );
+                self.app_config.reorder_random_queue = false;
             }
         }
 
@@ -2023,11 +2035,7 @@ impl App {
         self.player_data.next_is_in_player_queue = false;
         self.app_flags.is_current_song_scrobbled = false;
         self.ticks_during_playing_state = 0;
-        if self.app_config.follow_cursor {
-            self.list_states.queue_list_state.select(Some(
-                self.player_data.queue_order[self.player_data.index_in_queue],
-            ));
-        }
+        self.center_queue_cursor().unwrap();
         self.event_sender
             .as_ref()
             .unwrap()
@@ -2407,9 +2415,12 @@ impl App {
     }
 
     pub fn center_queue_cursor(&mut self) -> AppResult<()> {
-        self.list_states.queue_list_state.select(Some(
-            self.player_data.queue_order[self.player_data.index_in_queue],
-        ));
+        let index = if self.app_config.reorder_random_queue {
+            self.player_data.index_in_queue
+        } else {
+            self.player_data.queue_order[self.player_data.index_in_queue]
+        };
+        self.list_states.queue_list_state.select(Some(index));
         Ok(())
     }
 
