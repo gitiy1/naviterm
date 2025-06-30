@@ -226,12 +226,11 @@ pub fn get_text_for_song_item_queue<'a>(
     index: usize,
     song_id: &str,
     search_data: &SearchData,
-    queue_order: &[usize],
-    index_in_queue: usize,
+    now_playing: &str,
 ) -> ListItem<'a> {
     let song = database.get_song(song_id);
     let mut song_first_line_vector: Vec<Span> = vec![];
-    let style_playing = if index == *queue_order.get(index_in_queue).unwrap() {
+    let style_playing = if song_id == now_playing {
         Style::default()
             .fg(app_colors.now_playing)
             .add_modifier(Modifier::BOLD)

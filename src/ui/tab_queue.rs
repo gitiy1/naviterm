@@ -1,15 +1,15 @@
 use crate::app::{App, AppResult};
+use crate::mappings::ShortcutAction;
 use crate::ui::utils::{duration_to_hhmmss, get_text_for_song_item_queue};
+use ratatui::layout::Constraint::Length;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
+use ratatui::prelude::Constraint::Max;
 use ratatui::prelude::Style;
 use ratatui::style::Modifier;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::BorderType::Rounded;
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Padding, Paragraph, Wrap};
 use ratatui::Frame;
-use ratatui::layout::Constraint::{Length};
-use ratatui::prelude::Constraint::Max;
-use crate::mappings::ShortcutAction;
 
 pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
     let chunks = Layout::default()
@@ -40,7 +40,12 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             .constraints([Constraint::Min(2), Constraint::Percentage(100)])
             .split(queue_block_inner);
 
-        let seconds_left = app.player_data.duration_left.parse::<usize>().unwrap().saturating_sub(app.ticks_during_playing_state / 4);
+        let seconds_left = app
+            .player_data
+            .duration_left
+            .parse::<usize>()
+            .unwrap()
+            .saturating_sub(app.ticks_during_playing_state / 4);
 
         let queue_info = Paragraph::new(
             Line::from(format!(
@@ -57,7 +62,14 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         frame.render_widget(queue_info, chunks_queue[0]);
 
         let mut items: Vec<ListItem> = Vec::new();
-        for (index, song_id) in app.player_data.queue.iter().enumerate() {
+        let mut reordered_queue: Vec<String> = vec![];
+        let iterator = if app.app_config.reorder_random_queue {
+            reordered_queue = app.player_data.queue_order.iter().map(|i| {app.player_data.queue[*i].clone()}).collect::<Vec<String>>();
+            reordered_queue.iter()
+        } else {
+            app.player_data.queue.iter()
+        };
+        for (index, song_id) in iterator.enumerate() {
             items.push(get_text_for_song_item_queue(
                 &app.database,
                 &mut app.app_flags,
@@ -66,8 +78,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 index,
                 song_id,
                 &app.search_data,
-                &app.player_data.queue_order,
-                app.player_data.index_in_queue,
+                &app.player_data.now_playing.id,
             ));
         }
         let list = List::new(items)
@@ -96,11 +107,16 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         let vertical = Layout::vertical([Max(100), Length(2)]);
         let [info_area, navigation_area] = vertical.areas(info_block_inner);
 
-        let current_song = app.database.get_song(
-            app.player_data.queue
-                .get(app.list_states.queue_list_state.selected().unwrap())
-                .unwrap(),
-        );
+        let current_song_id = if app.app_config.reorder_random_queue {
+            reordered_queue.get(app.list_states.queue_list_state.selected().unwrap()).unwrap()
+        }
+        else {
+                app.player_data
+                    .queue
+                    .get(app.list_states.queue_list_state.selected().unwrap())
+                    .unwrap()
+        };
+        let current_song = app.database.get_song(current_song_id);
 
         let song_information = Paragraph::new(vec![
             Line::from(vec![
@@ -234,7 +250,10 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
         let navigation_options = Paragraph::new(vec![
             Line::from(vec![
                 Span {
-                    content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::GoToTrackAlbum, None).into(),
+                    content: app
+                        .shortcuts
+                        .get_key_combo_for_operation(ShortcutAction::GoToTrackAlbum, None)
+                        .into(),
                     style: Style::default()
                         .fg(app.app_colors.primary_accent)
                         .add_modifier(Modifier::BOLD),
@@ -246,7 +265,10 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
             ]),
             Line::from(vec![
                 Span {
-                    content: app.shortcuts.get_key_combo_for_operation(ShortcutAction::GoToTrackArtist, None).into(),
+                    content: app
+                        .shortcuts
+                        .get_key_combo_for_operation(ShortcutAction::GoToTrackArtist, None)
+                        .into(),
                     style: Style::default()
                         .fg(app.app_colors.primary_accent)
                         .add_modifier(Modifier::BOLD),
