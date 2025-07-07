@@ -3,7 +3,7 @@ use crate::model::album::Album;
 use crate::model::artist::Artist;
 use crate::model::playlist::Playlist;
 use crate::model::song::Song;
-use log::info;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -287,7 +287,13 @@ impl MusicDatabase {
     }
 
     pub fn update_artist(&mut self, artist_id: &str) {
-        let artist = self.artists.get_mut(artist_id).unwrap();
+        let artist = match self.artists.get_mut(artist_id) {
+            None => {
+                warn!("Tried to update artist, but is missing in database: {}", artist_id);
+                return;
+            }
+            Some(value) => value
+        };
 
         artist
             .albums_mut()
