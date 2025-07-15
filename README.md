@@ -44,7 +44,10 @@ Add the flake to your inputs.
 {
   inputs = {
     ...
-    naviterm.url = "gitlab:detoxify92/naviterm";
+    naviterm = {
+        url = "gitlab:detoxify92/naviterm";
+        inputs.nixpkgs.follows = "nixpkgs";
+    };
   }
   ...
 }
