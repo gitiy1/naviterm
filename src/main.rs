@@ -151,7 +151,7 @@ async fn main() -> AppResult<()> {
     }
     app.mode = mode;
     app.app_flags.running = true;
-    app.set_config(settings)?;
+    app.set_config(settings).await?;
     app.renew_credentials()?;
     if app.mode != AppConnectionMode::Offline {
         match app.test_connection().await {
