@@ -712,6 +712,9 @@ impl App {
             "secretservice" => {
                 let store = SecretService::connect(EncryptionType::Dh).await?;
                 let collection = store.get_default_collection().await?;
+                if collection.is_locked().await? {
+                    collection.unlock().await?;
+                };
                 let attributes = HashMap::from([
                     ("app_id", "com.gitlab.detoxify92.naviterm"),
                     ("server", &self.server.server_address),
@@ -726,9 +729,6 @@ impl App {
                         std::io::stdin().read_line(&mut secret)?;
                         &collection.create_item("Naviterm", attributes, secret.trim().as_bytes(), false, "text/plain").await?
                     },
-                };
-                if item.is_locked().await? {
-                    item.unlock().await?;
                 };
                 let secret = item.get_secret().await?;
                 self.server.set_password(String::from_utf8(secret)?);
