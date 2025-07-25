@@ -3077,8 +3077,15 @@ impl App {
     }
 
     pub fn set_album_in_list_to_current_playing(&mut self) -> AppResult<()> {
-        let selected_queue_song_id =
-            self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str();
+        let selected_queue_song_id = if self.app_config.reorder_random_queue && self.player_data.random_playback {
+            let selected_song_in_queue = 
+                self.player_data.queue_order
+                    .get(self.list_states.queue_list_state.selected().unwrap())
+                    .unwrap();
+            self.player_data.queue.get(*selected_song_in_queue).unwrap()
+        } else {
+            self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str()
+        };
         let album_id = self
             .database
             .get_song(selected_queue_song_id)
@@ -3105,9 +3112,16 @@ impl App {
     }
 
     pub fn set_artist_in_list_to_current_playing(&mut self) -> AppResult<()> {
-        let selected_queue_song = self.database.get_song(
-            self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str(),
-        );
+        let selected_queue_song_id = if self.app_config.reorder_random_queue && self.player_data.random_playback {
+            let selected_song_in_queue =
+                self.player_data.queue_order
+                    .get(self.list_states.queue_list_state.selected().unwrap())
+                    .unwrap();
+            self.player_data.queue.get(*selected_song_in_queue).unwrap()
+        } else {
+            self.player_data.queue[self.list_states.queue_list_state.selected().unwrap()].as_str()
+        };
+        let selected_queue_song = self.database.get_song(selected_queue_song_id);
         let index = self
             .database
             .alphabetical_artists()
