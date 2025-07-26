@@ -156,17 +156,33 @@ pub async fn handle_key_events(
         ShortcutAction::GoToTrackAlbum => {
             if !app.player_data.queue.is_empty() {
                 app.clear_search()?;
-                app.set_album_in_list_to_current_playing()?;
-                app.album_pane = TwoPaneVertical::Right;
-                app.current_screen = CurrentScreen::Albums;
+                match app.set_album_in_list_to_current_playing() {
+                    Ok(_) => {
+                        app.album_pane = TwoPaneVertical::Right;
+                        app.current_screen = CurrentScreen::Albums;
+                    }
+                    Err(e) => {
+                        app.error_message =
+                            "Error while going to album pane: ".to_string() + e.to_string().as_str();
+                        app.current_popup = Popup::ErrorMessage
+                    }
+                }
             }
         }
         ShortcutAction::GoToTrackArtist => {
             if !app.player_data.queue.is_empty() {
                 app.clear_search()?;
-                app.set_artist_in_list_to_current_playing()?;
-                app.artist_pane = TwoPaneVertical::Right;
-                app.current_screen = CurrentScreen::Artists;
+                match app.set_artist_in_list_to_current_playing() {
+                    Ok(_) => {
+                        app.artist_pane = TwoPaneVertical::Right;
+                        app.current_screen = CurrentScreen::Artists;
+                    }
+                    Err(e) => {
+                        app.error_message =
+                            "Error while going to artist pane: ".to_string() + e.to_string().as_str();
+                        app.current_popup = Popup::ErrorMessage
+                    }
+                }
             }
         }
         ShortcutAction::MoveDownInList => app.move_in_list(AppMovementInList::Next)?,

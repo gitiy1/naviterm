@@ -1254,7 +1254,7 @@ impl App {
                         warn!("Could not find the index for the song in the global search!")
                     }
                 }
-                self.set_album_index_for_album_id(album.id().to_string().as_str());
+                self.set_album_index_for_album_id(album.id().to_string().as_str())?;
                 self.album_pane = TwoPaneVertical::Right;
                 self.current_screen = CurrentScreen::Albums;
             }
@@ -1272,7 +1272,7 @@ impl App {
                     )
                     .id()
                     .to_string();
-                self.set_album_index_for_album_id(album_id.as_str());
+                self.set_album_index_for_album_id(album_id.as_str())?;
                 self.album_pane = TwoPaneVertical::Left;
                 self.current_screen = CurrentScreen::Albums;
             }
@@ -3091,11 +3091,11 @@ impl App {
             .get_song(selected_queue_song_id)
             .album_id()
             .to_string();
-        self.set_album_index_for_album_id(album_id.as_str());
+        self.set_album_index_for_album_id(album_id.as_str())?;
         Ok(())
     }
 
-    fn set_album_index_for_album_id(&mut self, album_id: &str) {
+    fn set_album_index_for_album_id(&mut self, album_id: &str) -> AppResult<()>{
         let index = self
             .database
             .filtered_albums()
@@ -3104,9 +3104,11 @@ impl App {
         match index {
             Some(index) => {
                 self.list_states.album_state.select(Some(index));
+                Ok(())
             }
             None => {
                 warn!("Could not find the index for the album id: {}", album_id);
+                Err(format!("Could not find the album ({}) in the album list!", album_id).into())
             }
         }
     }
@@ -3132,7 +3134,8 @@ impl App {
                 self.list_states.artist_state.select(Some(index));
             }
             None => {
-                warn!("Could not find the artist of the playing song in the artist list!")
+                warn!("Could not find the artist ({}) of the selected song ({}) in the artist list!", selected_queue_song.artist(), selected_queue_song.title());
+                return Err(format!("Could not find the artist ({}) of the selected song ({}) in the artist list!", selected_queue_song.artist(), selected_queue_song.title()).into());
             }
         }
 
