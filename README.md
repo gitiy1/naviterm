@@ -86,7 +86,8 @@ A configuration file is needed for the program to start. It must be at `~/.confi
 |:----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|:-------:|:---------:|
 | server_address              | The address your server is running in, including the path. It should have the following format (note no trailing slash): `http(s)://name-or-ip/navidrome` |    -    |    Yes    |
 | user                        | Your user in Navidrome                                                                                                                                    |    -    |    Yes    |
-| password                    | The password for the user                                                                                                                                 |    -    |    Yes    |
+| password                    | The password for the user (only used if password_store=plain)                                                                                             |    -    |    No     |
+| password_store              | Storage method for the password (plain, secretservice)                                                                                                    |  plain  |    No     |
 | server_auth                 | The authentication method to use, to choose from plain or token                                                                                           |  token  |    No     |
 | mpv_path                    | The path to the mpv executable. If left empty, Navidrome will try to use `mpv` from `$PATH`                                                               |   mpv   |    No     |
 | replay_gain                 | The replay gain mode. The possible values are: track, album, auto                                                                                         |  track  |    No     |
@@ -107,6 +108,7 @@ The config file has to be a `ini` config file:
 server_address=https://your-navidrome-instance.com/navidrome
 user=joe
 password=secret_pass
+password_store=plain
 server_auth=token
 mpv_path=/usr/bin/mpv
 replay_gain=auto
@@ -127,6 +129,8 @@ Shortcuts can also be configured. Refer to the Shortcuts section for more inform
 
 ## Usage
 If your config file is correct, the program should start and begin building a local database of your music collection, which will be stored at `~/.config/naviterm/database.bin`. Please wait until is finished. After that you can start using naviterm to play some music!
+
+In case of using the secretservice password storage, the program once asks for the password before startup.
 
 ### Shortcuts
 This section includes lists of all shortcuts you can use in the app, heavily Vim inspired (media keys shortcuts have not been included, as they are self-explanatory). Most of them can be configured to your liking by using the key in the config file and assigning a new shortcut like `mod_key`:
