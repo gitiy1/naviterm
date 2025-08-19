@@ -28,3 +28,4 @@ serde = "1.0.210"
 bincode = "1.3.3"
 which = "7.0.3"
 regex = "1.11.1"
+secret-service = { version = "5.0.0", features = ["rt-tokio-crypto-rust"] }

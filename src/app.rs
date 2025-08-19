@@ -21,6 +21,7 @@ use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 use ratatui::prelude::Color;
 use ratatui::widgets::ListState;
+use secret_service::{SecretService, EncryptionType};
 use std::cmp::PartialEq;
 use std::collections::{HashMap, HashSet};
 use std::error;
@@ -574,7 +575,7 @@ impl App {
         self.player.set_volume(self.player_data.player_volume);
     }
 
-    pub fn set_config(&mut self, config: Config) -> AppResult<()> {
+    pub async fn set_config(&mut self, config: Config) -> AppResult<()> {
         match config.get::<String>("server_address") {
             Ok(address) => self.server.server_address = address,
             Err(e) => {
@@ -591,12 +592,12 @@ impl App {
                 exit(1)
             }
         }
-        match config.get::<String>("password") {
-            Ok(password) => self.server.set_password(password),
+        match config.get::<String>("password_store") {
+            Ok(store) => self.set_password_from_store(&config, store).await?,
             Err(e) => {
-                println!("Could not load password.");
-                error!("Failed to load password. {}", e);
-                exit(1)
+                warn!("Could not parse password store {}", e);
+                info!("Using default password store: plain.");
+                self.set_password_from_store(&config, "plain".to_string()).await?
             }
         }
         match config.get::<String>("server_auth") {
@@ -703,6 +704,44 @@ impl App {
 
         self.shortcuts.init_shortcuts(config);
 
+        Ok(())
+    }
+
+    async fn set_password_from_store(&mut self, config: &Config, store: String) -> AppResult<()> {
+        match store.as_str() {
+            "secretservice" => {
+                let store = SecretService::connect(EncryptionType::Dh).await?;
+                let collection = store.get_default_collection().await?;
+                if collection.is_locked().await? {
+                    collection.unlock().await?;
+                };
+                let attributes = HashMap::from([
+                    ("app_id", "com.gitlab.detoxify92.naviterm"),
+                    ("server", &self.server.server_address),
+                    ("username", &self.server.user),
+                ]);
+                let search_items = collection.search_items(attributes.clone()).await?;
+                let item = match search_items.first() {
+                    Some(i) => i,
+                    None => {
+                        println!("Please enter password for {}@{}:", self.server.user, self.server.server_address);
+                        let mut secret = String::new();
+                        std::io::stdin().read_line(&mut secret)?;
+                        &collection.create_item("Naviterm", attributes, secret.trim().as_bytes(), false, "text/plain").await?
+                    },
+                };
+                let secret = item.get_secret().await?;
+                self.server.set_password(String::from_utf8(secret)?);
+            }
+            "plain" | _ => match config.get::<String>("password") {
+                Ok(password) => self.server.set_password(password),
+                Err(e) => {
+                    println!("Could not load password.");
+                    error!("Failed to load password. {}", e);
+                    exit(1)
+                }
+            },
+        }
         Ok(())
     }
 
