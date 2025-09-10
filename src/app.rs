@@ -592,14 +592,6 @@ impl App {
                 exit(1)
             }
         }
-        match config.get::<String>("password_store") {
-            Ok(store) => self.set_password_from_store(&config, store).await?,
-            Err(e) => {
-                warn!("Could not parse password store {}", e);
-                info!("Using default password store: plain.");
-                self.set_password_from_store(&config, "plain".to_string()).await?
-            }
-        }
         match config.get::<String>("server_auth") {
             Ok(auth_mode) => {
                 if auth_mode == "token" || auth_mode == "plain" {
@@ -612,6 +604,15 @@ impl App {
                 self.server.server_auth = "token".to_string();
             }
         }
+        match config.get::<String>("password_store") {
+            Ok(store) => self.set_password_from_store(&config, store).await?,
+            Err(e) => {
+                warn!("Could not parse password store {}", e);
+                info!("Using default password store: plain.");
+                self.set_password_from_store(&config, "plain".to_string()).await?
+            }
+        }
+
         match config.get::<String>("album_list_api") {
             Ok(auth_mode) => {
                 if auth_mode == "v2" {
@@ -710,28 +711,7 @@ impl App {
     async fn set_password_from_store(&mut self, config: &Config, store: String) -> AppResult<()> {
         match store.as_str() {
             "secretservice" => {
-                let store = SecretService::connect(EncryptionType::Dh).await?;
-                let collection = store.get_default_collection().await?;
-                if collection.is_locked().await? {
-                    collection.unlock().await?;
-                };
-                let attributes = HashMap::from([
-                    ("app_id", "com.gitlab.detoxify92.naviterm"),
-                    ("server", &self.server.server_address),
-                    ("username", &self.server.user),
-                ]);
-                let search_items = collection.search_items(attributes.clone()).await?;
-                let item = match search_items.first() {
-                    Some(i) => i,
-                    None => {
-                        println!("Please enter password for {}@{}:", self.server.user, self.server.server_address);
-                        let mut secret = String::new();
-                        std::io::stdin().read_line(&mut secret)?;
-                        &collection.create_item("Naviterm", attributes, secret.trim().as_bytes(), false, "text/plain").await?
-                    },
-                };
-                let secret = item.get_secret().await?;
-                self.server.set_password(String::from_utf8(secret)?);
+                self.set_secret_service_password().await?
             }
             "plain" | _ => match config.get::<String>("password") {
                 Ok(password) => self.server.set_password(password),
@@ -741,6 +721,60 @@ impl App {
                     exit(1)
                 }
             },
+        }
+        Ok(())
+    }
+
+    async fn set_secret_service_password(&mut self) -> AppResult<()> {
+        let mut authorized = false;
+        while !authorized {
+            let store = SecretService::connect(EncryptionType::Dh).await?;
+            let collection = store.get_default_collection().await?;
+            if collection.is_locked().await? {
+                collection.unlock().await?;
+            };
+            let attributes = HashMap::from([
+                ("app_id", "com.gitlab.detoxify92.naviterm"),
+                ("server", &self.server.server_address),
+                ("username", &self.server.user),
+            ]);
+            let search_items = collection.search_items(attributes.clone()).await?;
+            let item = match search_items.first() {
+                Some(i) => i,
+                None => {
+                    let prompt = format!(
+                        "Please enter password for {}@{}: ",
+                        self.server.user,
+                        self.server.server_address
+                    );
+                    let secret = rpassword::prompt_password(prompt)?;
+                    &collection.create_item(
+                        "Naviterm",
+                        attributes,
+                        secret.trim().as_bytes(),
+                        false,
+                        "text/plain"
+                    ).await?
+                },
+            };
+            let secret = item.get_secret().await?;
+            self.server.set_password(String::from_utf8(secret)?);
+
+            authorized = true;
+
+            // Check if credentials are valid
+            self.renew_credentials()?;
+            self.test_connection().await?;
+
+            // 40 represents "Wrong username or password." in the subsonic API.
+            if self.server.connection_code == "40" {
+                authorized = false;
+
+                error!("Invalid credentials, retry");
+                println!("Invalid credentials, retry");
+
+                item.delete().await?
+            }
         }
         Ok(())
     }
