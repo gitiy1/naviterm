@@ -135,9 +135,27 @@ pub async fn handle_key_events(
             }
         },
         ShortcutAction::GoPopupAlbumInfo => app.current_popup = Popup::AlbumInformation,
-        ShortcutAction::GoPopupDeletePlaylist => app.current_popup = Popup::ConfirmPlaylistDeletion,
+        ShortcutAction::GoPopupDeletePlaylist => {
+            if app
+                .database
+                .alphabetical_playlists()
+                .get(app.list_states.playlist_state.selected().unwrap())
+                .is_some()
+            {
+                app.current_popup = Popup::ConfirmPlaylistDeletion
+            }
+        },
         ShortcutAction::GoPopupGenreFilter => app.current_popup = Popup::GenreFilter,
-        ShortcutAction::GoPopupSyncPlaylist => app.current_popup = Popup::SynchronizePlaylist,
+        ShortcutAction::GoPopupSyncPlaylist => {
+            if app
+                .database
+                .alphabetical_playlists()
+                .get(app.list_states.playlist_state.selected().unwrap())
+                .is_some()
+            {
+                app.current_popup = Popup::SynchronizePlaylist
+            }
+        }
         ShortcutAction::GoPopupTestConnection => app.current_popup = Popup::ConnectionTest,
         ShortcutAction::GoPopupUpdateDatabase => {
             app.get_selected_album_for_update()?;
