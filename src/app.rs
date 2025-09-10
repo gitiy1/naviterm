@@ -1004,7 +1004,7 @@ impl App {
                 }
             }
         }
-        if was_empty {
+        if was_empty && !self.player_data.queue.is_empty() {
             self.change_current_playing_to(
                 self.player_data.queue.first().unwrap().clone().as_str(),
             );
@@ -1061,7 +1061,7 @@ impl App {
                 }
             }
         }
-        if was_empty {
+        if was_empty && !self.player_data.queue.is_empty() {
             self.change_current_playing_to(
                 self.player_data.queue.first().unwrap().clone().as_str(),
             );
@@ -1135,6 +1135,9 @@ impl App {
                     }
                 }
             }
+        }
+        if songs_to_add.is_empty() {
+            return Ok(())
         }
         let mut index = self
             .list_states
@@ -1535,7 +1538,7 @@ impl App {
                             self.database
                                 .alphabetical_playlists()
                                 .get(self.list_states.playlist_state.selected().unwrap())
-                                .unwrap(),
+                                .ok_or("Could not find playlist for selected item")?,
                         )
                         .unwrap()
                         .id(),
@@ -3055,28 +3058,37 @@ impl App {
                 .filtered_albums()
                 .get(self.list_states.album_state.selected().unwrap())
                 .cloned(),
-            CurrentScreen::Playlists => Some(
-                self.database
-                    .get_song(
+            CurrentScreen::Playlists => {
+                if self.database
+                    .alphabetical_playlists()
+                    .get(self.list_states.playlist_state.selected().unwrap()).is_none() {
+                    warn!("Not possible to get playlist to update its albums");
+                    Some(DEFAULT_ALBUM.to_string())
+                } else {
+                    Some(
                         self.database
-                            .get_playlist(
+                            .get_song(
                                 self.database
-                                    .alphabetical_playlists()
-                                    .get(self.list_states.playlist_state.selected().unwrap())
-                                    .unwrap(),
+                                    .get_playlist(
+                                        self.database
+                                            .alphabetical_playlists()
+                                            .get(self.list_states.playlist_state.selected().unwrap())
+                                            .unwrap(),
+                                    )
+                                    .song_list()
+                                    .get(
+                                        self.list_states
+                                            .playlist_selected_state
+                                            .selected()
+                                            .unwrap_or(0),
+                                    )
+                                    .unwrap_or(&DEFAULT_ALBUM.to_string())
                             )
-                            .song_list()
-                            .get(
-                                self.list_states
-                                    .playlist_selected_state
-                                    .selected()
-                                    .unwrap_or(0),
-                            )
-                            .unwrap(),
+                            .album_id()
+                            .to_string(),
                     )
-                    .album_id()
-                    .to_string(),
-            ),
+                }
+            },
             CurrentScreen::Artists => {
                 let albums = self
                     .database
