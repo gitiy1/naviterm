@@ -29,7 +29,6 @@ async fn main() -> AppResult<()> {
     let home_dir = dirs::home_dir().unwrap();
     let xdg_conf = home_dir.to_string_lossy().to_string() + "/.config/naviterm/";
     let config_file = xdg_conf.clone() + "config.ini";
-    let database_file = xdg_conf.clone() + "database.bin";
     let player_status_file = xdg_conf.clone() + "player_status.bin";
     let settings = match Config::builder()
         .add_source(config::File::with_name(config_file.as_str()))
@@ -56,6 +55,13 @@ async fn main() -> AppResult<()> {
             _ => LevelFilter::Info,
         },
         Err(_) => LevelFilter::Info,
+    };
+
+    // Set database filename and path
+    let database_path: Result<String, ConfigError> = settings.get("database");
+    let database_file = match database_path {
+        Ok(path) => path,
+        Err(_) => xdg_conf.clone() + "database.bin"
     };
 
     // Set the logging path
