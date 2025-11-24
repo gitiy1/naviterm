@@ -31,11 +31,14 @@ pub enum SubsonicOperation {
     GetCoverArt,
     GetAlbumListRecentlyAdded,
     Scrobble,
+    Star,
+    Unstar
 }
 
 #[derive(Debug)]
 enum SubsonicParameter {
     None,
+    Id(String),
     AlbumId(String),
     SongId(String),
     PlaylistId(String),
@@ -48,6 +51,7 @@ enum SubsonicParameter {
 impl Display for SubsonicParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let str = match self {
+            SubsonicParameter::Id(id) => id.to_string(),
             SubsonicParameter::AlbumId(val) => val.to_string(),
             SubsonicParameter::SongId(val) => val.to_string(),
             SubsonicParameter::None => "None".to_string(),
@@ -363,6 +367,30 @@ impl Server {
         self.operations.push(operation);
     }
 
+    pub fn star_item_async(&mut self, id: String, item: String) {
+        let url = self.build_url(
+            SubsonicOperation::Star,
+            vec![SubsonicParameter::Id(id.clone())],
+        );
+
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(Operation::Star(id, item), url.clone(), rx, tx);
+
+        self.operations.push(operation);
+    }
+
+    pub fn unstar_item_async(&mut self, id: String, item: String) {
+        let url = self.build_url(
+            SubsonicOperation::Star,
+            vec![SubsonicParameter::Id(id.clone())],
+        );
+
+        let (tx, rx) = mpsc::unbounded_channel();
+        let operation = AsyncOperation::new(Operation::Unstar(id, item), url.clone(), rx, tx);
+
+        self.operations.push(operation);
+    }
+
     pub fn get_song_url(&mut self, id: String) -> String {
         self.build_url(
             SubsonicOperation::DownloadSong,
@@ -542,6 +570,20 @@ impl Server {
                     parameters[1],
                     self.connection_string,
                     NAVITERM_VERSION,
+                )
+            }
+            SubsonicOperation::Star => {
+                format!(
+                    "{}/rest/star?id={}&\
+                    {}&v={}&c=naviterm",
+                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
+                )
+            }
+            SubsonicOperation::Unstar => {
+                format!(
+                    "{}/rest/unstar?id={}&\
+                    {}&v={}&c=naviterm",
+                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
                 )
             }
         };

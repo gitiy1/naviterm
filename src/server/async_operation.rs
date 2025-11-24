@@ -14,6 +14,8 @@ pub enum Operation {
     GetAlbum(String),
     GetGenreList,
     Scrobble(String),
+    Star(String, String),
+    Unstar(String, String),
 }
 
 #[derive(Debug)]

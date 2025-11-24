@@ -3656,6 +3656,14 @@ impl App {
                             .set_modified(false);
                         operation.set_processed(true);
                     }
+                    Operation::Star(id, item) => {
+                        debug!("Star operation done for {} with id: {}", item, id);
+                        operation.set_processed(true);
+                    }
+                    Operation::Unstar(id, item) => {
+                        debug!("Unstar operation done for {} with id: {}", item, id);
+                        operation.set_processed(true);
+                    }
                 }
             }
         }
