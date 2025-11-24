@@ -219,6 +219,7 @@ Valid modifiers are `ctrl|alt|super`, valid keys should include all ASCII charac
 | `e`      | `queue_center_cursor`  | Center cursor in currently playing song                |
 | `>`      | `track_next`           | Play next song in queue                                |
 | `<`      | `track_previous`       | Play previous song in queue                            |
+| `d`      | `queue_delete_song`    | Delete selected song from queue                        |
 | `c`      | `queue_clear`          | Clear queue and stop playback                          |
 
 ### Popup shortcuts
