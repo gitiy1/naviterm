@@ -477,6 +477,7 @@ pub async fn handle_key_events(
             handle_stop_playback(app, iface_ref).await?;
             app.clear_queue()?;
         }
+        ShortcutAction::QueueDeleteSong => app.delete_song_from_queue()?,
         ShortcutAction::QueuePlaySong => app.play_queue_song()?,
         ShortcutAction::QuitApp => {
             debug!("Starting app shutdown");

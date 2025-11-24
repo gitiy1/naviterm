@@ -104,7 +104,7 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
 
         let info_block_inner = info_block.inner(chunks[1]);
 
-        let vertical = Layout::vertical([Max(100), Length(2)]);
+        let vertical = Layout::vertical([Max(100), Length(3)]);
         let [info_area, navigation_area] = vertical.areas(info_block_inner);
 
         let current_song_id = if app.app_config.reorder_random_queue {
@@ -275,6 +275,21 @@ pub fn draw_tab(app: &mut App, area: Rect, frame: &mut Frame) -> AppResult<()> {
                 },
                 Span {
                     content: " Go to artist in artists pane".into(),
+                    style: Style::default(),
+                },
+            ]),
+            Line::from(vec![
+                Span {
+                    content: app
+                        .shortcuts
+                        .get_key_combo_for_operation(ShortcutAction::QueueDeleteSong, None)
+                        .into(),
+                    style: Style::default()
+                        .fg(app.app_colors.primary_accent)
+                        .add_modifier(Modifier::BOLD),
+                },
+                Span {
+                    content: " Delete song from queue".into(),
                     style: Style::default(),
                 },
             ]),

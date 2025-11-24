@@ -84,6 +84,7 @@ pub enum ShortcutAction {
     PopupYearClearAndClose,
     QueueCenterCursor,
     QueueClear,
+    QueueDeleteSong,
     QueuePlaySong,
     QuitApp,
     SearchAccept,
@@ -177,6 +178,7 @@ impl Mappings {
                 (String::from("Queue_none_none_none_r"),ShortcutAction::GoToTrackArtist),
                 (String::from("Queue_none_none_none_e"),ShortcutAction::QueueCenterCursor),
                 (String::from("Queue_none_none_none_c"),ShortcutAction::QueueClear),
+                (String::from("Queue_none_none_none_d"),ShortcutAction::QueueDeleteSong),
                 (String::from("Queue_none_none_none_enter"),ShortcutAction::QueuePlaySong),
                 (String::from("none_none_none_tab"),ShortcutAction::CyclePane),
                 (String::from("none_none_none_q"),ShortcutAction::QuitApp),
@@ -547,6 +549,12 @@ impl Mappings {
         if let Ok(value) = config.get::<String>("queue_clear") {
             if self.validate_shortcut(value.as_str()) {
                 self.use_custom_shortcut(value.as_str(), ShortcutAction::QueueClear, None );
+            }
+        }
+
+        if let Ok(value) = config.get::<String>("queue_delete_song") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::QueueDeleteSong, None );
             }
         }
 

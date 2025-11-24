@@ -2052,6 +2052,61 @@ impl App {
         Ok(())
     }
 
+    pub fn delete_song_from_queue(&mut self) -> AppResult<()> {
+        if self.player_data.queue.is_empty() {
+            return Ok(());
+        }
+
+        let selected_index = self.list_states.queue_list_state.selected().unwrap();
+        let deleted_song_id = self.player_data.queue[selected_index].clone();
+        let is_currently_playing = deleted_song_id == self.player_data.now_playing.id;
+        
+        self.player_data.queue.remove(selected_index);
+        
+        if let Some(pos) = self.player_data.queue_order.iter().position(|&x| x == selected_index) {
+            self.player_data.queue_order.remove(pos);
+            
+            if is_currently_playing {
+                self.stop_playback();
+                self.player_data.now_playing.id.clear();
+                self.player_data.next_is_in_player_queue = false;
+                
+                if !self.player_data.queue.is_empty() {
+                    if self.player_data.index_in_queue >= self.player_data.queue_order.len() {
+                        self.player_data.index_in_queue = 0;
+                    }
+                } else {
+                    self.player_data.index_in_queue = 0;
+                }
+            } else if pos < self.player_data.index_in_queue {
+                self.player_data.index_in_queue -= 1;
+            }
+        }
+        
+        for order_index in self.player_data.queue_order.iter_mut() {
+            if *order_index > selected_index {
+                *order_index -= 1;
+            }
+        }
+        
+        self.update_queue_data();
+        
+        if is_currently_playing && !self.player_data.queue.is_empty() {
+            let next_song_index = self.player_data.queue_order[self.player_data.index_in_queue];
+            let next_song_id = self.player_data.queue[next_song_index].clone();
+            self.change_current_playing_to(&next_song_id);
+            self.play_current(false);
+        }
+        
+        if self.player_data.queue.is_empty() {
+            self.list_states.queue_list_state.select(None);
+        } else if selected_index >= self.player_data.queue.len() {
+            self.list_states.queue_list_state.select(Some(self.player_data.queue.len() - 1));
+        }
+        
+        Ok(())
+    }
+
     pub fn try_play_current(&mut self) -> bool {
         if !self.player_data.now_playing.id.is_empty() {
             return if self.player.player_status == PlayerStatus::Paused
