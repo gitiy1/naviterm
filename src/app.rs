@@ -2099,7 +2099,7 @@ impl App {
         }
         
         if self.player_data.queue.is_empty() {
-            self.list_states.queue_list_state.select(None);
+            self.list_states.queue_list_state.select_first();
         } else if selected_index >= self.player_data.queue.len() {
             self.list_states.queue_list_state.select(Some(self.player_data.queue.len() - 1));
         }
