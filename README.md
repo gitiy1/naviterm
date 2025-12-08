@@ -278,6 +278,6 @@ Server applications tested:
 The app does mostly all I expect from a client (at least for my use cases). The following are some pending issues/wishlist that I will work on, time permits:
 - [X] Global fuzzy search in all songs,albums,playlists,artists
 - [X] Allow to reconfigure shortcuts
-- [ ] Implement a more secure password storage
+- [X] Implement a more secure password storage
 - [ ] Allow to reorganize the home pane
 - [ ] React to different terminal sizes (responsive design?)
