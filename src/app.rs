@@ -2057,7 +2057,13 @@ impl App {
             return Ok(());
         }
 
-        let selected_index = self.list_states.queue_list_state.selected().unwrap();
+        let selected_index = if self.app_config.reorder_random_queue && self.player_data.random_playback {
+                *self.player_data.queue_order
+                    .get(self.list_states.queue_list_state.selected().unwrap())
+                    .unwrap()
+        } else {
+            self.list_states.queue_list_state.selected().unwrap()
+        };
         let deleted_song_id = self.player_data.queue[selected_index].clone();
         let is_currently_playing = deleted_song_id == self.player_data.now_playing.id;
         
