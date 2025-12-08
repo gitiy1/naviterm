@@ -2065,14 +2065,15 @@ impl App {
             self.list_states.queue_list_state.selected().unwrap()
         };
         let deleted_song_id = self.player_data.queue[selected_index].clone();
-        let is_currently_playing = deleted_song_id == self.player_data.now_playing.id;
+        let is_selected_being_played = deleted_song_id == self.player_data.now_playing.id;
+        let was_playing = self.player.player_status == PlayerStatus::Playing;
         
         self.player_data.queue.remove(selected_index);
         
         if let Some(pos) = self.player_data.queue_order.iter().position(|&x| x == selected_index) {
             self.player_data.queue_order.remove(pos);
             
-            if is_currently_playing {
+            if is_selected_being_played {
                 self.stop_playback();
                 self.player_data.now_playing.id.clear();
                 self.player_data.next_is_in_player_queue = false;
@@ -2097,11 +2098,13 @@ impl App {
         
         self.update_queue_data();
         
-        if is_currently_playing && !self.player_data.queue.is_empty() {
+        if is_selected_being_played && !self.player_data.queue.is_empty() {
             let next_song_index = self.player_data.queue_order[self.player_data.index_in_queue];
             let next_song_id = self.player_data.queue[next_song_index].clone();
             self.change_current_playing_to(&next_song_id);
-            self.play_current(false);
+            if was_playing {
+                self.play_current(false);
+            }
         }
         
         if self.player_data.queue.is_empty() {
