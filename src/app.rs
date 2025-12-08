@@ -974,6 +974,7 @@ impl App {
     pub fn add_queue_next(&mut self) -> AppResult<()> {
         let mut was_empty = false;
         let mut index_to_insert_to = if self.player_data.queue.is_empty() {
+            debug!("Queue was empty");
             was_empty = true;
             0
         } else {
@@ -984,9 +985,13 @@ impl App {
                 .unwrap()
                 + 1
         };
+        let mut index_in_queue_order = if self.player_data.queue.is_empty() {
+            0
+        } else {
+            self.player_data.index_in_queue + 1
+        };
         match self.item_to_be_added.media_type {
             MediaType::Song => {
-                let index_in_queue_order = self.player_data.index_in_queue + 1;
                 self.player_data
                     .queue
                     .insert(index_to_insert_to, self.item_to_be_added.id.clone());
@@ -994,7 +999,6 @@ impl App {
             }
             MediaType::Album => {
                 let album = self.database.get_album(self.item_to_be_added.id.as_str());
-                let mut index_in_queue_order = self.player_data.index_in_queue + 1;
                 for song in album.songs() {
                     self.player_data
                         .queue
@@ -1005,7 +1009,6 @@ impl App {
                 }
             }
             MediaType::Playlist => {
-                let mut index_in_queue_order = self.player_data.index_in_queue + 1;
                 for song_id in self
                     .database
                     .get_playlist(self.item_to_be_added.id.as_str())
@@ -1020,7 +1023,6 @@ impl App {
                 }
             }
             MediaType::Artist => {
-                let mut index_in_queue_order = self.player_data.index_in_queue + 1;
                 for album_id in self
                     .database
                     .get_artist(self.item_to_be_added.id.as_str())
@@ -3841,6 +3843,7 @@ fn update_queue_order_when_adding_next(player_data: &mut PlayerData, index: usiz
                 player_data.queue_order[i] += 1;
             }
         }
+        debug!("Inserting value {} at index {}", value, index);
         player_data.queue_order.insert(index, value);
     }
 }
