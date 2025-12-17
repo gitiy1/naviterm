@@ -248,7 +248,7 @@ async fn main() -> AppResult<()> {
     let events = EventHandler::new(250);
     app.set_event_handler(events.sender.clone()).await?;
 
-    let iface_ref: zbus::InterfaceRef<MediaPlayer2Player>;
+    let iface_ref: zbus::object_server::InterfaceRef<MediaPlayer2Player>;
     let dbus_handler = if is_dbus {
         let dbus_connection = dbus::set_up_mpris(events.sender.clone()).await?;
         let object_server = dbus_connection.object_server();
