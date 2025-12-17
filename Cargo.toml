@@ -6,7 +6,7 @@ license = "GLPv3"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4.38"
+chrono = "0.4.42"
 config = { version = "0.15.19", features = ["ini"] }
 crossterm = { version = "0.27.0", features = ["event-stream"] }
 futures = "0.3.30"
