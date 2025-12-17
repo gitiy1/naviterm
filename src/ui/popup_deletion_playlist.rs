@@ -8,7 +8,7 @@ use ratatui::Frame;
 use crate::mappings::ShortcutAction;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
-    let area = utils::centered_rect(40, 30, frame.size());
+    let area = utils::centered_rect(40, 30, frame.area());
 
     let selected_playlist = app.database.get_playlist(
         app.database

@@ -11,7 +11,7 @@ use ratatui::widgets::{Block, Clear, HighlightSpacing, List, ListItem, Padding, 
 use ratatui::Frame;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
-    let area = utils::centered_rect(60, 60, frame.size());
+    let area = utils::centered_rect(60, 60, frame.area());
 
     let block = Block::bordered()
         .title(Line::raw("Genre filter").centered())

@@ -8,7 +8,7 @@ use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
-    let area = utils::centered_rect(40, 30, frame.size());
+    let area = utils::centered_rect(40, 30, frame.area());
 
     let mut popup_lines = vec![
         Line::from(vec![
