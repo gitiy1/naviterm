@@ -18,7 +18,7 @@ use chrono::NaiveDateTime;
 use config::Config;
 use log::{debug, error, info, warn};
 use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use ratatui::prelude::Color;
 use ratatui::widgets::ListState;
 use secret_service::{SecretService, EncryptionType};
@@ -908,8 +908,8 @@ impl App {
                 }
                 self.player_data.queue_order = (0..self.player_data.queue.len()).collect();
                 if self.player_data.random_playback {
-                    let mut rng = thread_rng();
-                    let random_index = rng.gen_range(0..self.player_data.queue.len());
+                    let mut rng = rng();
+                    let random_index = rng.random_range(0..self.player_data.queue.len());
                     self.shuffle_queue_order_starting_at_index(random_index);
                 }
                 self.change_current_playing_to(
@@ -930,8 +930,8 @@ impl App {
                 }
                 self.player_data.queue_order = (0..self.player_data.queue.len()).collect();
                 if self.player_data.random_playback {
-                    let mut rng = thread_rng();
-                    let random_index = rng.gen_range(0..self.player_data.queue.len());
+                    let mut rng = rng();
+                    let random_index = rng.random_range(0..self.player_data.queue.len());
                     self.shuffle_queue_order_starting_at_index(random_index);
                 }
                 self.change_current_playing_to(
@@ -955,8 +955,8 @@ impl App {
                 }
                 self.player_data.queue_order = (0..self.player_data.queue.len()).collect();
                 if self.player_data.random_playback {
-                    let mut rng = thread_rng();
-                    let random_index = rng.gen_range(0..self.player_data.queue.len());
+                    let mut rng = rng();
+                    let random_index = rng.random_range(0..self.player_data.queue.len());
                     self.shuffle_queue_order_starting_at_index(random_index);
                 }
                 self.change_current_playing_to(
@@ -2198,7 +2198,7 @@ impl App {
         self.player_data.queue_order.swap_remove(index);
         shuffled_vector.push(index);
 
-        let mut rng = thread_rng();
+        let mut rng = rng();
         self.player_data.queue_order.shuffle(&mut rng);
 
         shuffled_vector.append(&mut self.player_data.queue_order);
