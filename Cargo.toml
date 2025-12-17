@@ -10,7 +10,7 @@ chrono = "0.4.42"
 config = { version = "0.15.19", features = ["ini"] }
 crossterm = { version = "0.29.0", features = ["event-stream"] }
 futures = "0.3.30"
-md5 = "0.7.0"
+md5 = "0.8.0"
 minidom = "0.15.2"
 rand = "0.8.5"
 ratatui = "0.27.0"
