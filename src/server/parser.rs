@@ -17,20 +17,20 @@ impl Parser {
     pub fn parse_connection_status(response: String) -> AppResult<ConnectionStatus> {
         let root: minidom::Element = response.parse()?;
         let mut connection_status: ConnectionStatus = ConnectionStatus::default();
-
+        
         for attribute in root.attrs() {
-            if attribute.0 == "status" {
+            if attribute.0.1 == "status" {
                 connection_status.set_status(attribute.1.to_string());
-            } else if attribute.0 == "serverVersion" {
+            } else if attribute.0.1 == "serverVersion" {
                 connection_status.set_server_version(attribute.1.to_string());
             }
         }
 
         for children in root.children() {
             for attribute in children.attrs() {
-                if attribute.0 == "code" {
+                if attribute.0.1 == "code" {
                     connection_status.set_error_code(attribute.1.to_string());
-                } else if attribute.0 == "message" {
+                } else if attribute.0.1 == "message" {
                     connection_status.set_error_message(attribute.1.to_string());
                 }
             }
@@ -64,7 +64,7 @@ impl Parser {
         for album in list.children() {
             let mut album_id = String::new();
             for attribute in album.attrs() {
-                match attribute.0 {
+                match attribute.0.1.to_string().as_str() {
                     "id" => album_id = attribute.1.to_string(),
                     &_ => {}
                 }
@@ -89,7 +89,7 @@ impl Parser {
         let mut album_genres = Vec::new();
 
         for attribute in album.attrs() {
-            match attribute.0 {
+            match attribute.0.1.to_string().as_str() {
                 "id" => new_album.set_id(attribute.1.to_string()),
                 "name" => {
                     new_album.set_name(parse_attribute(attribute.1));
@@ -112,7 +112,7 @@ impl Parser {
         for child in album.children() {
             if child.name() == "genres" {
                 for attribute in child.attrs() {
-                    if attribute.0 == "name" {
+                    if attribute.0.1 == "name" {
                         let new_genre = parse_attribute(attribute.1);
                         if !album_genres.contains(&new_genre) {
                             album_genres.push(new_genre);
@@ -123,7 +123,7 @@ impl Parser {
                 let mut new_song = Song::default();
                 let mut song_genres = Vec::new();
                 for attribute in child.attrs() {
-                    match attribute.0 {
+                    match attribute.0.1.to_string().as_str() {
                         "id" => new_song.set_id(attribute.1.to_string()),
                         "title" => {
                             new_song.set_title(parse_attribute(attribute.1));
@@ -149,7 +149,7 @@ impl Parser {
                 for child in child.children() {
                     if child.name() == "replayGain" {
                         for attribute in child.attrs() {
-                            match attribute.0 {
+                            match attribute.0.1.to_string().as_str() {
                                 "albumGain" => new_song.set_album_gain(attribute.1.to_string()),
                                 "albumPeak" => new_song.set_album_peak(attribute.1.to_string()),
                                 "trackGain" => new_song.set_track_gain(attribute.1.to_string()),
@@ -159,7 +159,7 @@ impl Parser {
                         }
                     } else if child.name() == "genres" {
                         for attribute in child.attrs() {
-                            match attribute.0 {
+                            match attribute.0.1.to_string().as_str() {
                                 "name" => {
                                     song_genres.push(parse_attribute(attribute.1));
                                 }
@@ -198,7 +198,7 @@ impl Parser {
         for playlist in playlists.children() {
             let mut new_playlist: Playlist = Playlist::default();
             for attribute in playlist.attrs() {
-                match attribute.0 {
+                match attribute.0.1.to_string().as_str() {
                     "id" => new_playlist.set_id(attribute.1.to_string()),
                     "name" => new_playlist.set_name(attribute.1.to_string()),
                     "songCount" => new_playlist.set_song_count(attribute.1.to_string()),
@@ -229,7 +229,7 @@ impl Parser {
         for album in list.children() {
             let mut song_id = String::new();
             for attribute in album.attrs() {
-                match attribute.0 {
+                match attribute.0.1.to_string().as_str() {
                     "id" => song_id = attribute.1.to_string(),
                     &_ => {}
                 }
@@ -247,7 +247,7 @@ impl Parser {
             Some(value) => value,
         };
         for attribute in playlist.attrs() {
-            match attribute.0 {
+            match attribute.0.1.to_string().as_str() {
                 "id" => return Ok(attribute.1.to_string()),
                 _ => {}
             }
