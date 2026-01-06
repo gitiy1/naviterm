@@ -190,7 +190,7 @@ impl MediaPlayer2Player {
     }
 
     #[zbus(property)]
-    async fn metadata(&self) -> HashMap<String, Value> {
+    async fn metadata(&self) -> HashMap<String, Value<'_>> {
         let mut fields = HashMap::new();
         for field in &self.metadata {
             if field.0.starts_with("title") {

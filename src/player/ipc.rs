@@ -38,22 +38,26 @@ impl Ipc {
 
     pub fn load_file(&mut self, file_url: &str) {
         let msg = r#"{"command":["loadfile", ""#.to_owned() + file_url + r#""]}"# + "\n";
+        debug!("Sending command to load file");
         self.send_ipc_command(msg, false);
     }
 
     pub fn load_file_next(&mut self, file_url: &str) {
         let msg =
             r#"{"command":["loadfile", ""#.to_owned() + file_url + r#"", "insert-next"]}"# + "\n";
+        debug!("Sending command to load file next");
         self.send_ipc_command(msg, false);
     }
 
     pub fn quit(&mut self) {
         let msg = String::from("{\"command\":[\"quit\"]}\n");
+        debug!("Sending command to quit");
         self.send_ipc_command(msg, false);
     }
 
     pub fn toggle_play_pause(&mut self) {
         let msg = String::from("{\"command\":[\"cycle\",\"pause\"]}\n");
+        debug!("Sending command to toggle play/pause");
         self.send_ipc_command(msg, false);
     }
 
