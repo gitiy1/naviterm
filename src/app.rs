@@ -26,6 +26,7 @@ use std::cmp::PartialEq;
 use std::collections::{HashMap, HashSet};
 use std::error;
 use std::process::exit;
+use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
@@ -3850,16 +3851,10 @@ fn update_queue_order_when_adding_next(player_data: &mut PlayerData, index: usiz
 
 
 fn parse_color(string_color: &str) -> AppResult<Color> {
-    match string_color.to_lowercase().as_str() {
-        "yellow" => Ok(Color::Yellow),
-        "red" => Ok(Color::Red),
-        "green" => Ok(Color::Green),
-        "blue" => Ok(Color::Blue),
-        "magenta" => Ok(Color::Magenta),
-        "cyan" => Ok(Color::Cyan),
-        "white" => Ok(Color::White),
-        "gray" => Ok(Color::Gray),
-        &_ => Err(Box::from("Could not parse color")),
+    if let Ok(color) = Color::from_str(string_color) {
+        Ok(color)
+    } else {
+        Err(Box::from("Could not parse color"))
     }
 }
 
