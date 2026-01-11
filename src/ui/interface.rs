@@ -12,7 +12,7 @@ use ratatui::{symbols, Frame};
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
     let vertical = Layout::vertical([Length(1), Min(0), Length(4)]);
-    let [header_area, inner_area, footer_area] = vertical.areas(frame.size());
+    let [header_area, inner_area, footer_area] = vertical.areas(frame.area());
     let horizontal = Layout::horizontal([Percentage(50), Percentage(50)]);
     let [tabs_area, title_area] = horizontal.areas(header_area);
 

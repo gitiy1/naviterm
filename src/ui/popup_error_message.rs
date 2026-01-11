@@ -9,7 +9,7 @@ use ratatui::widgets::{Block, Clear, Padding, Paragraph, Wrap};
 use ratatui::Frame;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
-    let area = utils::centered_rect(50, 30, frame.size());
+    let area = utils::centered_rect(50, 30, frame.area());
 
     let block = Block::bordered()
         .title(Line::raw("Error Message").centered())

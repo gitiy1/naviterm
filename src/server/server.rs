@@ -5,7 +5,7 @@ use crate::server::parser::Parser;
 use chrono;
 use log::{debug, error, warn};
 use md5;
-use rand::distributions::{Alphanumeric, DistString};
+use rand::distr::{Alphanumeric, SampleString};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use reqwest::Client;
 use std::fmt::Display;
@@ -147,7 +147,7 @@ impl Server {
     pub fn renew_credentials(&mut self) -> AppResult<()> {
         if self.server_auth == "token" {
             let salt = Alphanumeric
-                .sample_string(&mut rand::thread_rng(), 10)
+                .sample_string(&mut rand::rng(), 10)
                 .to_lowercase();
             let mut concatenation: String = String::from(&self.password);
             concatenation.push_str(&salt);

@@ -2,10 +2,11 @@ use crate::app::AppResult;
 use crate::event::DbusEvent::{Next, Pause, Play, PlayPause, Previous, SeekBackwards, SeekForward, SetPosition, Stop};
 use crate::event::{DbusEvent, Event};
 use log::{debug, warn};
+use zbus::object_server::{SignalEmitter};
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 use zbus::zvariant::{ObjectPath, Value};
-use zbus::{interface, Connection, SignalContext};
+use zbus::{interface, Connection};
 
 struct MediaPlayer2 {
     can_quit: bool,
@@ -221,7 +222,7 @@ impl MediaPlayer2Player {
     }
 
     #[zbus(signal)]
-    pub async fn seeked(signal_ctxt: &SignalContext<'_>, position: i64) -> zbus::Result<()>;
+    pub async fn seeked(signal_ctxt: &SignalEmitter<'_>, position: i64) -> zbus::Result<()>;
 
     async fn play_pause(&self) {
         debug!("PlayPause request from dbus!");

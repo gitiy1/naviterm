@@ -13,7 +13,7 @@ use ratatui::widgets::{
 use ratatui::Frame;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
-    let area = utils::centered_rect(80, 60, frame.size());
+    let area = utils::centered_rect(80, 60, frame.area());
     frame.render_widget(Clear, area);
 
     let block = Block::bordered()

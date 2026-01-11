@@ -9,7 +9,7 @@ use crate::mappings::ShortcutAction;
 use crate::ui::utils;
 
 pub fn draw_popup(app: &mut App, frame: &mut Frame) -> AppResult<()> {
-    let area = utils::centered_rect(40, 30, frame.size());
+    let area = utils::centered_rect(40, 30, frame.area());
 
     let added_item_name = match app.item_to_be_added.media_type  {
         MediaType::Song => {
