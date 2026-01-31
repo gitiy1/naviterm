@@ -15,7 +15,7 @@ pub enum Parser {
 
 impl Default for Parser {
     fn default() -> Self {
-        Parser::XmlParser
+        Parser::JsonParser
     }
 }
 

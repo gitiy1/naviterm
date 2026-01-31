@@ -106,7 +106,7 @@ impl Default for Server {
             operations: vec![],
             current_number_of_requests: 0,
             album_lists_api: "".to_string(),
-            json_parser: false,
+            json_parser: true,
         }
     }
 }

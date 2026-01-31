@@ -710,20 +710,21 @@ impl App {
                 if parser_type == "json" {
                     info!("Using parser type: json.");
                     self.app_config.parser_type = Parser::JsonParser;
-                    self.server.json_parser = true;
                 } else if parser_type == "xml" {
+                    info!("Using parser type: xml.");
                     self.app_config.parser_type = Parser::XmlParser;
+                    self.server.json_parser = false;
                 }
                 else {
                     warn!("Unknown parser type {}", parser_type);
-                    info!("Using default parser type: xml.");
-                    self.app_config.parser_type = Parser::XmlParser;
+                    info!("Using default parser type: json.");
+                    self.app_config.parser_type = Parser::JsonParser;
                 }
             }
             Err(e) => {
                 warn!("Could not parse parser type {}", e);
-                info!("Using default parser type: xml.");
-                self.app_config.parser_type = Parser::XmlParser;
+                info!("Using default parser type: json.");
+                self.app_config.parser_type = Parser::JsonParser;
             }
         }
 
