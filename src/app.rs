@@ -1666,8 +1666,13 @@ impl App {
                     .unwrap(),
             )
             .unwrap();
-        self.server
-            .update_playlist_async(playlist.song_list().clone(), playlist.id());
+        if self.is_selected_playlist_local()? {
+            self.server
+                .create_playlist_async(playlist.name(), playlist.song_list().clone(), playlist.id());
+        } else {
+            self.server
+                .update_playlist_async(playlist.song_list().clone(), playlist.id());
+        }
         Ok(())
     }
 

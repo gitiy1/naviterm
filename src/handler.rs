@@ -354,28 +354,18 @@ pub async fn handle_key_events(
             }
         }
         ShortcutAction::PopupSynchronizePlaylistPushLocal => {
-            if !app.is_selected_playlist_local()? {
-                app.push_local_playlist()?;
-                app.current_popup = Popup::None;
-            }
+            app.push_local_playlist()?;
+            app.current_popup = Popup::None;
         }
         ShortcutAction::PopupSynchronizePlaylistPullRemote => {
-            if !app.is_selected_playlist_local()? {
-                app.pull_remote_playlist()?;
-                app.current_popup = Popup::None;
-            }
+            app.pull_remote_playlist()?;
+            app.current_popup = Popup::None;
         }
         ShortcutAction::PopupSynchronizeLocalPlaylistPushYes => {
-            if app.is_selected_playlist_local()? {
-                app.push_local_playlist()?;
-                app.current_popup = Popup::None;
-            }
+            app.push_local_playlist()?;
+            app.current_popup = Popup::None;
         }
-        ShortcutAction::PopupSynchronizeLocalPlaylistPushNo => {
-            if app.is_selected_playlist_local()? {
-                app.current_popup = Popup::None;
-            }
-        }
+        ShortcutAction::PopupSynchronizeLocalPlaylistPushNo => app.current_popup = Popup::None,
         ShortcutAction::PopupTestConnectionGenerate => app.renew_credentials()?,
         ShortcutAction::PopupTestConnectionTest => app.test_connection().await?,
         ShortcutAction::PopupUpdateDatabaseUpdateAlbums => {
