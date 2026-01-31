@@ -14,7 +14,7 @@ use crate::player_data::{AppLoopStatus, PlayerData};
 use crate::server::async_operation::Operation;
 use crate::server::parser::Parser;
 use crate::server::server::Server;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime};
 use config::Config;
 use log::{debug, error, info, warn};
 use rand::seq::SliceRandom;
@@ -1220,6 +1220,7 @@ impl App {
             new_playlist.set_song_count(songs_to_add.len().to_string());
             new_playlist.set_duration(duration_to_add.to_string());
             new_playlist.song_list_mut().append(&mut songs_to_add);
+            new_playlist.set_created_on(chrono::Local::now().format("%m/%d/%y - %H:%M").to_string());
             self.database.insert_playlist(playlist_id, new_playlist);
             self.database
                 .set_alphabetical_playlists(sort_playlists_by_name(self.database.playlists()));
@@ -1237,6 +1238,7 @@ impl App {
             playlist.song_list_mut().append(&mut songs_to_add);
             playlist.set_duration((duration + duration_to_add).to_string());
             playlist.set_song_count(playlist.song_list().len().to_string());
+            playlist.set_modified_on(chrono::Local::now().format("%m/%d/%y - %H:%M").to_string());
             if !playlist.id().starts_with("local") {
                 playlist.set_modified(true);
             }
