@@ -1,3 +1,4 @@
+use crate::model::subsonic_album::AlbumResponse;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -90,5 +91,22 @@ impl Album {
 
     pub fn set_year(&mut self, year: String) {
         self.year = year;
+    }
+}
+
+impl From<&AlbumResponse> for Album {
+    fn from(resp: &AlbumResponse) -> Self {
+        Self {
+            id: resp.id.clone(),
+            name: resp.name.clone(),
+            artist: resp.artist.clone(),
+            cover_art: resp.cover_art.clone(),
+            duration: resp.duration.to_string(),
+            play_count: resp.play_count.to_string(),
+            song_count: resp.song_count.to_string(),
+            year: resp.year.to_string(),
+            genres: resp.genres.iter().map(|genre| genre.name.clone()).collect(),
+            songs: resp.songs.iter().map(|s| s.id.clone()).collect(),
+        }
     }
 }

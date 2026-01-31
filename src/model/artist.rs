@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::model::subsonic_album::AlbumResponse;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Artist {
@@ -59,6 +60,18 @@ impl Artist {
             if !self.genres.contains(&genre) {
                 self.genres.push(genre);
             }
+        }
+    }
+}
+
+impl From<&AlbumResponse> for Artist {
+    fn from(album: &AlbumResponse) -> Self {
+        Self {
+            id: album.artist_id.to_string(),
+            name: album.artist.to_string(),
+            number_of_albums: 1,
+            albums: vec![],
+            genres: album.genres.iter().map(|genre| genre.name.clone()).collect(),
         }
     }
 }

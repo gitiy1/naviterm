@@ -3,3 +3,8 @@ pub mod artist;
 pub mod connection_status;
 pub mod song;
 pub mod playlist;
+pub mod subsonic_common;
+pub mod subsonic_album;
+pub mod subsonic_song;
+pub mod subsonic_genre;
+pub mod subsonic_playlist;

@@ -288,7 +288,8 @@ pub struct AppConfig {
     pub save_player_status: bool,
     pub wait_for_ipc_ms: u64,
     pub album_list_api_namespace: String,
-    pub reorder_random_queue: bool
+    pub reorder_random_queue: bool,
+    pub parser_type: Parser
 }
 
 pub struct AlbumFilters {
@@ -704,6 +705,28 @@ impl App {
             }
         }
 
+        match config.get::<String>("parser_type") {
+            Ok(parser_type) => {
+                if parser_type == "json" {
+                    info!("Using parser type: json.");
+                    self.app_config.parser_type = Parser::JsonParser;
+                    self.server.json_parser = true;
+                } else if parser_type == "xml" {
+                    self.app_config.parser_type = Parser::XmlParser;
+                }
+                else {
+                    warn!("Unknown parser type {}", parser_type);
+                    info!("Using default parser type: xml.");
+                    self.app_config.parser_type = Parser::XmlParser;
+                }
+            }
+            Err(e) => {
+                warn!("Could not parse parser type {}", e);
+                info!("Using default parser type: xml.");
+                self.app_config.parser_type = Parser::XmlParser;
+            }
+        }
+
         self.shortcuts.init_shortcuts(config);
 
         Ok(())
@@ -786,7 +809,7 @@ impl App {
     }
 
     pub async fn test_connection(&mut self) -> AppResult<()> {
-        self.server.test_connection().await?;
+        self.server.test_connection(self.app_config.parser_type).await?;
         Ok(())
     }
 
@@ -3342,7 +3365,7 @@ impl App {
                         }
                         let force_update = *update;
                         let playlist_list =
-                            match Parser::parse_playlist_list(operation.result().to_string()) {
+                            match Parser::parse_playlist_list(operation.result().to_string(), self.app_config.parser_type) {
                                 Ok(playlist_list) => playlist_list,
                                 Err(e) => {
                                     warn!(
@@ -3413,7 +3436,7 @@ impl App {
                             continue;
                         }
                         let playlist_songs =
-                            match Parser::parse_playlist(operation.result().to_string()) {
+                            match Parser::parse_playlist(operation.result().to_string(), self.app_config.parser_type) {
                                 Ok(playlist_songs) => playlist_songs,
                                 Err(e) => {
                                     warn!(
@@ -3438,7 +3461,7 @@ impl App {
                         {
                             continue;
                         }
-                        match Parser::parse_playlist_id(operation.result().to_string()) {
+                        match Parser::parse_playlist_id(operation.result().to_string(), self.app_config.parser_type) {
                             Ok(playlist_id) => {
                                 let mut updated_playlist =
                                     self.database.remove_playlist(temporary_id);
@@ -3466,7 +3489,7 @@ impl App {
                         let offset = *offset;
                         operation.set_processed(true);
                         let mut album_list =
-                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str()) {
+                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str(), self.app_config.parser_type) {
                                 Ok(album_list) => album_list,
                                 Err(e) => {
                                     warn!("Could not parse album list: {}", operation.result());
@@ -3511,7 +3534,7 @@ impl App {
                         let album;
                         let songs;
                         let artist;
-                        match Parser::parse_album(operation.result().to_string()) {
+                        match Parser::parse_album(operation.result().to_string(), self.app_config.parser_type) {
                             Ok(parsed_items) => {
                                 album = parsed_items.0;
                                 songs = parsed_items.1;
@@ -3604,7 +3627,7 @@ impl App {
                         }
                         operation.set_processed(true);
                         let album_list =
-                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str()) {
+                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str(), self.app_config.parser_type) {
                                 Ok(album_list) => album_list,
                                 Err(e) => {
                                     warn!("Could not parse album list result: {}", operation.result());
@@ -3648,7 +3671,7 @@ impl App {
                         let offset = *offset;
                         operation.set_processed(true);
                         let mut album_list =
-                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str()) {
+                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str(), self.app_config.parser_type) {
                                 Ok(album_list) => album_list,
                                 Err(e) => {
                                     warn!("Could not parse album list result: {}", operation.result());
@@ -3675,7 +3698,7 @@ impl App {
                         }
                         operation.set_processed(true);
                         let mut genres =
-                            match Parser::parse_genres_list(operation.result().to_string()) {
+                            match Parser::parse_genres_list(operation.result().to_string(), self.app_config.parser_type) {
                                 Ok(genres) => genres,
                                 Err(e) => {
                                     warn!("Could not parse genres result: {}", operation.result());
@@ -3692,7 +3715,7 @@ impl App {
                         }
                         operation.set_processed(true);
                         let album_list =
-                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str()) {
+                            match Parser::parse_album_list_simple(operation.result().to_string(), self.app_config.album_list_api_namespace.as_str(), self.app_config.parser_type) {
                                 Ok(album_list) => album_list,
                                 Err(e) => {
                                     warn!("Could not parse album list result: {}", operation.result());
