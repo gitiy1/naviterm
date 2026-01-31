@@ -82,26 +82,27 @@ This would generate a more lightweight executable, and it can be placed anywhere
 
 A configuration file is needed for the program to start. It must be at `~/.config/naviterm/config.ini`, and should have the following items:
 
-| Parameter                   | Definition                                                                                                                                                                | Default | Mandatory |
-|:----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------:|:---------:|
-| server_address              | The address your server is running in, including the path. It should have the following format (note no trailing slash): `http(s)://name-or-ip/navidrome`                 |    -    |    Yes    |
-| user                        | Your user in Navidrome                                                                                                                                                    |    -    |    Yes    |
-| password                    | The password for the user (only used if password_store=plain)                                                                                                             |    -    |    No     |
-| password_store              | Storage method for the password (plain, secretservice)                                                                                                                    |  plain  |    No     |
-| server_auth                 | The authentication method to use, to choose from plain or token                                                                                                           |  token  |    No     |
-| mpv_path                    | The path to the mpv executable. If left empty, Navidrome will try to use `mpv` from `$PATH`                                                                               |   mpv   |    No     |
-| replay_gain                 | The replay gain mode. The possible values are: track, album, auto                                                                                                         |  track  |    No     |
-| primary_accent              | The primary accent color to be used. Possible values: rgb hex (#ffffff), [ANSI colors as used by ratatui](https://docs.rs/ratatui/0.27.0/ratatui/style/enum.Color.html)   | yellow  |    No     |
-| secondary_accent            | The secondary accent color to be used. Possible values: rgb hex (#ffffff), [ANSI colors as used by ratatui](https://docs.rs/ratatui/0.27.0/ratatui/style/enum.Color.html) |  gray   |    No     |
-| home_list_size              | The size of the lists for the home pane (recently listened, recently added, most listened albums and tracks).                                                             |   30    |    No     |
-| follow_cursor_queue         | Whether the cursor will follow the currently playing track in queue                                                                                                       |  true   |    No     |
-| draw_while_unfocused        | This flag controls whether the program will update its ui if the window loses focus. Setting to true could increase CPU usage.                                            |  false  |    No     |
-| save_player_status          | Whether to save player status to disk. This includes the queue data, loop and random playback status, and volume level.                                                   |  false  |    No     |
-| use_dbus                    | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                                                |  true   |    No     |
-| wait_for_ipc_ms             | Amount of time to wait before retrying to connect to the mpv process in ms.                                                                                               |   200   |    No     |
-| mpv_custom_args             | Custom arguments for mpv, in a comma separated list (--arg1=value,--arg2=value,etc).                                                                                      |   []    |    No     |
-| album_list_api              | Version of the getAlbumList REST API to use. Navidrome uses v1 but other server applications might need to use v2.                                                        |   v1    |    No     |
-| reorder_random_queue        | Show the actual queue order when in random playback.                                                                                                                      |  false  |    No     |
+| Parameter            | Definition                                                                                                                                                                | Default | Mandatory |
+|:---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------:|:---------:|
+| server_address       | The address your server is running in, including the path. It should have the following format (note no trailing slash): `http(s)://name-or-ip/navidrome`                 |    -    |    Yes    |
+| user                 | Your user in Navidrome                                                                                                                                                    |    -    |    Yes    |
+| password             | The password for the user (only used if password_store=plain)                                                                                                             |    -    |    No     |
+| password_store       | Storage method for the password (plain, secretservice)                                                                                                                    |  plain  |    No     |
+| server_auth          | The authentication method to use, to choose from plain or token                                                                                                           |  token  |    No     |
+| mpv_path             | The path to the mpv executable. If left empty, Navidrome will try to use `mpv` from `$PATH`                                                                               |   mpv   |    No     |
+| replay_gain          | The replay gain mode. The possible values are: track, album, auto                                                                                                         |  track  |    No     |
+| primary_accent       | The primary accent color to be used. Possible values: rgb hex (#ffffff), [ANSI colors as used by ratatui](https://docs.rs/ratatui/0.27.0/ratatui/style/enum.Color.html)   | yellow  |    No     |
+| secondary_accent     | The secondary accent color to be used. Possible values: rgb hex (#ffffff), [ANSI colors as used by ratatui](https://docs.rs/ratatui/0.27.0/ratatui/style/enum.Color.html) |  gray   |    No     |
+| home_list_size       | The size of the lists for the home pane (recently listened, recently added, most listened albums and tracks).                                                             |   30    |    No     |
+| follow_cursor_queue  | Whether the cursor will follow the currently playing track in queue                                                                                                       |  true   |    No     |
+| draw_while_unfocused | This flag controls whether the program will update its ui if the window loses focus. Setting to true could increase CPU usage.                                            |  false  |    No     |
+| save_player_status   | Whether to save player status to disk. This includes the queue data, loop and random playback status, and volume level.                                                   |  false  |    No     |
+| use_dbus             | Whether to use dbus or not. Disabling this can be helpful for MacOs users.                                                                                                |  true   |    No     |
+| wait_for_ipc_ms      | Amount of time to wait before retrying to connect to the mpv process in ms.                                                                                               |   200   |    No     |
+| mpv_custom_args      | Custom arguments for mpv, in a comma separated list (--arg1=value,--arg2=value,etc).                                                                                      |   []    |    No     |
+| album_list_api       | Version of the getAlbumList REST API to use. Navidrome uses v1 but other server applications might need to use v2.                                                        |   v1    |    No     |
+| reorder_random_queue | Show the actual queue order when in random playback.                                                                                                                      |  false  |    No     |
+| parser_type          | The parser type to use with subsonic requests, to choose from `json` or `xml`.                                                                                            |  json   |    No     |
 
 The config file has to be a `ini` config file:
 ```ini
@@ -123,6 +124,7 @@ wait_for_ipc_ms=200
 mpv_custom_args=
 album_list_api=v1
 reorder_random_queue=false
+parser_type=json
 ```
 
 Shortcuts can also be configured. Refer to the Shortcuts section for more information.
@@ -242,7 +244,10 @@ Valid modifiers are `ctrl|alt|super`, valid keys should include all ASCII charac
 | `<r>`     | `global_search_go_to_pane` | Global Search         | Go to corresponding pane for the selected search result item        |
 | `q`       | `close_popup`              | -                     | Close the current popup                                             |
 
-## Known limitations
+## Known issues
+### First song plays fine but player goes silent for next ones
+This is a known issue with older versions of `mpv`, like the ones in repositories of distributions derived from Ubuntu. Please try to update to a newer version, I am running `v0.41.0` at the time of writing with no issues.
+
 ### High CPU usage
 naviterm can be a bit heavy on the CPU side. It is in part due to the nature of ratatui, as it re-draws the whole ui on each call to the draw method. Even if there are no changes in the app state, it needs to compute all the widgets based on the app information, and compare the frame with the previous one. This can be CPU expensive, so I tried to reduce the painting calls to only twice per second (to ensure smooth playing time tracking) or whenever a key is pressed. If you find it still too heavy, you can disable the painting whenever the window looses focus, using the following configuration key:
 ```ini

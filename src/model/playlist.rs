@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use crate::model::subsonic_playlist::PlaylistResponse;
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Playlist {
     id: String,
@@ -78,5 +80,20 @@ impl Playlist {
 
     pub fn set_created_on(&mut self, created_on: String) {
         self.created_on = created_on;
+    }
+}
+
+impl From<&PlaylistResponse> for Playlist {
+    fn from(playlist: &PlaylistResponse) -> Self {
+        Self {
+            id: playlist.id.clone(),
+            name: playlist.name.clone(),
+            song_count: playlist.song_count.to_string(),
+            duration: playlist.duration.to_string(),
+            modified: false,
+            song_list: vec![],
+            created_on: playlist.created.format("%m/%d/%y - %H:%M").to_string(),
+            modified_on: playlist.changed.format("%m/%d/%y - %H:%M").to_string(),
+        }
     }
 }

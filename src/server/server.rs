@@ -84,6 +84,7 @@ pub struct Server {
     client: Client,
     pub operations: Vec<AsyncOperation>,
     current_number_of_requests: usize,
+    pub json_parser: bool,
 }
 
 impl Default for Server {
@@ -105,6 +106,7 @@ impl Default for Server {
             operations: vec![],
             current_number_of_requests: 0,
             album_lists_api: "".to_string(),
+            json_parser: true,
         }
     }
 }
@@ -164,11 +166,11 @@ impl Server {
         Ok(())
     }
 
-    pub async fn test_connection(&mut self) -> AppResult<()> {
+    pub async fn test_connection(&mut self, parser_type: Parser) -> AppResult<()> {
         let url = self.build_url(SubsonicOperation::Ping, vec![SubsonicParameter::None]);
         let response_text = self.make_request_text(url).await?;
 
-        let connection_status = Parser::parse_connection_status(response_text)?;
+        let connection_status = Parser::parse_connection_status(response_text, parser_type)?;
         self.connection_status = connection_status.status().to_string();
         self.server_version = connection_status.server_version().to_string();
         self.connection_code = connection_status.error_code().to_string();
@@ -418,130 +420,164 @@ impl Server {
         subsonic_operation: SubsonicOperation,
         parameters: Vec<SubsonicParameter>,
     ) -> String {
+        let json_request = if self.json_parser { "&f=json" } else { "" };
         let url: String = match subsonic_operation {
             SubsonicOperation::Ping => format!(
                 "{}/rest/ping.view?\
-                    {}&v={}&c=naviterm",
-                self.server_address, self.connection_string, NAVITERM_VERSION
+                    {}&v={}&c=naviterm{}",
+                self.server_address, self.connection_string, NAVITERM_VERSION, json_request
             ),
             SubsonicOperation::GetAlbumListRecent => {
                 format!(
                     "{}/rest/getAlbumList.view?type=recent&\
-                    size={}&{}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
+                    size={}&{}&v={}&c=naviterm{}",
+                    self.server_address,
+                    parameters[0],
+                    self.connection_string,
+                    NAVITERM_VERSION,
+                    json_request
                 )
             }
             SubsonicOperation::GetAlbumListMostListened => {
                 format!(
                     "{}/rest/{}.view?type=frequent&\
-                    size={}&offset={}&{}&v={}&c=naviterm",
+                    size={}&offset={}&{}&v={}&c=naviterm{}",
                     self.server_address,
                     self.album_lists_api,
                     parameters[0],
                     parameters[1],
                     self.connection_string,
                     NAVITERM_VERSION,
+                    json_request
                 )
             }
             SubsonicOperation::GetAlbumListAlphabetical => {
                 format!(
                     "{}/rest/{}.view?type=alphabeticalByName&\
-                    size={}&offset={}&{}&v={}&c=naviterm",
+                    size={}&offset={}&{}&v={}&c=naviterm{}",
                     self.server_address,
                     self.album_lists_api,
                     parameters[0],
                     parameters[1],
                     self.connection_string,
                     NAVITERM_VERSION,
+                    json_request
                 )
             }
             SubsonicOperation::GetAlbum => {
                 format!(
                     "{}/rest/getAlbum.view?id={}&\
-                    {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
+                    {}&v={}&c=naviterm{}",
+                    self.server_address,
+                    parameters[0],
+                    self.connection_string,
+                    NAVITERM_VERSION,
+                    json_request
                 )
             }
             SubsonicOperation::DownloadSong => {
                 format!(
                     "{}/rest/download?id={}&\
-                    {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
+                    {}&v={}&c=naviterm{}",
+                    self.server_address,
+                    parameters[0],
+                    self.connection_string,
+                    NAVITERM_VERSION,
+                    json_request
                 )
             }
             SubsonicOperation::GetCoverArt => {
                 format!(
                     "{}/rest/getCoverArt.view?id={}&\
-                    {}&v={}&c=naviterm&size=300",
-                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
+                    {}&v={}&c=naviterm&size=300{}",
+                    self.server_address,
+                    parameters[0],
+                    self.connection_string,
+                    NAVITERM_VERSION,
+                    json_request
                 )
             }
             SubsonicOperation::GetGenres => {
                 format!(
                     "{}/rest/getGenres.view?\
-                {}&v={}&c=naviterm",
-                    self.server_address, self.connection_string, NAVITERM_VERSION
+                {}&v={}&c=naviterm{}",
+                    self.server_address, self.connection_string, NAVITERM_VERSION, json_request
                 )
             }
             SubsonicOperation::GetPlaylistList => {
                 format!(
                     "{}/rest/getPlaylists.view?\
-                {}&v={}&c=naviterm",
-                    self.server_address, self.connection_string, NAVITERM_VERSION
+                {}&v={}&c=naviterm{}",
+                    self.server_address, self.connection_string, NAVITERM_VERSION, json_request
                 )
             }
             SubsonicOperation::GetPlaylist => {
                 format!(
                     "{}/rest/getPlaylist.view?id={}&\
-                {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
+                {}&v={}&c=naviterm{}",
+                    self.server_address,
+                    parameters[0],
+                    self.connection_string,
+                    NAVITERM_VERSION,
+                    json_request
                 )
             }
             SubsonicOperation::GetAlbumListRecentlyAdded => {
                 format!(
                     "{}/rest/{}.view?type=newest&\
-                    size={}&{}&v={}&c=naviterm",
+                    size={}&{}&v={}&c=naviterm{}",
                     self.server_address,
                     self.album_lists_api,
                     parameters[0],
                     self.connection_string,
-                    NAVITERM_VERSION
+                    NAVITERM_VERSION,
+                    json_request
                 )
             }
             SubsonicOperation::Scrobble => {
                 format!(
                     "{}/rest/scrobble?id={}&\
-                    {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
+                    {}&v={}&c=naviterm{}",
+                    self.server_address,
+                    parameters[0],
+                    self.connection_string,
+                    NAVITERM_VERSION,
+                    json_request
                 )
             }
             SubsonicOperation::CreatePlaylist => {
                 format!(
                     "{}/rest/createPlaylist.view?name={}&\
-                    songId={}&{}&v={}&c=naviterm",
-                    self.server_address,
-                    parameters[0],
-                    parameters[1],
-                    self.connection_message,
-                    NAVITERM_VERSION,
-                )
-            }
-            SubsonicOperation::DeletePlaylist => {
-                format!(
-                    "{}/rest/deletePlaylist.view?id={}&\
-                {}&v={}&c=naviterm",
-                    self.server_address, parameters[0], self.connection_string, NAVITERM_VERSION
-                )
-            }
-            SubsonicOperation::UpdatePlaylist => {
-                format!(
-                    "{}/rest/createPlaylist.view?playlistId={}&\
-                    songId={}&{}&v={}&c=naviterm",
+                    songId={}&{}&v={}&c=naviterm{}",
                     self.server_address,
                     parameters[0],
                     parameters[1],
                     self.connection_string,
                     NAVITERM_VERSION,
+                    json_request
+                )
+            }
+            SubsonicOperation::DeletePlaylist => {
+                format!(
+                    "{}/rest/deletePlaylist.view?id={}&\
+                {}&v={}&c=naviterm{}",
+                    self.server_address,
+                    parameters[0],
+                    self.connection_string,
+                    NAVITERM_VERSION,
+                    json_request
+                )
+            }
+            SubsonicOperation::UpdatePlaylist => {
+                format!(
+                    "{}/rest/createPlaylist.view?playlistId={}&\
+                    songId={}&{}&v={}&c=naviterm{}",
+                    self.server_address,
+                    parameters[0],
+                    parameters[1],
+                    self.connection_string,
+                    NAVITERM_VERSION,
+                    json_request
                 )
             }
         };

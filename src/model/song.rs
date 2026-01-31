@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use crate::model::subsonic_song::SongResponse;
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Song {
     id: String,
@@ -150,5 +152,28 @@ impl Song {
 
     pub fn track_peak(&self) -> &str {
         &self.track_peak
+    }
+}
+
+impl From<&SongResponse> for Song {
+    fn from(resp: &SongResponse) -> Self {
+        Self {
+            id: resp.id.clone(),
+            track: resp.track.to_string(),
+            title: resp.title.to_string(),
+            album: resp.album.to_string(),
+            album_id: resp.album_id.to_string(),
+            artist: resp.artist.to_string(),
+            artist_id: resp.artist_id.to_string(),
+            cover_art: resp.cover_art.to_string(),
+            duration: resp.duration.to_string(),
+            play_count: resp.play_count.to_string(),
+            genres: resp.genres.iter().map(|genre| genre.name.clone()).collect(),
+            album_gain: resp.replay_gain.album_gain.to_string(),
+            album_peak: resp.replay_gain.album_peak.to_string(),
+            track_gain: resp.replay_gain.track_gain.to_string(),
+            track_peak: resp.replay_gain.track_peak.to_string(),
+            bit_rate: resp.bit_rate.to_string(),
+        }
     }
 }
