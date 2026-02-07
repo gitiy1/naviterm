@@ -163,7 +163,7 @@ pub fn get_text_for_album_item<'a>(
     }
     if format_flags.include_artist {
         album_second_line_vector.push(Span {
-            content: database.get_album(album_id).artist().into(),
+            content: album.artist().into(),
             style: Style::default()
                 .fg(app_colors.secondary_accent)
                 .add_modifier(Modifier::ITALIC),
@@ -200,13 +200,14 @@ pub fn get_text_for_album_item<'a>(
             .add_modifier(Modifier::ITALIC),
     });
     album_second_line_vector.push(Span {
-        content: database.get_album(album_id).song_count().into(),
+        content: album.song_count().into(),
         style: Style::default()
             .fg(app_colors.secondary_accent)
             .add_modifier(Modifier::ITALIC),
     });
+    let label = if album.song_count() == "1" { " song" } else { " songs" };
     album_second_line_vector.push(Span {
-        content: " songs".into(),
+        content: label.into(),
         style: Style::default()
             .fg(app_colors.secondary_accent)
             .add_modifier(Modifier::ITALIC),
@@ -413,8 +414,9 @@ pub fn get_text_for_song_item<'a>(
             .fg(app_colors.secondary_accent)
             .add_modifier(Modifier::ITALIC),
     });
+    let label = if song.play_count() == "1" { " time" } else { " times" };
     song_second_line_vector.push(Span {
-        content: " times".into(),
+        content: label.into(),
         style: Style::default()
             .fg(app_colors.secondary_accent)
             .add_modifier(Modifier::ITALIC),
@@ -536,6 +538,7 @@ pub fn get_text_for_playlist_item<'a>(
             .add_modifier(Modifier::ITALIC),
     });
 
+    let label = if playlist.song_count() == "1" { " song" } else { " songs" };
     let playlist_second_line_vector: Vec<Span> = vec![
         Span {
             content: playlist.song_count().into(),
@@ -544,7 +547,7 @@ pub fn get_text_for_playlist_item<'a>(
                 .add_modifier(Modifier::ITALIC),
         },
         Span {
-            content: " songs".into(),
+            content: label.into(),
             style: Style::default()
                 .fg(app_colors.secondary_accent)
                 .add_modifier(Modifier::ITALIC),
@@ -638,13 +641,14 @@ pub fn get_text_for_artist_item<'a>(
         })
     }
 
+    let label = if artist.albums().len() == 1 { " album - " } else { " albums - " };
     let artist_second_line_vector: Vec<Span> = vec![
         Span::from(artist.albums().len().to_string()).style(
             Style::default()
                 .fg(app_colors.secondary_accent)
                 .add_modifier(Modifier::ITALIC),
         ),
-        Span::from(" albums - ").style(
+        Span::from(label).style(
             Style::default()
                 .fg(app_colors.secondary_accent)
                 .add_modifier(Modifier::ITALIC),
@@ -773,6 +777,8 @@ pub fn get_text_for_global_search_item<'a>(
 }
 
 pub fn get_text_for_album_info<'a>(album: &'a Album, app_colors: &AppColors) -> Text<'a> {
+    let label_times = if album.play_count() == "1" { " time" } else { " times" };
+    let label_songs = if album.song_count() == "1" { " song" } else { " songs" };
     Text::from(vec![
         Line::from(vec![Span {
             content: album.name().into(),
@@ -818,7 +824,7 @@ pub fn get_text_for_album_info<'a>(album: &'a Album, app_colors: &AppColors) -> 
                     .add_modifier(Modifier::ITALIC),
             },
             Span {
-                content: " songs - ".into(),
+                content: label_songs.into(),
                 style: Style::default()
                     .fg(app_colors.secondary_accent)
                     .add_modifier(Modifier::ITALIC),
@@ -842,7 +848,7 @@ pub fn get_text_for_album_info<'a>(album: &'a Album, app_colors: &AppColors) -> 
                     .add_modifier(Modifier::ITALIC),
             },
             Span {
-                content: " times".into(),
+                content: label_times.into(),
                 style: Style::default()
                     .fg(app_colors.secondary_accent)
                     .add_modifier(Modifier::ITALIC),
