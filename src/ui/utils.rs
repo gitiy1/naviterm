@@ -639,7 +639,7 @@ pub fn get_text_for_artist_item<'a>(
     }
 
     let artist_second_line_vector: Vec<Span> = vec![
-        Span::from(artist.number_of_albums().to_string()).style(
+        Span::from(artist.albums().len().to_string()).style(
             Style::default()
                 .fg(app_colors.secondary_accent)
                 .add_modifier(Modifier::ITALIC),

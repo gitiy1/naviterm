@@ -5,7 +5,6 @@ use crate::model::subsonic_album::AlbumResponse;
 pub struct Artist {
     id: String,
     name: String,
-    number_of_albums: usize,
     albums: Vec<String>,
     genres: Vec<String>,
 }
@@ -13,10 +12,6 @@ pub struct Artist {
 impl Artist {
     pub fn id(&self) -> &str {
         &self.id
-    }
-
-    pub fn number_of_albums(&self) -> usize {
-        self.number_of_albums
     }
 
     pub fn albums(&self) -> &Vec<String> {
@@ -32,10 +27,6 @@ impl Artist {
 
     pub fn set_id(&mut self, id: String) {
         self.id = id;
-    }
-
-    pub fn set_number_of_albums(&mut self, number_of_albums: usize) {
-        self.number_of_albums = number_of_albums;
     }
 
     pub fn set_albums(&mut self, albums: Vec<String>) {
@@ -69,7 +60,6 @@ impl From<&AlbumResponse> for Artist {
         Self {
             id: album.artist_id.to_string(),
             name: album.artist.to_string(),
-            number_of_albums: 1,
             albums: vec![],
             genres: album.genres.iter().map(|genre| genre.name.clone()).collect(),
         }

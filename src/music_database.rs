@@ -321,8 +321,6 @@ impl MusicDatabase {
             .collect();
         artist.set_genres(updated_genres);
 
-        // Set the updated number of albums
-        artist.set_number_of_albums(artist.albums().len());
     }
 
     pub fn update_playlist_dates(&mut self, playlist_id: &str, modified_date: &str) {

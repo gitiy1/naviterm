@@ -85,7 +85,6 @@ impl XmlParser {
         };
         let mut new_album = Album::default();
         let mut new_artist = Artist::default();
-        new_artist.set_number_of_albums(1);
         let mut album_genres = Vec::new();
 
         for attribute in album.attrs() {
