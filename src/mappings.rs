@@ -6,7 +6,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use log::{debug, warn};
 use regex::Regex;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ShortcutAction {
     AddItemEnd,
     AddItemNext,
@@ -113,6 +113,18 @@ pub enum ShortcutAction {
     PopupGlobalSearchPlayItem,
     PopupGlobalSearchAddItemTo,
     PopupGlobalSearchGoToAccordingPane,
+    GoPopupKeybindings,
+    PopupKeybindingsStartSearch,
+    PopupKeybindingsAddChar,
+    PopupKeybindingsRemoveChar,
+    PopupKeybindingsAcceptSearch,
+    PopupKeybindingsClearSearch,
+}
+
+#[derive(Debug, Clone)]
+pub struct KeybindingGroup {
+    pub section_name: String,
+    pub bindings: Vec<(String, String)>, // (key_combo, description)
 }
 
 pub struct Mappings {
@@ -267,6 +279,18 @@ impl Mappings {
                 (String::from("global_search_none_none_esc"),ShortcutAction::PopupGlobalSearchClearAndClose),
                 (String::from("error_message_none_none_q"),ShortcutAction::PopupClose),
                 (String::from("error_message_none_none_esc"),ShortcutAction::PopupClose),
+                (String::from("keybindings_none_none_/"),ShortcutAction::PopupKeybindingsStartSearch),
+                (String::from("keybindings_searching_none_"),ShortcutAction::PopupKeybindingsAddChar),
+                (String::from("keybindings_searching_none_bkspc"),ShortcutAction::PopupKeybindingsRemoveChar),
+                (String::from("keybindings_searching_none_enter"),ShortcutAction::PopupKeybindingsAcceptSearch),
+                (String::from("keybindings_searching_none_esc"),ShortcutAction::PopupKeybindingsClearSearch),
+                (String::from("keybindings_none_none_j"),ShortcutAction::MoveDownInList),
+                (String::from("keybindings_none_none_k"),ShortcutAction::MoveUpInList),
+                (String::from("keybindings_none_ctrl_d"),ShortcutAction::MovePageDown),
+                (String::from("keybindings_none_ctrl_u"),ShortcutAction::MovePageUp),
+                (String::from("keybindings_none_none_q"),ShortcutAction::PopupClose),
+                (String::from("keybindings_none_none_esc"),ShortcutAction::PopupClose),
+                (String::from("none_none_none_?"),ShortcutAction::GoPopupKeybindings),
                 (String::from("none_none_none_z"),ShortcutAction::ToggleRandomPlayback),
                 (String::from("none_none_none_l"),ShortcutAction::CycleLoopMode),
                 (String::from("none_none_none_right"),ShortcutAction::SeekForward),
@@ -708,6 +732,12 @@ impl Mappings {
             }
         }
 
+        if let Ok(value) = config.get::<String>("go_popup_keybindings") {
+            if self.validate_shortcut(value.as_str()) {
+                self.use_custom_shortcut(value.as_str(), ShortcutAction::GoPopupKeybindings, None );
+            }
+        }
+
         self.clean_old_shortcuts();
 
     }
@@ -739,60 +769,69 @@ impl Mappings {
         };
         
         debug!("subpane:{}, pane:{}, popup:{}, flag:{} mod:{}, char:{}", subpane, pane, popup, flag, mod_used, key_pressed);
+        debug!("Looking for key bindings...");
         
         let global_key = format!("{}_{}", mod_used, key_pressed);
-        if let Some(action) = self.mappings.get(&global_key) {
-            return action.clone()
-        };
-
         let flag_string = String::from(flag);
         let flag_key = flag_string.clone() + "_" + global_key.as_str();
-        if let Some(action) = self.mappings.get(&flag_key) {
-            debug!("Got global shortcut with key: {}", &flag_key);
-            return action.clone()
-        };
-        // Check if we are introducing a single char, we don't have an entry in the hashmap for
-        // every possibility
-        let mut chars = flag_key.chars().collect::<Vec<char>>();
-        chars.pop();
-        if chars.last() == Some(&'_') {
-            if let Some(action) = self.mappings.get(&chars.iter().collect::<String>()) {
-                debug!("Got global shortcut with key: {}", &chars.iter().collect::<String>());
-                return action.clone()
-            };
-        }
-
         let popup_string = String::from(popup);
         let popup_key = popup_string.clone() + "_" + flag_key.as_str();
-        if let Some(action) = self.mappings.get(popup_key.as_str()) {
-            debug!("Got popup shortcut with key: {}", &popup_key);
-            return action.clone()
-        };
-        // Check if we are introducing a single char, we don't have an entry in the hashmap for
-        // every possibility
-        let mut chars = popup_key.chars().collect::<Vec<char>>();
-        chars.pop();
-        if chars.last() == Some(&'_') {
-            if let Some(action) = self.mappings.get(&chars.iter().collect::<String>()) {
-                debug!("Got popup shortcut with key: {}", &chars.iter().collect::<String>());
-                return action.clone()
-            };
-        }
-
         let pane_string = String::from(pane);
         let pane_key = pane_string.clone() + "_" + popup_key.as_str();
+        let subpane_string = String::from(subpane);
+        let subpane_key = subpane_string + "_" + pane_key.as_str();
+        
+        // Check most specific to least specific
+        // Start with subpane-specific
+        if let Some(action) = self.mappings.get(subpane_key.as_str()) {
+            debug!("Got subpane shortcut with key: {}", &subpane_key);
+            return action.clone()
+        };
+        
+        // Check pane-specific
         if let Some(action) = self.mappings.get(pane_key.as_str()) {
             debug!("Got pane shortcut with key: {}", &pane_key);
             return action.clone()
         };
-
-        let subpane_string = String::from(subpane);
-        let subpane_key = subpane_string + "_" + pane_key.as_str();
-        if let Some(action) = self.mappings.get(subpane_key.as_str()) {
-            debug!("Got pane shortcut with key: {}", &subpane_key);
+        
+        // Check popup-specific
+        if let Some(action) = self.mappings.get(popup_key.as_str()) {
+            debug!("Got popup shortcut with key: {}", &popup_key);
+            return action.clone()
+        };
+        // Check if we are introducing a single char for popup
+        let mut chars = popup_key.chars().collect::<Vec<char>>();
+        chars.pop();
+        if chars.last() == Some(&'_') {
+            if let Some(action) = self.mappings.get(&chars.iter().collect::<String>()) {
+                debug!("Got popup char shortcut with key: {}", &chars.iter().collect::<String>());
+                return action.clone()
+            };
+        }
+        
+        // Check flag-specific (global with flag)
+        // This prevents popup keys from being shadowed by global shortcuts
+        if let Some(action) = self.mappings.get(&flag_key) {
+            debug!("Got flag shortcut with key: {}", &flag_key);
+            return action.clone()
+        };
+        // Check if we are introducing a single char for flag
+        let mut chars = flag_key.chars().collect::<Vec<char>>();
+        chars.pop();
+        if chars.last() == Some(&'_') {
+            if let Some(action) = self.mappings.get(&chars.iter().collect::<String>()) {
+                debug!("Got flag char shortcut with key: {}", &chars.iter().collect::<String>());
+                return action.clone()
+            };
+        }
+        
+        // Finally check global
+        if let Some(action) = self.mappings.get(&global_key) {
+            debug!("Got global shortcut with key: {}", &global_key);
             return action.clone()
         };
         
+        debug!("No matching shortcut found");
         ShortcutAction::None
     }
 
@@ -886,6 +925,206 @@ impl Mappings {
     fn clean_old_shortcuts(&mut self)  {
         for key in self.mappings_to_remove.iter() {
             self.mappings.remove(key);
+        }
+    }
+
+    pub fn action_to_description(&self, action: &ShortcutAction) -> String {
+        match action {
+            ShortcutAction::AddItemEnd => "Add to queue (end)".to_string(),
+            ShortcutAction::AddItemNext => "Add to queue (next)".to_string(),
+            ShortcutAction::AddItemPlaylist => "Add to playlist...".to_string(),
+            ShortcutAction::CycleLoopMode => "Cycle loop mode".to_string(),
+            ShortcutAction::CyclePane => "Cycle sub-pane".to_string(),
+            ShortcutAction::DeleteItemFromPlaylist => "Delete from playlist".to_string(),
+            ShortcutAction::GoAlbumPane => "Navigate to Albums".to_string(),
+            ShortcutAction::GoArtistPane => "Navigate to Artists".to_string(),
+            ShortcutAction::GoFirstInList => "Go to first item".to_string(),
+            ShortcutAction::GoHomePane => "Navigate to Home".to_string(),
+            ShortcutAction::GoLastInList => "Go to last item".to_string(),
+            ShortcutAction::GoPlaylistPane => "Navigate to Playlists".to_string(),
+            ShortcutAction::GoPopupAddAlbumTo => "Add album to...".to_string(),
+            ShortcutAction::GoPopupAddArtistItemTo => "Add artist item to...".to_string(),
+            ShortcutAction::GoPopupAddArtistTo => "Add artist to...".to_string(),
+            ShortcutAction::GoPopupAddPlaylistTo => "Add playlist to...".to_string(),
+            ShortcutAction::GoPopupAddSongTo => "Add song to...".to_string(),
+            ShortcutAction::GoPopupAlbumInfo => "Album information".to_string(),
+            ShortcutAction::GoPopupDeletePlaylist => "Delete playlist".to_string(),
+            ShortcutAction::GoPopupGenreFilter => "Genre filter".to_string(),
+            ShortcutAction::GoPopupSyncPlaylist => "Synchronize playlist".to_string(),
+            ShortcutAction::GoPopupTestConnection => "Test connection".to_string(),
+            ShortcutAction::GoPopupUpdateDatabase => "Update database".to_string(),
+            ShortcutAction::GoPopupGlobalSearch => "Global search".to_string(),
+            ShortcutAction::GoPopupYearFilter => "Year filter".to_string(),
+            ShortcutAction::GoPopupKeybindings => "Show keybindings".to_string(),
+            ShortcutAction::GoQueuePane => "Navigate to Queue".to_string(),
+            ShortcutAction::GoToTrackAlbum => "Go to track's album".to_string(),
+            ShortcutAction::GoToTrackArtist => "Go to track's artist".to_string(),
+            ShortcutAction::MoveDownInList => "Move cursor down".to_string(),
+            ShortcutAction::MovePageDown => "Page down".to_string(),
+            ShortcutAction::MovePageUp => "Page up".to_string(),
+            ShortcutAction::MovePaneDown => "Move to pane below".to_string(),
+            ShortcutAction::MovePaneLeft => "Move to pane left".to_string(),
+            ShortcutAction::MovePaneRight => "Move to pane right".to_string(),
+            ShortcutAction::MovePaneUp => "Move to pane above".to_string(),
+            ShortcutAction::MoveSelectionDown => "Move selection down".to_string(),
+            ShortcutAction::MoveSelectionUp => "Move selection up".to_string(),
+            ShortcutAction::MoveUpInList => "Move cursor up".to_string(),
+            ShortcutAction::PlayImmediatelyAlbum => "Play album".to_string(),
+            ShortcutAction::PlayImmediatelyPlaylist => "Play playlist".to_string(),
+            ShortcutAction::PlayImmediatelySong => "Play song".to_string(),
+            ShortcutAction::PlayImmediatelyArtist => "Play artist".to_string(),
+            ShortcutAction::PlayImmediatelyArtistItem => "Play artist item".to_string(),
+            ShortcutAction::PopupClose => "Close popup".to_string(),
+            ShortcutAction::QueueCenterCursor => "Center on playing".to_string(),
+            ShortcutAction::QueueClear => "Clear queue".to_string(),
+            ShortcutAction::QueueDeleteSong => "Delete from queue".to_string(),
+            ShortcutAction::QueuePlaySong => "Play song from queue".to_string(),
+            ShortcutAction::QuitApp => "Quit application".to_string(),
+            ShortcutAction::SearchAccept => "Accept search".to_string(),
+            ShortcutAction::SearchClear => "Clear search".to_string(),
+            ShortcutAction::SearchEnd => "End search".to_string(),
+            ShortcutAction::SearchStart => "Start search".to_string(),
+            ShortcutAction::SearchGoNext => "Next search result".to_string(),
+            ShortcutAction::SearchGoPrevious => "Previous search result".to_string(),
+            ShortcutAction::SeekBackwards => "Seek backwards".to_string(),
+            ShortcutAction::SeekForward => "Seek forward".to_string(),
+            ShortcutAction::StopPlayback => "Stop playback".to_string(),
+            ShortcutAction::TogglePlayPause => "Toggle play/pause".to_string(),
+            ShortcutAction::ToggleRandomPlayback => "Toggle random".to_string(),
+            ShortcutAction::ToggleSortMethod => "Toggle sort method".to_string(),
+            ShortcutAction::ToggleSortOrder => "Toggle sort order".to_string(),
+            ShortcutAction::TrackNext => "Next track".to_string(),
+            ShortcutAction::TrackPrevious => "Previous track".to_string(),
+            ShortcutAction::VolumeDown => "Volume down".to_string(),
+            ShortcutAction::VolumeUp => "Volume up".to_string(),
+            ShortcutAction::PopupKeybindingsStartSearch => "Search keybindings".to_string(),
+            _ => format!("{:?}", action),
+        }
+    }
+
+    pub fn get_all_keybindings_for_screen(&self, screen: &str) -> Vec<KeybindingGroup> {
+        let mut global_bindings: Vec<(String, String)> = Vec::new();
+        let mut screen_bindings: Vec<(String, String)> = Vec::new();
+        
+        // Collect all unique action -> key mappings
+        let mut action_to_key: HashMap<ShortcutAction, String> = HashMap::new();
+        
+        for (key_string, action) in self.mappings.iter() {
+            if *action == ShortcutAction::None {
+                continue;
+            }
+            
+            // Skip internal/char-adding actions that shouldn't be shown
+            if matches!(action, 
+                ShortcutAction::SearchAddCharToSearchString |
+                ShortcutAction::PopupPlaylistAddCharToPlaylistName |
+                ShortcutAction::PopupYearAddDigit |
+                ShortcutAction::PopupYearRemoveDigit |
+                ShortcutAction::PopupPlaylistRemoveCharFromPlaylistName |
+                ShortcutAction::PopupGlobalSearchAddCharToSearchString |
+                ShortcutAction::PopupGlobalSearchRemoveCharFromSearchString |
+                ShortcutAction::PopupKeybindingsAddChar |
+                ShortcutAction::PopupKeybindingsRemoveChar |
+                ShortcutAction::PopupGenreSelectFavorite |
+                ShortcutAction::PopupGenreToggleFavorite |
+                ShortcutAction::PopupConfirmDeletionPlaylistNo |
+                ShortcutAction::PopupConfirmDeletionPlaylistYes |
+                ShortcutAction::PopupConnectionErrorRetry |
+                ShortcutAction::PopupConnectionErrorOffline |
+                ShortcutAction::PopupGenreAcceptSelected |
+                ShortcutAction::PopupPlaylistAcceptPlaylistName |
+                ShortcutAction::PopupPlaylistAcceptSelected |
+                ShortcutAction::PopupPlaylistCancelNewPlaylist |
+                ShortcutAction::PopupSynchronizePlaylistPushLocal |
+                ShortcutAction::PopupSynchronizePlaylistPullRemote |
+                ShortcutAction::PopupSynchronizeLocalPlaylistPushYes |
+                ShortcutAction::PopupSynchronizeLocalPlaylistPushNo |
+                ShortcutAction::PopupTestConnectionGenerate |
+                ShortcutAction::PopupTestConnectionTest |
+                ShortcutAction::PopupUpdateDatabaseUpdateAlbums |
+                ShortcutAction::PopupUpdateDatabaseUpdateAllFull |
+                ShortcutAction::PopupUpdateDatabaseUpdateAllQuick |
+                ShortcutAction::PopupUpdateDatabaseUpdateCurrentlySelected |
+                ShortcutAction::PopupUpdateDatabaseUpdatePlaylists |
+                ShortcutAction::PopupYearAcceptFilter |
+                ShortcutAction::PopupYearToggleFromTo |
+                ShortcutAction::PopupYearToggleRangeInput |
+                ShortcutAction::PopupYearClearAndClose |
+                ShortcutAction::PopupGlobalSearchAcceptSearchString |
+                ShortcutAction::PopupGlobalSearchClearAndClose |
+                ShortcutAction::PopupGlobalSearchPlayItem |
+                ShortcutAction::PopupGlobalSearchAddItemTo |
+                ShortcutAction::PopupGlobalSearchGoToAccordingPane |
+                ShortcutAction::PopupKeybindingsAcceptSearch |
+                ShortcutAction::PopupKeybindingsClearSearch
+            ) {
+                continue;
+            }
+            
+            // Store only the first (shortest/simplest) keybinding for each action
+            if !action_to_key.contains_key(action) {
+                action_to_key.insert(action.clone(), key_string.clone());
+            }
+        }
+        
+        // Now categorize bindings
+        for (action, key_string) in action_to_key.iter() {
+            let parts: Vec<&str> = key_string.split('_').collect();
+            let key_combo = self.format_key_combo_from_parts(&parts);
+            let description = self.action_to_description(action);
+            
+            // Determine if global or screen-specific
+            let is_global = parts.len() <= 2 || 
+                           (parts.len() >= 3 && parts[0] == "none" && parts[1] == "none");
+            
+            let is_for_this_screen = key_string.contains(screen);
+            
+            if is_global && !key_string.contains("Home") && !key_string.contains("Albums") && 
+               !key_string.contains("Playlists") && !key_string.contains("Artists") && 
+               !key_string.contains("Queue") {
+                global_bindings.push((key_combo, description));
+            } else if is_for_this_screen {
+                screen_bindings.push((key_combo, description));
+            }
+        }
+        
+        // Sort bindings alphabetically by key, then by description for ties
+        global_bindings.sort_by(|a, b| a.cmp(&b));
+        screen_bindings.sort_by(|a, b| a.cmp(&b));
+        
+        let mut groups = Vec::new();
+        
+        // Show screen-specific bindings first
+        if !screen_bindings.is_empty() {
+            groups.push(KeybindingGroup {
+                section_name: screen.to_string(),
+                bindings: screen_bindings,
+            });
+        }
+        
+        // Then show global bindings
+        if !global_bindings.is_empty() {
+            groups.push(KeybindingGroup {
+                section_name: "Global".to_string(),
+                bindings: global_bindings,
+            });
+        }
+        
+        groups
+    }
+    
+    fn format_key_combo_from_parts(&self, parts: &[&str]) -> String {
+        if parts.len() < 2 {
+            return "()".to_string();
+        }
+        
+        let modifier = parts[parts.len() - 2];
+        let key = parts[parts.len() - 1];
+        
+        if modifier == "none" {
+            format!("({})", key)
+        } else {
+            format!("({}-{})", modifier, key)
         }
     }
     

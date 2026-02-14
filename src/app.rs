@@ -216,6 +216,7 @@ pub enum Popup {
     ConnectionError,
     GlobalSearch,
     ErrorMessage,
+    Keybindings,
 }
 
 impl Popup {
@@ -234,6 +235,7 @@ impl Popup {
             Popup::None => "none",
             Popup::GlobalSearch => "global_search",
             Popup::ErrorMessage => "error_message",
+            Popup::Keybindings => "keybindings",
         }
     }
 }
@@ -347,6 +349,7 @@ impl AppColors {
 pub struct SearchData {
     pub global_search_string: String,
     pub search_string: String,
+    pub keybindings_search_string: String,
     pub index_in_search: usize,
     pub search_results_indexes: Vec<usize>,
     pub global_search_song_results: Vec<String>,
@@ -360,6 +363,7 @@ impl Default for SearchData {
         SearchData {
             global_search_string: String::from(""),
             search_string: String::from(""),
+            keybindings_search_string: String::from(""),
             index_in_search: usize::MAX,
             search_results_indexes: Vec::new(),
             global_search_song_results: Vec::new(),
@@ -388,6 +392,7 @@ pub struct AppFlags {
     pub seeking: bool,
     pub was_paused: bool,
     pub invalidate_search: bool,
+    pub is_searching_keybindings: bool,
 }
 
 pub struct AppListStates {
@@ -411,6 +416,7 @@ pub struct AppListStates {
     pub global_search_albums: ListState,
     pub global_search_artists: ListState,
     pub global_search_playlists: ListState,
+    pub popup_keybindings_list_state: ListState,
 }
 
 impl AppListStates {
@@ -436,6 +442,7 @@ impl AppListStates {
             global_search_albums: AppListStates::initialize(),
             global_search_artists: AppListStates::initialize(),
             global_search_playlists: AppListStates::initialize(),
+            popup_keybindings_list_state: AppListStates::initialize(),
         }
     }
 
@@ -2766,6 +2773,7 @@ impl App {
                 Popup::AlbumInformation => &mut self.list_states.popup_list_state,
                 Popup::GenreFilter => &mut self.list_states.popup_genre_list_state,
                 Popup::SelectPlaylist => &mut self.list_states.popup_select_playlist_list_state,
+                Popup::Keybindings => &mut self.list_states.popup_keybindings_list_state,
                 Popup::GlobalSearch => match self.global_search_pane {
                     FourPaneGrid::TopLeft => &mut self.list_states.global_search_songs,
                     FourPaneGrid::TopRight => &mut self.list_states.global_search_albums,

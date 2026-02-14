@@ -177,6 +177,7 @@ Valid modifiers are `ctrl|alt|super`, valid keys should include all ASCII charac
 | `<Down>`            | `volume_down`                                                                             | Decreases the volume                                       |
 | `u`                 | `go_popup_update`                                                                         | Open Update Database popup                                 |
 | `<Ctrl-f>`          | `go_popup_global_search`                                                                  | Open Global Search popup                                   |
+| `?`                 | `go_popup_keybindings`                                                                    | Show keybindings help                                      |
 
 ### Home pane shortcuts
 | Shortcut            | Key in config                    | Description                                                |
