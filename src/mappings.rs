@@ -158,7 +158,7 @@ impl Mappings {
                 (String::from("right_Albums_none_none_none_enter"),ShortcutAction::PlayImmediatelySong),
                 (String::from("right_Albums_none_none_none_A"),ShortcutAction::GoPopupAddAlbumTo),
                 (String::from("Playlists_none_none_none_s"),ShortcutAction::GoPopupSyncPlaylist),
-                (String::from("Playlists_none_none_none_d"),ShortcutAction::GoPopupDeletePlaylist),
+                (String::from("left_Playlists_none_none_none_d"),ShortcutAction::GoPopupDeletePlaylist),
                 (String::from("left_Playlists_none_none_none_a"),ShortcutAction::GoPopupAddPlaylistTo),
                 (String::from("left_Playlists_none_none_none_enter"),ShortcutAction::PlayImmediatelyPlaylist),
                 (String::from("right_Playlists_none_none_none_a"),ShortcutAction::GoPopupAddSongTo),
