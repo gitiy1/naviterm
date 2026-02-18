@@ -34,6 +34,8 @@ pub async fn handle_key_events(
         "introducing_global"
     } else if app.app_flags.range_year_filter {
         "range_year"
+    } else if app.app_flags.is_searching_keybindings {
+        "searching"
     } else {
         "none"
     };
@@ -596,6 +598,46 @@ pub async fn handle_key_events(
                 Err(e) => {
                     warn!("Error setting pane for item: {}", e);
                 }
+            }
+        }
+        ShortcutAction::GoPopupKeybindings => {
+            app.current_popup = Popup::Keybindings;
+            app.app_flags.is_searching_keybindings = false;
+            app.search_data.keybindings_search_string.clear();
+            app.list_states.popup_keybindings_list_state.select_first();
+        }
+        ShortcutAction::PopupKeybindingsStartSearch => {
+            app.app_flags.is_searching_keybindings = true;
+        }
+        ShortcutAction::PopupKeybindingsAddChar => {
+            if let KeyCode::Char(c) = key_event.code {
+                app.search_data.keybindings_search_string.push(c);
+                app.list_states.popup_keybindings_list_state.select_first();
+            }
+        }
+        ShortcutAction::PopupKeybindingsRemoveChar => {
+            if !app.search_data.keybindings_search_string.is_empty() {
+                let mut chars = app
+                    .search_data
+                    .keybindings_search_string
+                    .chars()
+                    .collect::<Vec<char>>();
+                chars.pop();
+                app.search_data.keybindings_search_string = chars.iter().collect::<String>();
+                app.list_states.popup_keybindings_list_state.select_first();
+            }
+        }
+        ShortcutAction::PopupKeybindingsAcceptSearch => {
+            app.app_flags.is_searching_keybindings = false;
+        }
+        ShortcutAction::PopupKeybindingsClearSearch => {
+            if app.app_flags.is_searching_keybindings {
+                app.app_flags.is_searching_keybindings = false;
+                app.search_data.keybindings_search_string.clear();
+                app.list_states.popup_keybindings_list_state.select_first();
+            } else {
+                app.current_popup = Popup::None;
+                app.search_data.keybindings_search_string.clear();
             }
         }
     }
