@@ -276,6 +276,11 @@ async fn main() -> AppResult<()> {
                 if let Err(e) = app.tick() {
                     error!("Unmanaged error while processing the tick event: {}", e)
                 }
+
+                if let Some(iface_ref) = dbus_handler {
+                    let mut iface = iface_ref.get_mut().await;
+                    iface.update_position((app.get_playback_time() * 1000000) as i64);
+                }
             }
             Event::Key(key_event) => {
                 if let Err(e) = handle_key_events(key_event, &mut app, dbus_handler).await {
